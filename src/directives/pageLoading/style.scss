@@ -1,0 +1,41 @@
+.loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.5);
+  z-index: 999;
+
+  --width:64px;
+
+  .loading-content {
+    position: absolute;
+    top: 50%;
+    margin-top: calc(var(--width) / -2);
+    width: 100%;
+    text-align: center;
+  }
+
+  .loading-img {
+    width: var(--width);
+    height: var(--width);
+    animation: rotate 2s infinite linear;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-msg {
+    display: block;
+    font-size: 15px;
+  }
+}

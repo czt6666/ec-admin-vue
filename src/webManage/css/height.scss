@@ -1,0 +1,4 @@
+$tabBarHeight: 40px;
+$topMenuHeight: 45px;
+//$mainHeight: calc(100% - #{$tabBarHeight} - #{$topMenuHeight});
+$mainHeight: calc(100% - #{$topMenuHeight});

@@ -1,0 +1,46 @@
+<input type="file" id="file_obj" onchange="fileChange(this)" accept="image/jpeg" style="display: none;" />
+<button type="button" id="up_btn">点击上传文件</button>
+<img src="" width="200" height="200" id="w_img">
+
+<script src="https://libs.baidu.com/jquery/1.11.1/jquery.min.js"></script>
+<script>
+    //jQuery =>记得引入jquery文件
+    $("#up_btn").click(function () {
+        $("#file_obj").click()
+    })
+
+
+    // 文件上传
+    function fileChange(obj) {
+
+        let file = obj.files[0]; //获取到文件
+        if (file) {
+
+            /* 发送给服务器 */
+            $.ajax({
+                type: "POST",
+                'Content-Type': 'application/json',
+                url: init.baseUrl + "/article/uploadImage",
+                data: {
+                    file: file
+                },
+                success: function (data) {
+                    // do something
+                }
+            });
+
+            /*  预览图片 => 如果上传文件 此步骤省略 */
+            let fr = new FileReader(); //创建FileReader 对象
+            fr.readAsDataURL(file)
+            fr.onload = function (e) {
+                let res = e.target.result //获取图片base64
+                $("#w_img").attr("src", res)
+
+            }
+        }
+
+    }
+
+</script>
+<!-- <script src="../../webManage/js/IE8.js">
+</script> -->

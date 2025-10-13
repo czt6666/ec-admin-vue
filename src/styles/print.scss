@@ -1,0 +1,20 @@
+// 2023.8.18 lyh add: 打印样式
+@media print {
+  @page  {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    size: 21cm 29.7cm;
+  }
+  img {
+    display: block;
+    max-height: 296.5mm;
+    max-width: 209.5mm;
+    // 2023.8.7 lyh add: 下面样式的打印 公报.ceb.ofd  决定.ceb.ofd会自动分页  原因未知
+    //max-height: 297mm;
+    //max-width: 210mm;
+  }
+  .noNeedPrint, .el-message {
+    display: none !important;
+  }
+}

@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html>
+
+<head class="non-printable">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>webOFD</title>
+  <script src="https://code.jquery.com/jquery-1.11.1.min.js">
+  </script>
+  <style>
+  </style>
+  <style media="print">
+    @page {
+      margin: 0mm;
+    }
+  </style>
+</head>
+
+<body>
+  <div>
+    <div class="topMenu">
+      <div class="upload">
+        <iframe name="form" id="form" style="display: none;"></iframe>
+        <form action="/api/viewer/openFileByIE" method="post" enctype="multipart/form-data" target="form">
+          <input type="file" name="file" id="file_obj">
+          <input type="submit" value="选择文件上传" name="submit">
+        </form>
+      </div>
+      <div class="buttonGroup">
+        <button id="zoomOut">缩小</button>
+        <input id="zoomScale" style="width: 35px;" value="100%">
+        <button id="zoomIn">放大</button>
+        <button id="prevPage">上一页</button>
+        <input id="inputPage" style="width: 15px;" value="0">
+        <span>/</span>
+        <span id="pageCount">0</span>
+        <button id="nextPage">下一页</button>
+        <button id="download">下载</button>
+        <button id="print">打印</button>
+      </div>
+    </div>
+    <div id="main" class="main">
+      <div id="pageContainer" class="canvas">
+      </div>
+    </div>
+    <div id="loadingMask" class="loadingMask">
+      Loading...
+    </div>
+
+    <iframe id="print-frame" style="display:none;"></iframe>
+
+
+  </div>
+  <style>
+    .loadingMask {
+      display: none;
+      /* display: block; */
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #EBEBEB;
+      filter: alpha(opacity=50);
+      z-index: 1;
+      text-align: center;
+      vertical-align: middle;
+      line-height: 200px;
+      color: #333;
+    }
+
+    .non-printable {
+      display: none;
+    }
+
+    .topMenu {
+      background-color: #dadbde;
+      border: 1px solid #c2c1c1;
+      box-shadow: 0px 0px 2px 0px #999;
+      /* background-color: #f2f2f2; */
+      z-index: 999;
+      text-align: center;
+      /* display: inline-block; */
+    }
+
+    .upload {
+      display: inline-block;
+    }
+
+    .buttonGroup {
+      display: inline-block;
+    }
+
+    .main {
+      padding-top: 7px;
+      border: 0;
+      position: relative;
+      background-color: #EBEBEB;
+      overflow: auto;
+    }
+
+    .canvas {
+      margin: 0 0 0 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .image {
+      -moz-user-select: -moz-none;
+      -khtml-user-select: none;
+      -webkit-user-select: none;
+      -o-user-select: none;
+      user-select: none;
+    }
+
+    @media print {
+      @page {
+        margin: 0mm;
+      }
+    }
+
+
+
+    /* .image {
+      position: absolute;
+      left: 50%;
+  } */
+  </style>
+  <script src="https://libs.baidu.com/jquery/1.11.1/jquery.min.js"></script>
+
+  <script>
+
+    // 设置主体区域的高度
+    var screenHeight = window.innerHeight || document.documentElement.clientHeight;
+    var element = document.getElementById('main');
+    element.style.height = screenHeight - 49 + 'px';
+    /**********************************hyj-1206-data全局数据-begin ****************************************/
+    // 图片数组
+    var image = []
+    //图标是否调用过的标记数组
+    var imageFlag = []
+    // 页码
+    var pageCount = 0
+    //输入页码，从1开始的
+    var inputPage = 0
+    // 文件uuid
+    var fileId = ""
+    //缩放比
+    var zoomScale = 1
+    var fileUrl = ""
+    var openCount = 1
+
+    var textFlag = []
+    var textData = []
+    //请求前缀
+    var prefix = "/api"
+
+    /**********************************hyj-1206-data全局数据-end ****************************************/
+
+    // 打开文件请求
+    $("#form").load(function () {
+      //获取到的是json的字符串
+      var json = $(this).contents().find("body").text();
+      //json字符串转换成json对象
+      var res = $.parseJSON(json);
+      // 图片数组赋值
+      image = res.info.imgPathList
+      // 总页码赋值及显示
+      pageCount = res.info.nCount
+      // imageFlag = Array.from({ length: pageCount }, () => 0);
+      setImageFlagZero()
+      fileId = res.info.fileId
+      fileUrl = res.info.ofdUrl
+      document.getElementById("pageCount").innerHTML = pageCount
+      // 获取绘图div
+      var container = document.getElementById('pageContainer')
+      // 如果有上一个文件打开的子节点先删除掉
+      if (container.hasChildNodes()) {
+
+        while (container.firstChild) {
+          // console.log(container.firstChild)
+          container.removeChild(container.firstChild);
+        }
+      }
+
+      for (var i = 0; i < res.info.nCount; i++) {
+        var div = document.createElement('div');
+        div.id = "pageContainer_" + i;
+        div.style.display = "table"
+        div.style.position = "relative"
+        div.style.marginBottom = "7px"
+        div.style.marginLeft = "auto"
+        div.style.marginRight = "auto"
+        container.appendChild(div);
+      }
+
+      // 绘制图片
+      for (var i = 0; i < image.length; i++) {
+        var div = document.createElement('img');
+        div.id = "imgContainer_" + i;
+        div.className = "image"
+        div.unselectable = "on"
+        div.onselectstart = "false"
+        div.onselect = "false"
+        div.style.position = "absolute"
+        div.src = image[i]
+        document.getElementById("pageContainer_" + i).appendChild(div);
+        var text = document.createElement('svg');
+        text.className = "svgContainer"
+        text.id = "textContainer_" + i;
+        text.style.position = "absolute"
+        document.getElementById("pageContainer_" + i).appendChild(text);
+        setDivStyle(i)
+        imageFlag[i] = 1
+      }
+
+      for (var j = 2; j < pageCount; j++) {
+        var div = document.createElement('img');
+        div.id = "imgContainer_" + j;
+        div.className = "image"
+        div.unselectable = "on"
+        div.onselectstart = "false"
+        div.onselect = "false"
+        div.src = "/src/assets/images/svg/1.png"
+        document.getElementById("pageContainer_" + j).appendChild(div);
+        var text = document.createElement('svg');
+        text.className = "svgContainer"
+        text.id = "textContainer_" + j;
+        document.getElementById("pageContainer_" + j).appendChild(text);
+      }
+
+      var data = {
+        fileId: fileId,
+        needPage: [1, 2],
+        pageNumber: 1,
+        flag: 0,
+        openCount: 1,
+        pageFlag: 0
+      }
+
+      getPageText(data)
+
+      inputPage = 1
+      setInputPageValue(inputPage)
+      zoomScale = 1
+      setInputZoomValue(100)
+    })
+
+    function setDivStyle(index) {
+      var img = new Image();
+      img.src = image[index];
+      var page = document.getElementById("pageContainer_" + index);
+      var div = document.getElementById("imgContainer_" + index);
+      var text = document.getElementById("textContainer_" + index);
+      img.onload = function () {
+        div.style.width = img.width + "px";
+        div.style.height = img.height + "px";
+        text.style.width = img.width + "px";
+        text.style.height = img.height + "px";
+        page.style.width = img.width + "px";
+        page.style.height = img.height + "px";
+        console.log("实际宽：" + img.width + " 实际高：" + img.height)
+      }
+    }
+    /**********************************hyj-240403-获取文字部分函数-begin ****************************************/
+
+
+    function getPageText(data) {
+      for (var i = 0; i < data.needPage.length; i++) {
+        if (textFlag[data.needPage[i] - 1] == 1) {
+          reviewPageText(data.needPage[i] - 1)
+          data.needPage.splice(i, 1);
+          i--;
+        }
+      }
+      // 如果有文字需要请求则调用
+      if (data.needPage.length > 0) {
+        getNeedPageText(data)
+      }
+    }
+
+
+    function getNeedPageText(data) {
+      // 发送的请求并处理
+      setTimeout(function () {
+        var text = convertMMtoPX(response.info.data)
+
+        textFlag.length = pageCount;
+
+        for (var i = 0; i < text.length; i++) {
+          if (text[i] == null) {
+            break;
+          } else {
+            var svgKey;
+            // 区分是第一次打开还是按需调用
+            if (data.flag === 0) {
+              svgKey = "textContainer_" + i;
+              for (var j = 0; j < text.length; j++) {
+                textData[j] = text[j]
+              }
+              // hyjnew 2023.8.7
+              if (i == 0) {
+                for (var j = 0; j < textFlag.length; j++) {
+                  textFlag[j] = 0;
+                }
+              }
+              textFlag[i] = 1;
+            } else {
+              svgKey = "textContainer_" + (data.pageNumber - 1 + i);
+              for (var k = 0; k < text.length; k++) {
+                // hyj-0816-add
+                if (text[k] !== null) {
+                  textData[data.pageNumber - 1 + k] = text[k];
+                  textFlag[data.pageNumber - 1 + k] = 1;
+                }
+              }
+            }
+            for (var j = 0; j < text[i].length; j++) {
+
+              var textLayer = document.createElement("td")
+              textLayer.style.fontSize = (text[i][j].box.bottom - text[i][j].box.top) * zoomScale * 0.71 + "px";
+              textLayer.style.position = "absolute";
+              textLayer.style.left = text[i][j].box.left * zoomScale + "px";
+              textLayer.style.top = text[i][j].box.top * zoomScale + "px";
+              textLayer.style.width = (text[i][j].box.right - text[i][j].box.left) * zoomScale + "px";
+              textLayer.style.color = "transparent";
+              textLayer.style.display = "inline-block";
+              textLayer.style.textAlign = "justify"
+              textLayer.style.textJustify = "inter-ideograph"
+              textLayer.style.letterSpacing = "0.14em"
+              textLayer.style.overflow = "hidden";
+              // textLayer.style.color = "transparent";
+
+              textLayer.style.textOverflow = "ellipsis"
+              textLayer.style.height = (text[i][j].box.bottom - text[i][j].box.top) * zoomScale + "px";
+              textLayer.style.lineHeight = (text[i][j].box.bottom - text[i][j].box.top) * zoomScale + "px";
+              textLayer.innerHTML = HTMLEncode(text[i][j].string);
+              textLayer.id = "textLayer_" + j;
+              if (document.getElementById(svgKey) != null) {
+                var svgContainer = document.getElementById(svgKey);
+                svgContainer.appendChild(textLayer);
+              }
+            }
+          }
+        }
+
+      }, 500, apiPost(prefix + '/text/getPageText', data))
+
+    }
+
+    function reviewPageText(index) {
+      var svgKey = "textContainer_" + index;
+      var svgBox = document.getElementById(svgKey);
+      // 删除所有原本的孩子节点
+      svgBox.innerHTML = ''
+      for (var j = 0; j < textData[index].length; j++) {
+        var textLayer = document.createElement("td")
+        textLayer.style.fontSize = (textData[index][j].box.bottom - textData[index][j].box.top) * zoomScale * 0.71 + "px";
+        textLayer.style.position = "absolute";
+        textLayer.style.left = textData[index][j].box.left * zoomScale + "px";
+        textLayer.style.top = textData[index][j].box.top * zoomScale + "px";
+        textLayer.style.width = (textData[index][j].box.right - textData[index][j].box.left) * zoomScale + "px";
+        textLayer.style.color = "transparent";
+        textLayer.style.display = "inline-block";
+        textLayer.style.textAlign = "justify"
+        textLayer.style.textJustify = "inter-ideograph"
+        textLayer.style.letterSpacing = "0.14em"
+        textLayer.style.overflow = "hidden"
+        textLayer.style.textOverflow = "ellipsis"
+        textLayer.style.height = (textData[index][j].box.bottom - textData[index][j].box.top) * zoomScale + "px";
+        textLayer.style.lineHeight = (textData[index][j].box.bottom - textData[index][j].box.top) * zoomScale + "px";
+        textLayer.innerHTML = HTMLEncode(textData[index][j].string);
+        textLayer.id = "textLayer_" + j;
+        if (document.getElementById(svgKey) != null) {
+          var svgContainer = document.getElementById(svgKey);
+          svgContainer.appendChild(textLayer);
+        }
+      }
+
+    }
+    //HTML标签转义（< -> &lt;）
+    function HTMLEncode(sHtml) {
+      var temp = document.createElement("div");
+      (temp.textContent != null) ? (temp.textContent = sHtml) : (temp.innerText = sHtml);
+      var output = temp.innerHTML;
+      temp = null;
+      return output;
+    }
+
+    function convertMMtoPX(data) {
+      for (var i = 0; i < data.length; i++) {
+        if (data[i] == null) {
+          break;
+        } else {
+          for (var j = 0; j < data[i].length; j++) {
+            var top = mmConversionPx(data[i][j].box.top);
+            var left = mmConversionPx(data[i][j].box.left);
+            var bottom = mmConversionPx(
+              data[i][j].box.bottom
+            );
+            var right = mmConversionPx(
+              data[i][j].box.right
+            );
+            data[i][j].box.top = top;
+            data[i][j].box.left = left;
+            data[i][j].box.bottom = bottom;
+            data[i][j].box.right = right;
+          }
+          data[i] = this.insertionSort(data[i])
+        }
+      }
+      return data;
+    };
+
+    this.pxConversionMm = function (value) {
+      var inch = value / this.conversion_getDPI()[0];
+      var cValue = inch * 25.4;
+      return Number(cValue.toFixed(3));
+    };
+    /**
+     * @责任人：hyj
+     * @方法名：insertionSort
+     * @方法描述：直接插入排序函数，原本数组就基本有序。
+     * @入参：
+     * @返回值：
+     * @修改时间：2023.12.26
+     * @修改类型（新增、删除、修改等）：新增
+     * @修改描述：
+     * */
+    function insertionSort(arr) {
+      // debugger
+      var len = arr.length;
+      var preIndex, current;
+      for (var i = 1; i < len; i++) {
+        preIndex = i - 1;
+        current = arr[i];
+        while (preIndex >= 0 && arr[preIndex].box.top > current.box.top) {
+          arr[preIndex + 1] = arr[preIndex];
+          preIndex--;
+        }
+        arr[preIndex + 1] = current;
+
+      }
+      return arr;
+    }
+
+    /**
+     * mm转换为px
+     * @param value
+     * @returns {number}
+     */
+    this.mmConversionPx = function (value) {
+      var inch = value / 25.4;
+      var cValue = inch * this.conversion_getDPI()[0];
+      return Number(cValue.toFixed(3));
+    };
+
+    /**
+     * 获取DPI
+     * @returns {Array}
+     */
+    this.conversion_getDPI = function () {
+      //定义dpi变量
+      var arrDPI = [];
+      if (window.screen.deviceXDPI) {
+
+        //将获取到的x，ydpi赋值给该变量
+        arrDPI[0] = window.screen.deviceXDPI;
+        arrDPI[1] = window.screen.deviceYDPI;
+      } else {
+        var tmpNode = document.createElement("DIV");
+        tmpNode.style.cssText = "width:1in;height:1in;position:absolute;left:0px;top:0px;z-index:99;visibility:hidden";
+        document.body.appendChild(tmpNode);
+        arrDPI[0] = parseInt(tmpNode.offsetWidth);
+        arrDPI[1] = parseInt(tmpNode.offsetHeight);
+        tmpNode.parentNode.removeChild(tmpNode);
+      }
+      return arrDPI;
+    };
+    /**********************************hyj-240403-获取文字部分函数-end ****************************************/
+
+    /**********************************hyj-240411-下载打印部分函数-begin ****************************************/
+    // 下载
+    $("#download").click(function () {
+      if (fileUrl == null) {
+        alert("请打开文件后操作")
+      }
+      else {
+        var link = document.createElement('a');
+        link.href = fileUrl;
+        link.download = fileId
+        document.body.appendChild(link);
+        link.click();
+      }
+    })
+
+    // 打印
+    $('#print').click(function () {
+      if (fileId == null || fileId == "" || fileId == undefined) {
+        alert("请打开文件后操作")
+      } else {
+        // 打印
+        console.log("开始打印")
+        printCommon(printFile)
+      }
+    })
+
+    // 设置打印样式并打印
+    function printFile() {
+      var iframe = document.getElementById('print-frame');
+      var content = document.getElementById('main').innerHTML;
+      iframe.contentDocument.write(content);
+      iframe.style.margin = "0";
+      iframe.style.padding = "0";
+      iframe.style.pageBreakAfter = "always";
+      iframe.contentDocument.close();
+      iframe.style.display = 'block';
+      window.document.write(iframe.contentDocument.body.innerHTML);
+      window.document.close();
+      window.focus();
+      window.print();
+    }
+
+    //打印调用接口获取所有页面的图片并绘制上去
+    function printCommon(callback) {
+      var printForm = {
+        fileId: fileId,  // 要打印文件名uuid
+        mask: true,  // 掩膜
+        stamp: true,  // 签章
+        template: true,  // 模板
+        annotation: true,  // 注释
+        watermark: true,  // 水印
+        dpi: 96,  // 默认是高清打印
+        range: [],  // 默认先打印全部页面
+        printType: 1,  // 打印类型 1-普通打印 2-连续打印
+      }
+
+      setTimeout(function () {
+        var tempImage = response.info.imgPathList
+        // 绘制图片
+        for (var i = 0; i < tempImage.length; i++) {
+          var div = document.getElementById("imgContainer_" + i)
+          image[i] = tempImage[i]
+          div.src = tempImage[i]
+        }
+        callback()
+      }, 500, apiPost(prefix + '/print/printCommon', printForm))
+    }
+    /**********************************hyj-240411-下载打印部分函数-end ****************************************/
+
+
+    /**********************************hyj-1206-上一页、下一页、输入页码翻页函数-begin ****************************************/
+    $("#prevPage").click(function () {
+      if (inputPage > 1) {
+        var curPageItem = document.getElementById("pageContainer_" + (inputPage - 2));
+        document.getElementById("main").scrollTop = curPageItem.offsetTop - 7
+        inputPage--
+        setInputPageValue(inputPage)
+        getNewPage(inputPage)
+      }
+    })
+
+    $("#nextPage").click(function () {
+      if (inputPage < pageCount) {
+        var curPageItem = document.getElementById("pageContainer_" + (inputPage));
+        document.getElementById("main").scrollTop = curPageItem.offsetTop - 7
+        inputPage++
+        setInputPageValue(inputPage)
+        getNewPage(inputPage)
+      }
+    })
+
+    $("#inputPage").keydown(function (event) {
+      if (event.keyCode === 13) {
+        if (inputPage === 0) {
+          alert("请打开文件后进行翻页")
+          setInputPageValue(0)
+        } else {
+          if (0 < Number(document.getElementById("inputPage").value) && Number(document.getElementById("inputPage").value) <= pageCount) {
+            inputPage = Number(document.getElementById("inputPage").value)
+            var curPageItem = document.getElementById("pageContainer_" + (inputPage - 1));
+            document.getElementById("main").scrollTop = curPageItem.offsetTop - 7
+            getNewPage(inputPage)
+          } else {
+            alert("请输入合规的页码范围内数字")
+            setInputPageValue(inputPage)
+          }
+        }
+      }
+    })
+    /**********************************hyj-1206-上一页、下一页、输入页码翻页函数-end ****************************************/
+
+
+    /**********************************hyj-1206-放大、缩小、输入缩放比等函数-begin ****************************************/
+    // 输入缩放比
+    $("#zoomScale").keydown(function (event) {
+      if (event.keyCode === 13) {
+        if (fileId === "") {
+          alert("请打开文件后进行放缩")
+          setInputZoomValue(100)
+        } else {
+          setImageFlagZero()
+          var value = document.getElementById("zoomScale").value
+          if (Number(value.replace("%", "")) < 150 || Number(value.replace("%", "")) > 50) {
+            setImageFlagZero()
+            zoomScale = Number(value.replace("%", "") / 100)
+            getNewPage(inputPage)
+            setInputZoomValue(Math.floor(Number(value.replace("%", ""))))
+
+          } else {
+            alert("请输入50%-100%之间的缩放比")
+            setInputZoomValue(100)
+          }
+        }
+      }
+    })
+    var clickCount = 0
+    var lastScale = 0
+    // 缩小
+    $("#zoomOut").click(function () {
+      showLoading()
+      if (fileId === "") {
+        alert("请打开文件后操作")
+      } else {
+        var oldScale = zoomScale
+
+        var page = document.getElementById("imgContainer_" + (inputPage - 1))
+        var pageHeight = page.offsetHeight / zoomScale
+
+        if (zoomScale <= 0.6) {
+          alert("已缩放至最小")
+        } else {
+          setImageFlagZero()
+          zoomScale = zoomScale - 0.1
+          setInputZoomValue(Math.floor(zoomScale * 100))
+        }
+        // debugger
+
+        var newScale = zoomScale
+        lastScale = zoomScale
+        var realPageHeight = pageHeight * lastScale
+        openCount = Math.ceil(document.getElementById("main").offsetHeight / realPageHeight)
+        clickCount++
+
+
+        // for (var i = inputPage + 1; i < pageCount - 1; i++) {
+
+        //   var page1 = document.getElementById("pageContainer_" + i);
+        //   var div = document.getElementById("imgContainer_" + i);
+        //   var text = document.getElementById("textContainer_" + i);
+        //   console.log("高缩放前：" + page1.offsetHeight)
+        //   console.log("高缩放后：" + page1.offsetHeight / oldScale * newScale)
+        //   console.log("宽缩放前：" + page1.offsetWidth)
+        //   console.log("宽缩放后：" + page1.offsetWidth / oldScale * newScale)
+        //   console.log("缩放比例旧：" + oldScale + "新," + newScale)
+
+        //   div.style.width = page1.offsetWidth / oldScale * newScale + "px";
+        //   div.style.height = page1.offsetHeight / oldScale * newScale + "px";
+        //   page.style.width = page1.offsetWidth / oldScale * newScale + "px";
+        //   page.style.height = page1.offsetHeight / oldScale * newScale + "px";
+        //   text.style.width = page1.offsetWidth / oldScale * newScale + "px";
+        //   text.style.height = page1.offsetHeight / oldScale * newScale + "px";
+
+        //   console.log("执行后高：" + page1.offsetHeight)
+        //   console.log("执行后宽:" + page1.offsetWidth)
+
+        // }
+
+      }
+
+    })
+
+
+    //防抖
+    setInterval(function () {
+      if (clickCount > 0) { // 如果点击次数大于0，则发送请求
+        getNewPage(inputPage)
+        clickCount = 0; // 清空点击计数器
+      }
+    }, 1500);
+
+
+    // 放大
+    $("#zoomIn").click(function () {
+      showLoading()
+      if (fileId === "") {
+        alert("请打开文件后操作")
+      } else {
+        if (zoomScale > 1.5) {
+          alert("已放大至最大")
+        } else {
+          setImageFlagZero()
+          zoomScale = zoomScale + 0.1
+          setInputZoomValue(Math.floor(zoomScale * 100))
+        }
+        lastScale = zoomScale
+        clickCount++
+      }
+    })
+
+    // 输入缩放比赋值
+    function setInputZoomValue(value) {
+      document.getElementById("zoomScale").value = value + "%"
+    }
+
+    /**********************************hyj-1206-放大、缩小、输入缩放比等函数-end ****************************************/
+
+    //滚动翻页
+    function handleScroll(event) {
+      event = event || window.event;
+      var delta = event.wheelDelta || -event.detail;
+      var main = document.getElementById("main");
+      var mainRect = main.getBoundingClientRect()
+      var curPageItem = document.getElementById("imgContainer_" + (inputPage - 1));
+      var curpageItemRect = curPageItem.getBoundingClientRect();
+      // 根据滚动方向执行相应的操作
+      if (delta > 0 && curpageItemRect.top > 0 && inputPage > 1) {
+        inputPage--
+        setInputPageValue(inputPage)
+        getNewPage(inputPage)
+
+      } else if (delta < 0 && curpageItemRect.bottom <= 0) {
+        inputPage++
+        setInputPageValue(inputPage)
+        getNewPage(inputPage + 1)
+      }
+    }
+    var main = document.getElementById("main");
+
+    if (main.addEventListener) {
+      main.addEventListener('DOMMouseScroll', handleScroll, false);
+    }
+    // IE11不支持该事件
+    main.attachEvent('onmousewheel', handleScroll)
+
+    //输入页码赋值
+    function setInputPageValue(value) {
+      document.getElementById("inputPage").value = value
+    }
+
+    //将标识置零
+    function setImageFlagZero() {
+      imageFlag = new Array(pageCount)
+      for (var i = 0; i < imageFlag.length; i++) {
+        imageFlag[i] = 0
+        textFlag[i] = 0
+      }
+    }
+
+    //获取新页
+    function getNewPage(index) {
+      // debugger
+      if (imageFlag[index - 1] == 0) {
+        openFileConByIE(index)
+        imageFlag[index - 1] = 1
+      }
+    }
+
+
+    //连续翻页
+    function openFileConByIE(index) {
+      // debugger
+      var needPage = []
+      for (var i = 0; i < openCount; i++) {
+        needPage.push(index + i)
+      }
+      var openFileConData = {
+        needPage: needPage,
+        fileId: fileId,
+        zoomScale: zoomScale,
+        dpr: 1,
+        modifyFileTimes: 0,
+        needAnno: true,
+      };
+
+      setTimeout(function () {
+        // debugger
+        var tempImage = response.info.imgPathList
+        // 以防出现滚动翻页的时候返回了数据但是图片没拿到，出现这种情况重复请求一次
+        if (tempImage == undefined) {
+          openFileConByIE(index)
+          return
+        }
+        // 绘制图片
+        for (var i = 0; i < tempImage.length; i++) {
+          var div = document.getElementById("imgContainer_" + (index - 1 + i))
+          console.log("现在绘制的div：" + (index - 1 + i))
+          div.src = tempImage[i]
+          image[index - 1 + i] = tempImage[i]
+          setDivStyle(index - 1 + i)
+        }
+        var data = {
+          fileId: fileId,
+          needPage: needPage,
+          pageNumber: index
+        }
+        getPageText(data)
+      }, 500, apiPost(prefix + '/viewer/openFileCon', openFileConData))
+
+      if (zoomScale != 1) {
+      }
+    }
+
+
+    //发送post请求
+    var response
+    function apiPost(url, data) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+      xhr.send(JSON.stringify(data));
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          hideLoading()
+          response = $.parseJSON(xhr.responseText)
+        }
+      }
+    }
+
+    function showLoading() {
+      var loadingMask = document.getElementById("loadingMask");
+      loadingMask.style.display = "block"; // 显示加载提示遮罩层
+    }
+
+    function hideLoading() {
+      var loadingMask = document.getElementById("loadingMask");
+      loadingMask.style.display = "none"; // 隐藏加载提示遮罩层
+    }
+
+
+
+
+
+
+  </script>
+  <!-- <script src="/src/assets/images/svg/1.png">
+</script> -->
+</body>
+
+</html>
