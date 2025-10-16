@@ -7,7 +7,7 @@
           </el-button>
         </el-form-item>
         <el-form-item>
-          <p1>康养民宿
+          <p1>商业经营管理
           </p1>
         </el-form-item>
       </el-form>
