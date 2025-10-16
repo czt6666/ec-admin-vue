@@ -47,47 +47,162 @@ export const asyncRouterMap = [
     ]
   },
   {
-    path: '/admin/subject',
+    path: '/admin/village',
     component: Layout,
-    redirect: '/admin/subject/news',
-    name: 'ECadminSubject',
-    meta: { title: '产业主体管理', icon: 'table' },
+    redirect: '/admin/village/subject',
+    name: 'ECadminVillage',
+    meta: { title: '乡村宣传', icon: 'table' },
     children: [
       {
-        path: 'news',
-        name: '乡村宣传',
-        component: _import('subject/news'),
-        meta: { title: '乡村宣传', icon: 'user' },
+        path: 'subject',
+        name: '主体信息管理',
+        component: _import('village/subject'),
+        meta: { title: '主体信息管理', icon: 'user' },
         menu: 'user'
       },
       {
-        path: 'homestay',
-        name: '民宿经营',
-        component: _import('subject/homestay'),
-        meta: { title: '民宿经营', icon: 'password' },
+        path: 'news',
+        name: '主题管理',
+        component: _import('village/news'),
+        meta: { title: '主题管理', icon: 'password' },
         menu: 'role'
       },
     ]
   },
   {
-    path: '/admin/resource',
+    path: '/admin/homestay',
     component: Layout,
-    redirect: '/admin/resource/homestay',
-    name: 'ECadminResource',
-    meta: { title: '产业资源管理', icon: 'table' },
+    redirect: '/admin/homestay/subject',
+    name: 'ECadminHomestay',
+    meta: { title: '民宿经营', icon: 'table' },
     children: [
       {
-        path: 'homestay',
-        name: '康养民宿',
-        component: _import('resource/homestay'),
-        meta: { title: '康养民宿', icon: 'user' },
+        path: 'subject',
+        name: '主体信息管理',
+        component: _import('homestay/subject'),
+        meta: { title: '主体信息管理', icon: 'user' },
         menu: 'user'
       },
       {
-        path: 'pension',
-        name: '养老驿站',
-        component: _import('resource/pension'),
-        meta: { title: '养老驿站', icon: 'password' },
+        path: 'business',
+        name: '商业经营管理',
+        component: _import('homestay/business'),
+        meta: { title: '商业经营管理', icon: 'password' },
+        menu: 'role'
+      },
+    ]
+  },
+  {
+    path: '/admin/tourism',
+    component: Layout,
+    redirect: '/admin/tourism/subject',
+    name: 'ECadminTourism',
+    meta: { title: '旅游经营', icon: 'table' },
+    children: [
+      {
+        path: 'subject',
+        name: '主体信息管理',
+        component: _import('tourism/subject'),
+        meta: { title: '主体信息管理', icon: 'user' },
+        menu: 'user'
+      },
+      {
+        path: 'business',
+        name: '商业经营管理',
+        component: _import('tourism/business'),
+        meta: { title: '商业经营管理', icon: 'password' },
+        menu: 'role'
+      },
+    ]
+  },
+  {
+    path: '/admin/study',
+    component: Layout,
+    redirect: '/admin/study/subject',
+    name: 'ECadminStudy',
+    meta: { title: '研学基地', icon: 'table' },
+    children: [
+      {
+        path: 'subject',
+        name: '主体信息管理',
+        component: _import('study/subject'),
+        meta: { title: '主体信息管理', icon: 'user' },
+        menu: 'user'
+      },
+      {
+        path: 'business',
+        name: '商业经营管理',
+        component: _import('study/business'),
+        meta: { title: '商业经营管理', icon: 'password' },
+        menu: 'role'
+      },
+    ]
+  },
+  {
+    path: '/admin/elderlyCare',
+    component: Layout,
+    redirect: '/admin/elderlyCare/subject',
+    name: 'ECadmineElderlyCare',
+    meta: { title: '养老经营', icon: 'table' },
+    children: [
+      {
+        path: 'subject',
+        name: '主体信息管理',
+        component: _import('elderlyCare/subject'),
+        meta: { title: '主体信息管理', icon: 'user' },
+        menu: 'user'
+      },
+      {
+        path: 'business',
+        name: '商业经营管理',
+        component: _import('elderlyCare/business'),
+        meta: { title: '商业经营管理', icon: 'password' },
+        menu: 'role'
+      },
+    ]
+  },
+  {
+    path: '/admin/products',
+    component: Layout,
+    redirect: '/admin/products/subject',
+    name: 'ECadmineProduction',
+    meta: { title: '农产品销售', icon: 'table' },
+    children: [
+      {
+        path: 'subject',
+        name: '主体信息管理',
+        component: _import('products/subject'),
+        meta: { title: '主体信息管理', icon: 'user' },
+        menu: 'user'
+      },
+      {
+        path: 'business',
+        name: '商业经营管理',
+        component: _import('products/business'),
+        meta: { title: '商业经营管理', icon: 'password' },
+        menu: 'role'
+      },
+    ]
+  },
+  {
+    path: '/admin/restaurant',
+    component: Layout,
+    redirect: '/admin/restaurant/subject',
+    name: 'ECadmineRestaurant',
+    meta: { title: '餐饮销售', icon: 'table' },
+    children: [
+      {
+        path: 'subject',
+        name: '主体信息管理',
+        component: _import('restaurant/subject'),
+        meta: { title: '主体信息管理', icon: 'user' },
+        menu: 'user'
+      },
+      {
+        path: 'business',
+        name: '商业经营管理',
+        component: _import('restaurant/business'),
+        meta: { title: '商业经营管理', icon: 'password' },
         menu: 'role'
       },
     ]
@@ -95,9 +210,9 @@ export const asyncRouterMap = [
   {
     path: '/admin/store',
     component: Layout,
-    redirect: '/admin/store/homestay',
+    redirect: '/admin/store/data',
     name: 'ECadminStore',
-    meta: { title: '产业资源管理', icon: 'table' },
+    meta: { title: '产业数智仓库', icon: 'table' },
     children: [
       {
         path: 'data',
