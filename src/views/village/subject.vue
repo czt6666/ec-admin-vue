@@ -1,54 +1,32 @@
 <template>
   <div class="app-container">
     <div class="filter-container">
-      <el-form>
+      <el-form inline>
         <el-form-item>
-          <el-button type="primary" icon="plus" @click="showCreate">添加
-          </el-button>
-        </el-form-item>
-        <el-form-item>
-          <p1>主体信息管理
-          </p1>
+          <span class="page-title">主体信息管理</span>
         </el-form-item>
       </el-form>
     </div>
+
+    <!-- 子路由渲染出口：村庄列表页面会在这里显示 -->
+    <router-view/>
   </div>
 </template>
-<script>
-import {mapGetters} from 'vuex'
-import MD5 from "js-md5"
 
+<script>
 export default {
-  name: 'HomePage',
-  data() {
-    return {
-      message: 'Hello Vue!'
-    }
-  }
+  name: 'VillageSubject'
 }
 </script>
+
 <style scoped>
-.test{
-  height: 80vh;
-  overflow-x: scroll;
+.filter-container {
+  margin-bottom: 20px;
 }
-.pwValidatorfail{
-  color: #F56C6C;
-  font-size: 12px;
-  line-height: 1;
-  padding-top: 4px;
-  position: absolute;
-  top: 10px;
-  left: 230px;
-  width: 330px;
-}
-.el-form-item >>> .el-form-item__error{
-  font-size: 12px;
-  line-height: 1;
-  padding-top: 4px;
-  position: absolute;
-  top: 10px;
-  left: 230px;
-  width: 330px;
+
+.page-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
 }
 </style>

@@ -38,7 +38,15 @@ module.exports = {
         pathRewrite: {
           "^/api": "/"
         }
-      }
+      },
+
+        '/bistu': {
+          target: 'http://localhost:8020',
+          changeOrigin: true
+          // 不需要重写：pathRewrite: { '^/bistu': '/bistu' }
+        }
+
+
     },
     // CSS Sourcemaps off by default because relative paths are "buggy"
     // with this option, according to the CSS-Loader README

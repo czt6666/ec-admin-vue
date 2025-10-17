@@ -44,9 +44,11 @@ service.interceptors.response.use(
   response => {
     service.expiredTime = new Date();
     const res = response.data;
-    if (res.code === '200') {
-      return res.info;
-    } else if (res.code === "20011") {
+    // 兼容两种后端风格：code === '200' 或 code === 1
+    if (res.code === '200' || res.code === 200 || res.code === 1 || res.code === '1') {
+      // 优先返回 info（你当前后端的风格），否则返回 data（Result<T> 风格）
+      return res.info !== undefined ? res.info : res.data;
+    } else if (res.code === '20011' || res.code === 20011) {
       Message({
         showClose: true,
         message: res.msg,
