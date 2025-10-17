@@ -40,11 +40,7 @@ module.exports = {
         }
       },
 
-        '/bistu': {
-          target: 'http://localhost:8020',
-          changeOrigin: true
-          // 不需要重写：pathRewrite: { '^/bistu': '/bistu' }
-        }
+
 
 
     },

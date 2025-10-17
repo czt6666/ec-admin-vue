@@ -5,7 +5,7 @@ import service from '@/utils/api'
 export function fetchVillagePage(params) {
   // params: { page, pageSize }
   return service({
-    url: '/bistu/ecadmin/village/page',
+    url: '/admin/ecadmin/village/page',
     method: 'get',
     params
   });
@@ -14,7 +14,7 @@ export function fetchVillagePage(params) {
 // 新增村庄
 export function addVillage(data) {
   return service({
-    url: '/bistu/ecadmin/village/add',
+    url: '/admin/ecadmin/village/add',
     method: 'post',
     data
   });
@@ -23,7 +23,7 @@ export function addVillage(data) {
 // 修改村庄
 export function updateVillage(data) {
   return service({
-    url: '/bistu/ecadmin/village/update',
+    url: '/admin/ecadmin/village/update',
     method: 'put',
     data
   });
@@ -32,14 +32,14 @@ export function updateVillage(data) {
 // 根据ID查询村庄详情
 export function getVillageById(id) {
   return service({
-    url: `/bistu/ecadmin/village/${id}`,
+    url: `/admin/ecadmin/village/${id}`,
     method: 'get'
   });
 }
 // 删除村庄
 export function deleteVillage(id) {
   return service({
-    url: `/bistu/ecadmin/village/${id}`,
+    url: `/admin/ecadmin/village/${id}`,
     method: 'delete'
   });
 }

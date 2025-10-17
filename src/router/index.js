@@ -49,15 +49,16 @@ export const asyncRouterMap = [
   {
     path: '/admin/village',
     component: Layout,
-    redirect: '/admin/village/subject/list',
+    redirect: '/admin/village/subject',
     name: 'ECadminVillage',
     meta: { title: '乡村宣传', icon: 'table' },
     children: [
       {
             path: 'list',
             name: '村庄列表',
-            component: _import('village/index'), // 你之前的分页页面：src/views/village/index.vue
-            meta: { title: '村庄列表', icon: 'user' }
+            component: _import('village/list'),
+            meta: { title: '村庄列表', icon: 'table' }
+
       },
       {
         path: 'news',
