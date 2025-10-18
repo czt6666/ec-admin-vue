@@ -54,11 +54,17 @@ export const asyncRouterMap = [
     meta: { title: '乡村宣传', icon: 'table' },
     children: [
       {
-            path: 'list',
-            name: '村庄列表',
-            component: _import('village/list'),
-            meta: { title: '村庄列表', icon: 'table' }
-
+        path: 'subject',
+        name: '新闻主体管理',
+        component: _import('village/subject'),
+        meta: { title: '新闻主体管理', icon: 'user' },
+        menu: 'user'
+      },
+      {
+        path: 'list',
+        name: '村庄列表',
+        component: _import('village/list'),
+        meta: { title: '村庄列表', icon: 'table' }
       },
       {
         path: 'news',

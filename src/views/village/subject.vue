@@ -84,8 +84,10 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="乡村" prop="villagename">
-              <el-input v-model="tempNews.villagename" placeholder="请输入乡村名称"></el-input>
+            <el-form-item label="村庄" prop="villagename">
+              <el-select v-model="tempNews.villagename" placeholder="请选择村庄" filterable style="width: 100%" @change="onVillageChange">
+                <el-option v-for="v in villages" :key="String(v.id || v.villageName || v.name)" :label="v.villageName || v.name" :value="v.villageName || v.name" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -107,7 +109,7 @@
           <el-input
             v-model="tempNews.content"
             type="textarea"
-            :rows="10"
+            :rows="8"
             placeholder="请输入新闻内容"
           ></el-input>
         </el-form-item>
@@ -121,6 +123,7 @@
 </template>
 <script>
 import {mapGetters} from 'vuex'
+import { fetchVillagePage } from '@/api/village'
 
 export default {
   name: 'NewsManage',
@@ -163,7 +166,7 @@ export default {
           { required: true, message: '请输入作者', trigger: 'blur' }
         ],
         villagename: [
-          { required: true, message: '请输入乡村名称', trigger: 'blur' }
+          { required: true, message: '请选择村庄', trigger: 'change' }
         ],
         themename: [
           { required: true, message: '请选择主题', trigger: 'change' }
@@ -194,7 +197,9 @@ export default {
           ...n,
           author: n.author || n.authorName || '',
           villagename: n.villagename || n.villageName || (n.villageId != null ? String(n.villageId) : ''),
-          themename: n.themename || n.themeName || n.theme || ''
+          themename: n.themename || n.themeName || n.theme || '',
+          rawImageUrl: n.imageUrl,
+          imageUrl: this.formatImageUrl(n.imageUrl)
         }))
         this.totalCount = data.totalCount || 0
       }).catch(() => {
@@ -204,19 +209,22 @@ export default {
     // 获取用户和乡村数据
     getUsersAndVillages() {
       // 获取用户列表
-      this.api({
-        url: '/user/getAllUsers',
-        method: 'get'
-      }).then(data => {
-        this.users = data.list || []
-      })
+      // this.api({
+      //   url: '/user/getAllUsers',
+      //   method: 'get'
+      // }).then(data => {
+      //   this.users = data.list || []
+      // })
 
-      // 获取乡村列表
-      this.api({
-        url: '/village/getVillages',
-        method: 'get'
-      }).then(data => {
-        this.villages = data.list || []
+      // 获取村庄列表（复用列表页分页查询写法）
+      fetchVillagePage({ page: 1, pageSize: 1000 }).then(payload => {
+        const records = payload && payload.records ? payload.records : []
+        this.villages = records.map(v => ({
+          id: v.id,
+          villageName: v.villageName || v.name || ''
+        }))
+      }).catch(() => {
+        this.villages = []
       })
     },
     // 获取主题数据（从后端标签接口获取）
@@ -282,12 +290,6 @@ export default {
         imageFile: null,
         content: ''
       }
-      // 默认不填充用户（保持为空，让用户自行选择或输入）
-      // 取消默认填充乡村
-      // const v = (this.villages && this.villages.length) ? this.villages[0] : null
-      // if (v) {
-      //   this.tempNews.villagename = v.villageName || v.name || ''
-      // }
       // 每次打开弹窗都刷新主题列表，避免主题管理页新增后这里不更新
       this.getThemeNamesFromNews()
       this.dialogFormVisible = true
@@ -296,40 +298,85 @@ export default {
     showUpdate($index) {
       this.dialogStatus = 'update'
       const news = this.list[$index]
-      // 旧字段兼容：不再使用主题ID，将回显字段统一为名称
-      // 统一使用名称字段，兼容旧字段
       const tname = news.themename || news.themeName || news.theme || ''
       const vname = news.villagename || news.villageName || news.villageId || ''
       const author = news.author || news.authorId || ''
-      // 按新增结构重建临时对象，保证绑定一致可靠
-      const url = news.imageUrl
+      const rawUrl = news.rawImageUrl || news.imageUrl
+      const previewUrl = this.formatImageUrl(rawUrl)
       this.tempNews = {
         id: news.id || '',
         title: news.title || '',
         author: author || '',
         villagename: vname ? String(vname) : '',
         themename: tname ? String(tname) : '',
-        imageUrl: url || '',
-        imageFile: url ? {
-          name: (url || '').split('/').pop(),
-          url: url,
+        imageUrl: rawUrl || '',
+        imageFile: previewUrl ? {
+          name: (rawUrl || '').split('/').pop(),
+          url: previewUrl,
           status: 'success'
         } : null,
         content: news.content || ''
       }
-       // 编辑时也刷新主题列表，确保最新主题可选
-       this.getThemeNamesFromNews()
-       this.dialogFormVisible = true
-     },
+      // 编辑时也刷新主题列表，确保最新主题可选
+      this.getThemeNamesFromNews()
+      this.dialogFormVisible = true
+    },
     onThemeChange(val) {
       this.tempNews.themename = val === '' ? '' : String(val)
+    },
+    onVillageChange(val) {
+      this.tempNews.villagename = val === '' ? '' : String(val)
     },
     // 处理图片变化（仅限1张）
     handleImageChange(file, fileList) {
       const lastFile = fileList[fileList.length - 1]
       this.tempNews.imageFile = lastFile
-      // 这里简化处理，实际项目中应该上传图片获取URL
-      this.tempNews.imageUrl = lastFile ? (lastFile.url || URL.createObjectURL(lastFile.raw)) : ''
+      const raw = lastFile && lastFile.raw
+      if (!raw) {
+        this.$message.warning('请选择图片文件')
+        return
+      }
+      // 说明：this.api 会直接返回 res.info 或 res.data，这里按 data 结构 { url, fileName } 读取
+      this.uploadImage(raw).then(payload => {
+        const url = payload && payload.url ? payload.url : ''
+        // 将相对路径拼接为可访问的完整URL，避免在前端域下404（仅用于预览）
+        const fullUrl = url && (url.startsWith('http') ? url : (window.webofdConfig && window.webofdConfig.BASE_URL ? (window.webofdConfig.BASE_URL + url) : url))
+        if (fullUrl) {
+          // 存库使用后端返回的原始URL（相对路径）
+          this.tempNews.imageUrl = url
+          // 预览使用可访问的完整URL
+          this.tempNews.imageFile = {
+            name: lastFile.name,
+            url: fullUrl,
+            status: 'success'
+          }
+        } else {
+          this.$message.error('图片上传失败')
+          this.tempNews.imageUrl = ''
+        }
+      }).catch(() => {
+        this.$message.error('图片上传失败')
+        this.tempNews.imageUrl = ''
+      })
+    },
+    // 将相对图片路径转为可访问的完整URL（用于显示）
+    formatImageUrl(url) {
+      if (!url) return ''
+      if (url.startsWith('http') || url.startsWith('data:')) return url
+      return (window.webofdConfig && window.webofdConfig.BASE_URL ? (window.webofdConfig.BASE_URL + url) : url)
+    },
+    // 上传图片
+    uploadImage(file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      return this.api({
+        url: '/village/news/uploadImage',
+        method: 'post',
+        data: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
     },
     // 已移除：在此页面不支持添加主题
     // 提交表单
