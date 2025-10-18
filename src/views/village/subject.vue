@@ -25,11 +25,14 @@
         </template>
       </el-table-column>
       <el-table-column prop="title" label="新闻标题" align="center" width="300"></el-table-column>
-      <el-table-column prop="authorId" label="编写用户ID" align="center"></el-table-column>
-      <el-table-column prop="villageId" label="隶属乡村ID" align="center"></el-table-column>
-      <el-table-column prop="themeName" label="主题" align="center">
+      <el-table-column prop="author" label="作者" align="center"></el-table-column>
+      <el-table-column prop="villagename" label="乡村名称" align="center"></el-table-column>
+      <el-table-column prop="themename" label="主题" align="center">
+      </el-table-column>
+      <el-table-column prop="imageUrl" label="图片" align="center" width="120">
         <template slot-scope="scope">
-          <span>{{ scope.row.themeName || scope.row.theme }}</span>
+          <img v-if="scope.row.imageUrl" :src="scope.row.imageUrl" alt="图片" style="width:60px;height:60px;object-fit:cover;border-radius:4px;" />
+          <span v-else>—</span>
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="发布时间" align="center"></el-table-column>
@@ -66,21 +69,23 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="主题" prop="theme">
-              <el-input v-model="tempNews.theme" placeholder="请输入主题"></el-input>
+            <el-form-item label="主题" prop="themename">
+              <el-select v-model="tempNews.themename" placeholder="请选择主题" filterable style="width: 100%" @change="onThemeChange">
+                <el-option v-for="item in themes" :key="String(item.id)" :label="item.name" :value="item.name" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="10">
           <el-col :span="12">
-            <el-form-item label="编写用户ID" prop="authorId">
-              <el-input v-model="tempNews.authorId" placeholder="请输入用户ID"></el-input>
+            <el-form-item label="用户" prop="author">
+              <el-input v-model="tempNews.author" placeholder="请输入作者"></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="隶属乡村ID" prop="villageId">
-              <el-input v-model="tempNews.villageId" placeholder="请输入乡村ID"></el-input>
+            <el-form-item label="乡村" prop="villagename">
+              <el-input v-model="tempNews.villagename" placeholder="请输入乡村名称"></el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -138,11 +143,9 @@ export default {
       tempNews: {
         id: '',
         title: '',
-        authorId: '',
-
-        villageId: '',
-
-        theme: '',
+        author: '',
+        villagename: '',
+        themename: '',
         imageUrl: '',
         imageFile: null,
         content: ''
@@ -156,15 +159,14 @@ export default {
         title: [
           { required: true, message: '请输入新闻标题', trigger: 'blur' }
         ],
-        authorId: [
-          { required: true, message: '请输入用户ID', trigger: 'blur' }
+        author: [
+          { required: true, message: '请输入作者', trigger: 'blur' }
         ],
-        villageId: [
-          { required: true, message: '请输入乡村ID', trigger: 'blur' }
+        villagename: [
+          { required: true, message: '请输入乡村名称', trigger: 'blur' }
         ],
-
-        theme: [
-          { required: true, message: '请输入主题', trigger: 'blur' }
+        themename: [
+          { required: true, message: '请选择主题', trigger: 'change' }
         ],
         content: [
           { required: true, message: '请输入新闻内容', trigger: 'blur' }
@@ -175,7 +177,7 @@ export default {
   created() {
     this.getList()
     this.getUsersAndVillages()
-    this.getThemes()
+    this.getThemeNamesFromNews()
   },
   methods: {
     // 获取列表数据
@@ -187,7 +189,13 @@ export default {
         params: this.listQuery
       }).then(data => {
         this.listLoading = false
-        this.list = data.list || []
+        const raw = data.list || []
+        this.list = raw.map(n => ({
+          ...n,
+          author: n.author || n.authorName || '',
+          villagename: n.villagename || n.villageName || (n.villageId != null ? String(n.villageId) : ''),
+          themename: n.themename || n.themeName || n.theme || ''
+        }))
         this.totalCount = data.totalCount || 0
       }).catch(() => {
         this.listLoading = false
@@ -212,18 +220,35 @@ export default {
       })
     },
     // 获取主题数据（从后端标签接口获取）
-    getThemes() {
+    // getThemes() {
+    //   this.api({
+    //     url: '/tags/getInfo',
+    //     method: 'post',
+    //     data: {}
+    //   }).then(data => {
+    //     const list = data.list || []
+    //     this.themes = list.map(item => ({
+    //       id: item.id || item.tagId || item.value,
+    //       name: item.name || item.tagName || item.label || item.value
+    //     }))
+    //   })
+    // },
+    getThemeNamesFromNews() {
       this.api({
-        url: '/tags/getInfo',
-        method: 'post',
-        data: {}
+        url: '/village/news/theme/list',
+        method: 'get',
+        params: { pageNum: 1, pageRow: 1000, keyword: '' }
       }).then(data => {
         const list = data.list || []
-        this.themes = list.map(item => ({
-          id: item.id || item.tagId || item.value,
+        const extra = list.map(item => ({
+          id: String(item.id != null ? item.id : (item.tagId != null ? item.tagId : item.value)),
           name: item.name || item.tagName || item.label || item.value
         }))
-      })
+        const seen = new Set((this.themes || []).map(t => t.name))
+        const merged = (this.themes || []).slice()
+        extra.forEach(t => { if (!seen.has(t.name)) { seen.add(t.name); merged.push(t) } })
+        this.themes = merged
+      }).catch(() => {})
     },
     // 处理页码变化
     handleCurrentChange(val) {
@@ -250,36 +275,54 @@ export default {
       this.tempNews = {
         id: '',
         title: '',
-        authorId: '',
-        villageId: '',
-        theme: '',
+        author: '',
+        villagename: '',
+        themename: '',
         imageUrl: '',
         imageFile: null,
         content: ''
       }
-      // 默认填充当前登录用户
-      const uid = this.$store.getters.userId
-      if (uid) this.tempNews.authorId = uid
-      // 默认填充首个乡村（如果有）
-      const v = (this.villages && this.villages.length) ? this.villages[0] : null
-      if (v) {
-        this.tempNews.villageId = v.villageId || v.id
-      }
+      // 默认不填充用户（保持为空，让用户自行选择或输入）
+      // 取消默认填充乡村
+      // const v = (this.villages && this.villages.length) ? this.villages[0] : null
+      // if (v) {
+      //   this.tempNews.villagename = v.villageName || v.name || ''
+      // }
+      // 每次打开弹窗都刷新主题列表，避免主题管理页新增后这里不更新
+      this.getThemeNamesFromNews()
       this.dialogFormVisible = true
     },
     // 显示编辑对话框
     showUpdate($index) {
       this.dialogStatus = 'update'
       const news = this.list[$index]
-      this.tempNews = Object.assign({}, news)
-      // 转换图片URL为文件对象
+      // 旧字段兼容：不再使用主题ID，将回显字段统一为名称
+      // 统一使用名称字段，兼容旧字段
+      const tname = news.themename || news.themeName || news.theme || ''
+      const vname = news.villagename || news.villageName || news.villageId || ''
+      const author = news.author || news.authorId || ''
+      // 按新增结构重建临时对象，保证绑定一致可靠
       const url = news.imageUrl
-      this.tempNews.imageFile = url ? {
-        name: (url || '').split('/').pop(),
-        url: url,
-        status: 'success'
-      } : null
-      this.dialogFormVisible = true
+      this.tempNews = {
+        id: news.id || '',
+        title: news.title || '',
+        author: author || '',
+        villagename: vname ? String(vname) : '',
+        themename: tname ? String(tname) : '',
+        imageUrl: url || '',
+        imageFile: url ? {
+          name: (url || '').split('/').pop(),
+          url: url,
+          status: 'success'
+        } : null,
+        content: news.content || ''
+      }
+       // 编辑时也刷新主题列表，确保最新主题可选
+       this.getThemeNamesFromNews()
+       this.dialogFormVisible = true
+     },
+    onThemeChange(val) {
+      this.tempNews.themename = val === '' ? '' : String(val)
     },
     // 处理图片变化（仅限1张）
     handleImageChange(file, fileList) {
@@ -292,21 +335,33 @@ export default {
     // 提交表单
     submitForm() {
       this.$refs.newsForm.validate((valid) => {
-        if (valid) {
-          const submitData = { ...this.tempNews }
+        if (!valid) return false
 
-          // 移除不需要提交的字段
-          delete submitData.imageFile
-          delete submitData.themeName
-          if (this.dialogStatus === 'create') {
-            delete submitData.id
-            this.createNews(submitData)
-          } else {
-            this.updateNews(submitData)
-          }
-        } else {
-          return false
+        // 明确构造基础字段，避免拷贝后删除的混乱
+        const baseData = {
+
+          title: this.tempNews.title,
+          author: this.tempNews.author,
+          villageName: this.tempNews.villagename,
+          themeName: this.tempNews.themename,
+          imageUrl: this.tempNews.imageUrl,
+          content: this.tempNews.content
         }
+
+         if (this.dialogStatus === 'create') {
+           const data = {
+             ...baseData
+           }
+           // 新增不传 id
+           this.createNews(data)
+         } else {
+           const data = {
+             ...baseData,
+            // 编辑：需传 id 与主题名称
+            id: this.tempNews.id
+           }
+           this.updateNews(data)
+         }
       })
     },
     // 创建新闻
