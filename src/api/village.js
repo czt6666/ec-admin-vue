@@ -12,7 +12,7 @@ export function fetchVillagePage(params) {
 
 }
 // 获取所有村庄列表（不分页）
-export function getAllVillages() {
+export function getVillageList() {
   return service({
     url: '/admin/ecadmin/village/list',
     method: 'get'
