@@ -83,11 +83,10 @@ export const asyncRouterMap = [
     meta: { title: '民宿经营', icon: 'table' },
     children: [
       {
-        path: 'subject',
-        name: '主体信息管理',
-        component: _import('homestay/subject'),
-        meta: { title: '主体信息管理', icon: 'user' },
-        menu: 'user'
+        path: 'list',
+        name: '民宿列表',
+        component: _import('homestay/index'),
+        meta: { title: '民宿列表', icon: 'table' }
       },
       {
         path: 'business',
