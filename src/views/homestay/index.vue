@@ -116,16 +116,19 @@
       <el-table-column prop="maxCapacity" label="最大接待" width="100" />
       <el-table-column prop="contactName" label="负责人" width="100" />
       <el-table-column prop="contactPhone" label="联系电话" width="120" />
-      <el-table-column prop="price" label="房价(元/月)" width="120">
-        <template slot-scope="scope">
-          <span style="color: #f56c6c; font-weight: bold;">
-            ¥{{ scope.row.price }}
-          </span>
-        </template>
-      </el-table-column>
+      <el-table-column prop="latitude" label="纬度" width="100" />
+      <el-table-column prop="longitude" label="经度" width="100" />
       <el-table-column label="操作" width="200" fixed="right">
         <template slot-scope="scope">
           <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
+          <el-button
+            v-if="scope.row.linkAddress"
+            size="mini"
+            type="success"
+            @click="viewOrders(scope.row)"
+          >
+            查看订单
+          </el-button>
           <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
         </template>
       </el-table-column>
@@ -148,7 +151,7 @@
     <el-dialog
       :title="dialogTitle"
       :visible.sync="dialogVisible"
-      width="800px"
+      width="900px"
       @close="resetForm"
     >
       <el-form
@@ -181,6 +184,54 @@
           <el-input v-model="homestayForm.address" placeholder="请输入地址" />
         </el-form-item>
 
+        <!-- 经纬度输入区域 -->
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="纬度" prop="latitude">
+              <el-input-number
+                v-model="homestayForm.latitude"
+                :precision="6"
+                :min="-90"
+                :max="90"
+                placeholder="请输入纬度"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="经度" prop="longitude">
+              <el-input-number
+                v-model="homestayForm.longitude"
+                :precision="6"
+                :min="-180"
+                :max="180"
+                placeholder="请输入经度"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 地图定位区域 -->
+        <el-form-item label="地图定位">
+          <div class="map-container">
+            <div class="map-buttons">
+              <el-button size="small" type="primary" @click="openMapDialog">
+                打开地图选择位置
+              </el-button>
+              <el-button size="small" @click="getCurrentLocation">
+                获取当前位置
+              </el-button>
+              <el-button size="small" @click="clearCoordinates">
+                清除坐标
+              </el-button>
+            </div>
+            <div v-if="homestayForm.latitude && homestayForm.longitude" class="coordinates-display">
+              <p>当前位置：纬度 {{ homestayForm.latitude }}, 经度 {{ homestayForm.longitude }}</p>
+            </div>
+          </div>
+        </el-form-item>
+
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="营业状态" prop="status">
@@ -193,19 +244,18 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="星级" prop="starLevel">
-              <el-select v-model="homestayForm.starLevel" placeholder="请选择星级" style="width: 100%">
-                <el-option label="未评" :value="0" />
-                <el-option label="1星" :value="1" />
-                <el-option label="2星" :value="2" />
-                <el-option label="3星" :value="3" />
-                <el-option label="4星" :value="4" />
-                <el-option label="5星" :value="5" />
-              </el-select>
+              <el-rate
+                v-model="homestayForm.starLevel"
+                :max="5"
+                show-text
+                text-color="#ff9900"
+                text-template="{value}星"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="房价(元/月)" prop="price">
-              <el-input-number v-model="homestayForm.price" :min="0" :precision="2" style="width: 100%" />
+            <el-form-item label="链接地址" prop="linkAddress">
+              <el-input v-model="homestayForm.linkAddress" placeholder="请输入链接地址" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -241,6 +291,46 @@
           </el-col>
         </el-row>
 
+        <!-- 封面图上传 -->
+        <el-form-item label="封面图" prop="coverImage">
+          <el-upload
+            ref="coverUpload"
+            :auto-upload="false"
+            :on-change="handleCoverImageChange"
+            :before-upload="beforeCoverImageUpload"
+            :file-list="coverImageList"
+            accept="image/*"
+            :limit="1"
+            action=""
+            list-type="picture-card"
+          >
+            <i class="el-icon-plus"></i>
+            <div slot="tip" class="el-upload__tip">
+              只能上传jpg/png文件，且不超过2MB
+            </div>
+          </el-upload>
+        </el-form-item>
+
+        <!-- 资质凭证上传 -->
+        <el-form-item label="资质凭证" prop="qualificationImages">
+          <el-upload
+            ref="qualificationUpload"
+            :auto-upload="false"
+            :on-change="handleQualificationImageChange"
+            :before-upload="beforeQualificationImageUpload"
+            :file-list="qualificationImageList"
+            accept="image/*"
+            :limit="5"
+            action=""
+            list-type="picture-card"
+          >
+            <i class="el-icon-plus"></i>
+            <div slot="tip" class="el-upload__tip">
+              最多上传5张图片，支持jpg/png格式，每张不超过2MB
+            </div>
+          </el-upload>
+        </el-form-item>
+
         <el-form-item label="民宿简介">
           <el-input
             v-model="homestayForm.description"
@@ -249,15 +339,33 @@
             placeholder="请输入民宿简介、特色亮点"
           />
         </el-form-item>
-
-        <el-form-item label="封面图URL">
-          <el-input v-model="homestayForm.coverImage" placeholder="请输入封面图URL" />
-        </el-form-item>
       </el-form>
 
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitForm">确定</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 地图选择对话框 -->
+    <el-dialog
+      title="选择位置"
+      :visible.sync="mapDialogVisible"
+      width="80%"
+      :before-close="closeMapDialog"
+    >
+      <div class="map-dialog-content">
+        <div id="mapContainer" style="width: 100%; height: 500px;"></div>
+        <div class="map-info">
+          <p>请在地图上点击选择位置</p>
+          <p v-if="selectedLatitude && selectedLongitude">
+            选中位置：纬度 {{ selectedLatitude }}, 经度 {{ selectedLongitude }}
+          </p>
+        </div>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="closeMapDialog">取消</el-button>
+        <el-button type="primary" @click="confirmLocation">确定选择</el-button>
       </div>
     </el-dialog>
   </div>
@@ -273,9 +381,16 @@ export default {
     return {
       loading: false,
       villageLoading: false,
+      mapDialogVisible: false,
       homestayList: [],
       villageList: [],
       total: 0,
+      map: null,
+      marker: null,
+      selectedLatitude: null,
+      selectedLongitude: null,
+      coverImageList: [],
+      qualificationImageList: [],
       queryParams: {
         page: 1,
         pageSize: 10,
@@ -301,8 +416,11 @@ export default {
         contactName: '',
         contactPhone: '',
         description: '',
-        price: 0,
-        coverImage: ''
+        latitude: null,
+        longitude: null,
+        coverImage: '',
+        qualificationImages: '',
+        linkAddress: ''
       },
       homestayRules: {
         villageId: [{ required: true, message: '请选择所属乡村', trigger: 'change' }],
@@ -313,7 +431,10 @@ export default {
         bedCount: [{ required: true, message: '请输入床位总数', trigger: 'blur' }],
         maxCapacity: [{ required: true, message: '请输入最大接待人数', trigger: 'blur' }],
         contactName: [{ required: true, message: '请输入负责人姓名', trigger: 'blur' }],
-        contactPhone: [{ required: true, message: '请输入负责人电话', trigger: 'blur' }]
+        contactPhone: [
+          { required: true, message: '请输入负责人电话', trigger: 'blur' },
+          { pattern: /^1[3-9]\d{9}$/, message: '请输入以1开头的11位手机号码', trigger: 'blur' }
+        ]
       }
     }
   },
@@ -442,6 +563,36 @@ export default {
       this.dialogTitle = '编辑民宿'
       this.dialogVisible = true
       this.homestayForm = { ...row }
+
+      // 处理封面图
+      if (row.coverImage) {
+        this.coverImageList = [{
+          name: 'cover.jpg',
+          url: row.coverImage
+        }]
+      }
+
+      // 处理资质凭证图片
+      if (row.qualificationImages) {
+        try {
+          const images = JSON.parse(row.qualificationImages)
+          this.qualificationImageList = images.map((img, index) => ({
+            name: `qualification_${index + 1}.jpg`,
+            url: img
+          }))
+        } catch (e) {
+          console.error('解析资质凭证图片失败:', e)
+        }
+      }
+    },
+
+    // 查看订单
+    viewOrders(row) {
+      if (row.linkAddress) {
+        window.open(row.linkAddress, '_blank')
+      } else {
+        this.$message.warning('该民宿未设置订单页面链接')
+      }
     },
 
     // 删除
@@ -470,6 +621,17 @@ export default {
     submitForm() {
       this.$refs.homestayForm.validate((valid) => {
         if (valid) {
+          // 处理封面图
+          if (this.coverImageList.length > 0) {
+            this.homestayForm.coverImage = this.coverImageList[0].url
+          }
+
+          // 处理资质凭证图片
+          if (this.qualificationImageList.length > 0) {
+            const images = this.qualificationImageList.map(item => item.url)
+            this.homestayForm.qualificationImages = JSON.stringify(images)
+          }
+
           const api = this.homestayForm.id ? updateHomestay : addHomestay
           api(this.homestayForm).then(response => {
             console.log('提交响应：', response)
@@ -503,9 +665,14 @@ export default {
         contactName: '',
         contactPhone: '',
         description: '',
-        price: 0,
-        coverImage: ''
+        latitude: null,
+        longitude: null,
+        coverImage: '',
+        qualificationImages: '',
+        linkAddress: ''
       }
+      this.coverImageList = []
+      this.qualificationImageList = []
       this.$nextTick(() => {
         if (this.$refs.homestayForm) {
           this.$refs.homestayForm.clearValidate()
@@ -531,6 +698,135 @@ export default {
         3: '已下架'
       }
       return statusMap[status] || '未知'
+    },
+
+    // 地图相关方法
+    openMapDialog() {
+      this.mapDialogVisible = true
+      this.$nextTick(() => {
+        this.initMap()
+      })
+    },
+
+    initMap() {
+      if (window.AMap) {
+        this.map = new AMap.Map('mapContainer', {
+          zoom: 13,
+          center: this.homestayForm.latitude && this.homestayForm.longitude
+            ? [this.homestayForm.longitude, this.homestayForm.latitude]
+            : [116.397428, 39.90923]
+        })
+
+        this.map.on('click', (e) => {
+          this.selectedLatitude = e.lnglat.getLat()
+          this.selectedLongitude = e.lnglat.getLng()
+
+          if (this.marker) {
+            this.map.remove(this.marker)
+          }
+
+          this.marker = new AMap.Marker({
+            position: [this.selectedLongitude, this.selectedLatitude],
+            title: '选中位置'
+          })
+          this.map.add(this.marker)
+        })
+
+        if (this.homestayForm.latitude && this.homestayForm.longitude) {
+          this.selectedLatitude = this.homestayForm.latitude
+          this.selectedLongitude = this.homestayForm.longitude
+          this.marker = new AMap.Marker({
+            position: [this.homestayForm.longitude, this.homestayForm.latitude],
+            title: '当前位置'
+          })
+          this.map.add(this.marker)
+        }
+      } else {
+        this.$message.error('地图API未加载，请检查网络连接')
+      }
+    },
+
+    getCurrentLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            this.homestayForm.latitude = position.coords.latitude
+            this.homestayForm.longitude = position.coords.longitude
+            this.$message.success('获取当前位置成功')
+          },
+          (error) => {
+            this.$message.error('获取当前位置失败：' + error.message)
+          }
+        )
+      } else {
+        this.$message.error('浏览器不支持地理位置获取')
+      }
+    },
+
+    clearCoordinates() {
+      this.homestayForm.latitude = null
+      this.homestayForm.longitude = null
+      this.$message.info('已清除坐标')
+    },
+
+    confirmLocation() {
+      if (this.selectedLatitude && this.selectedLongitude) {
+        this.homestayForm.latitude = this.selectedLatitude
+        this.homestayForm.longitude = this.selectedLongitude
+        this.$message.success('位置选择成功')
+        this.closeMapDialog()
+      } else {
+        this.$message.warning('请先在地图上选择位置')
+      }
+    },
+
+    closeMapDialog() {
+      this.mapDialogVisible = false
+      this.selectedLatitude = null
+      this.selectedLongitude = null
+      if (this.marker) {
+        this.map.remove(this.marker)
+        this.marker = null
+      }
+    },
+
+    // 图片上传相关方法
+    handleCoverImageChange(file, fileList) {
+      this.coverImageList = fileList
+    },
+
+    beforeCoverImageUpload(file) {
+      const isImage = file.type.startsWith('image/')
+      const isLt2M = file.size / 1024 / 1024 < 2
+
+      if (!isImage) {
+        this.$message.error('只能上传图片文件!')
+        return false
+      }
+      if (!isLt2M) {
+        this.$message.error('图片大小不能超过2MB!')
+        return false
+      }
+      return false
+    },
+
+    handleQualificationImageChange(file, fileList) {
+      this.qualificationImageList = fileList
+    },
+
+    beforeQualificationImageUpload(file) {
+      const isImage = file.type.startsWith('image/')
+      const isLt2M = file.size / 1024 / 1024 < 2
+
+      if (!isImage) {
+        this.$message.error('只能上传图片文件!')
+        return false
+      }
+      if (!isLt2M) {
+        this.$message.error('图片大小不能超过2MB!')
+        return false
+      }
+      return false
     }
   }
 }
@@ -548,5 +844,48 @@ export default {
 
 .dialog-footer {
   text-align: right;
+}
+
+.map-container {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.map-buttons {
+  margin-bottom: 10px;
+}
+
+.map-buttons .el-button {
+  margin-right: 10px;
+}
+
+.coordinates-display {
+  background-color: #f5f7fa;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.coordinates-display p {
+  margin: 0;
+  color: #606266;
+  font-size: 14px;
+}
+
+.map-dialog-content {
+  position: relative;
+}
+
+.map-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.map-info p {
+  margin: 5px 0;
+  color: #606266;
 }
 </style>
