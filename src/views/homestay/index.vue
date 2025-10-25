@@ -92,6 +92,19 @@
       style="width: 100%"
     >
       <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column label="封面图" width="100">
+        <template slot-scope="scope">
+          <el-image
+            v-if="scope.row.coverImage"
+            :src="scope.row.coverImage"
+            :preview-src-list="[scope.row.coverImage]"
+            fit="cover"
+            style="width: 60px; height: 40px; border-radius: 4px;"
+            @error="handleImageError"
+          />
+          <span v-else style="color: #999; font-size: 12px;">暂无图片</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="homestayName" label="民宿名称" width="150" />
       <el-table-column prop="address" label="地址" show-overflow-tooltip />
       <el-table-column label="营业状态" width="100">
@@ -704,6 +717,11 @@ export default {
         3: '已下架'
       }
       return statusMap[status] || '未知'
+    },
+
+    // 图片加载错误处理
+    handleImageError() {
+      console.log('图片加载失败')
     },
 
     // 地图相关方法
