@@ -1,5 +1,5 @@
 // src/api/village.js
-import service from '@/utils/api'
+import service from '@/utils/village_api'
 
 // 分页查询村庄，仅 page、pageSize
 export function fetchVillagePage(params) {
@@ -62,15 +62,15 @@ export function importVillages(formData) {
     }
   });
 }
-
-// 下载村庄导入模板
-export function downloadVillageTemplate() {
+// 导出村庄信息
+export function exportVillages() {
   return service({
-    url: '/admin/ecadmin/village/template',
+    url: '/admin/ecadmin/village/export',
     method: 'get',
     responseType: 'blob'
   });
 }
+
 // 检查删除约束
 export function checkDeleteConstraints(id) {
   return service({

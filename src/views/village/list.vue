@@ -8,8 +8,13 @@
       <el-button type="success" icon="el-icon-upload2" @click="showImportDialog">
         导入村庄
       </el-button>
-      <el-button type="info" icon="el-icon-download" @click="downloadTemplate">
-        下载模板
+      <el-button
+        type="warning"
+        icon="el-icon-download"
+        @click="exportVillages"
+        :loading="exportLoading"
+      >
+        {{ exportLoading ? '导出中...' : '导出村庄' }}
       </el-button>
     </div>
 
@@ -208,12 +213,11 @@
           :closable="false"
           style="margin-bottom: 20px;"
         >
-          <div slot="description">
-            <p>1. 请先下载模板文件，按照模板格式填写数据</p>
-            <p>2. 支持.xlsx和.xls格式的Excel文件</p>
-            <p>3. 单次最多导入1000条数据</p>
-            <p>4. 必填字段：村庄名称、详细地址</p>
-            <p>5. 模板包含字段：村庄名称、详细地址、村庄描述、村书记姓名、联系方式、户数、管理人数、总面积、耕地面积、林地面积、水域面积、建设用地面积</p>
+          <div>
+            <p>1. 请按照Excel格式填写数据</p>
+            <p>2. 必填字段：村庄名称、详细地址</p>
+            <p>3. 支持批量导入，建议单次导入不超过1000条</p>
+            <p>4. 文件格式：Excel (.xlsx)</p>
           </div>
         </el-alert>
 
@@ -248,9 +252,8 @@
   </div>
 </template>
 
-<!-- 更新前端删除方法 -->
 <script>
-import { fetchVillagePage, addVillage, updateVillage, getVillageById, deleteVillage, forceDeleteVillage, checkDeleteConstraints, importVillages, downloadVillageTemplate } from '@/api/village'
+import { fetchVillagePage, addVillage, updateVillage, getVillageById, deleteVillage, forceDeleteVillage, checkDeleteConstraints, importVillages, exportVillages } from '@/api/village'
 
 export default {
   name: 'VillageList',
@@ -259,6 +262,7 @@ export default {
       loading: false,
       submitLoading: false,
       importLoading: false,
+      exportLoading: false,
       tableData: [],
       total: 0,
       query: {
@@ -286,7 +290,9 @@ export default {
         farmlandArea: null,
         forestArea: null,
         waterArea: null,
-        constructionArea: null
+        constructionArea: null,
+        latitude: null,
+        longitude: null
       },
       rules: {
         villageName: [
@@ -306,15 +312,9 @@ export default {
     async getData() {
       this.loading = true
       try {
-        const payload = await fetchVillagePage(this.query)
-        const records = payload && payload.records ? payload.records : []
-        const total = payload && payload.total ? payload.total : 0
-
-        // 按ID排序（升序）
-        records.sort((a, b) => a.id - b.id)
-
-        this.tableData = records
-        this.total = total
+        const response = await fetchVillagePage(this.query)
+        this.tableData = response.records || []
+        this.total = response.total || 0
       } catch (e) {
         this.$message.error('加载失败')
       } finally {
@@ -337,19 +337,78 @@ export default {
       this.resetImportForm()
     },
 
-    // 下载模板
-    downloadTemplate() {
-      downloadVillageTemplate().then(response => {
-        const blob = new Blob([response], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    // 导出村庄
+    exportVillages() {
+      this.$confirm('确定要导出村庄信息吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info'
+      }).then(() => {
+        this.handleExport()
+      }).catch(() => {
+        this.$message.info('已取消导出')
+      })
+    },
+
+    // 处理导出
+    async handleExport() {
+      this.exportLoading = true
+
+      try {
+        console.log('开始导出...')
+        console.log('请求URL：', 'http://localhost:8020/admin/ecadmin/village/export')
+
+        const response = await exportVillages()
+        console.log('导出响应：', response)
+        console.log('响应类型：', typeof response)
+        console.log('响应长度：', response ? response.length : 'undefined')
+
+        // 检查响应是否为空
+        if (!response) {
+          throw new Error('导出文件为空')
+        }
+
+        // 创建blob对象
+        const blob = new Blob([response], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+
+        console.log('Blob大小：', blob.size)
+
+        if (blob.size === 0) {
+          throw new Error('导出文件大小为0')
+        }
+
+        // 创建下载链接
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
-        link.download = '村庄信息导入模板.xlsx'
+
+        // 生成文件名（带时间戳）
+        const now = new Date()
+        const dateStr = now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0') + '_' +
+          String(now.getHours()).padStart(2, '0') + '-' +
+          String(now.getMinutes()).padStart(2, '0') + '-' +
+          String(now.getSeconds()).padStart(2, '0')
+
+        link.download = `村庄信息_${dateStr}.xlsx`
+        document.body.appendChild(link)
         link.click()
+        document.body.removeChild(link)
+
+        // 清理URL对象
         window.URL.revokeObjectURL(url)
-      }).catch(() => {
-        this.$message.error('下载模板失败')
-      })
+
+        this.$message.success('导出成功')
+      } catch (error) {
+        console.error('导出失败：', error)
+        console.error('错误详情：', error.stack)
+        this.$message.error('导出失败：' + (error.message || '未知错误'))
+      } finally {
+        this.exportLoading = false
+      }
     },
 
     // 文件选择变化
@@ -441,34 +500,28 @@ export default {
       }
     },
 
-    // 删除单个村庄 - 修复响应处理逻辑
+    // 删除单个村庄
     async remove(row) {
       try {
-        // 先检查删除约束
         const constraintResponse = await checkDeleteConstraints(row.id)
         console.log('约束检查响应：', constraintResponse)
 
-        // 处理不同的响应格式
         let canDelete = false
         let message = '未知错误'
 
         if (constraintResponse && constraintResponse.data) {
-          // 标准格式：{ code: 1, data: { canDelete: true, message: "可以安全删除" } }
           canDelete = constraintResponse.data.canDelete || false
           message = constraintResponse.data.message || '未知错误'
         } else if (constraintResponse && constraintResponse.canDelete !== undefined) {
-          // 直接格式：{ canDelete: true, message: "可以安全删除" }
           canDelete = constraintResponse.canDelete || false
           message = constraintResponse.message || '未知错误'
         } else {
-          // 如果响应格式不符合预期，直接尝试删除
           console.warn('约束检查响应格式异常，直接尝试删除')
           canDelete = true
           message = '直接删除'
         }
 
         if (!canDelete) {
-          // 存在约束，询问用户是否强制删除
           this.$confirm(
             `${message}，是否强制删除？删除后相关数据也会被删除！`,
             '删除确认',
@@ -490,7 +543,6 @@ export default {
             this.$message.info('已取消删除')
           })
         } else {
-          // 可以安全删除
           this.$confirm(`确定要删除村庄"${row.villageName}"吗？`, '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
@@ -509,7 +561,6 @@ export default {
         }
       } catch (e) {
         console.error('检查删除约束失败：', e)
-        // 如果约束检查失败，直接尝试删除
         this.$confirm(`确定要删除村庄"${row.villageName}"吗？`, '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
@@ -566,7 +617,9 @@ export default {
         farmlandArea: null,
         forestArea: null,
         waterArea: null,
-        constructionArea: null
+        constructionArea: null,
+        latitude: null,
+        longitude: null
       }
       this.isEdit = false
       this.editId = null
