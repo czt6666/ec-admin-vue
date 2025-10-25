@@ -51,3 +51,37 @@ export function deleteVillage(id) {
     method: 'delete'
   });
 }
+// 导入村庄信息
+export function importVillages(formData) {
+  return service({
+    url: '/admin/ecadmin/village/import',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+}
+
+// 下载村庄导入模板
+export function downloadVillageTemplate() {
+  return service({
+    url: '/admin/ecadmin/village/template',
+    method: 'get',
+    responseType: 'blob'
+  });
+}
+// 检查删除约束
+export function checkDeleteConstraints(id) {
+  return service({
+    url: `/admin/ecadmin/village/check-delete/${id}`,
+    method: 'get'
+  });
+}
+// 强制删除村庄
+export function forceDeleteVillage(id) {
+  return service({
+    url: `/admin/ecadmin/village/force/${id}`,
+    method: 'delete'
+  });
+}
