@@ -709,7 +709,13 @@ export default {
     },
 
     initMap() {
-      if (window.BMap) {  // 改为百度地图
+      // 检查百度地图API是否加载
+      if (typeof BMap === 'undefined') {
+        this.$message.error('百度地图API未加载，请检查网络连接')
+        return
+      }
+
+      try {
         // 创建地图实例
         this.map = new BMap.Map("mapContainer")
 
@@ -736,6 +742,7 @@ export default {
 
         // 添加地图点击事件
         this.map.addEventListener("click", (e) => {
+          console.log('地图点击事件触发', e)
           this.selectedLatitude = e.latLng.lat
           this.selectedLongitude = e.latLng.lng
 
@@ -747,9 +754,21 @@ export default {
           // 添加新标记
           this.marker = new BMap.Marker(e.latLng)
           this.map.addOverlay(this.marker)
+
+          console.log('选中位置：', this.selectedLatitude, this.selectedLongitude)
         })
-      } else {
-        this.$message.error('百度地图API未加载，请检查网络连接')
+
+        // 启用地图拖拽
+        this.map.enableDragging()
+        // 启用滚轮缩放
+        this.map.enableScrollWheelZoom()
+        // 启用双击缩放
+        this.map.enableDoubleClickZoom()
+
+        console.log('地图初始化成功')
+      } catch (error) {
+        console.error('地图初始化失败:', error)
+        this.$message.error('地图初始化失败：' + error.message)
       }
     },
 
@@ -792,7 +811,7 @@ export default {
       this.selectedLatitude = null
       this.selectedLongitude = null
       if (this.marker) {
-        this.map.remove(this.marker)
+        this.map.removeOverlay(this.marker)
         this.marker = null
       }
     },
