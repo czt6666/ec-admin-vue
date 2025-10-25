@@ -96,8 +96,8 @@
         <template slot-scope="scope">
           <el-image
             v-if="scope.row.coverImage"
-            :src="scope.row.coverImage"
-            :preview-src-list="[scope.row.coverImage]"
+            :src="getImageUrl(scope.row.coverImage)"
+            :preview-src-list="[getImageUrl(scope.row.coverImage)]"
             fit="cover"
             style="width: 60px; height: 40px; border-radius: 4px;"
             @error="handleImageError"
@@ -193,7 +193,7 @@
           </el-col>
         </el-row>
 
-        <!-- 地址输入（移除搜索按钮） -->
+        <!-- 地址输入 -->
         <el-form-item label="地址" prop="address">
           <el-input
             v-model="homestayForm.address"
@@ -268,7 +268,7 @@
                 :max="5"
                 show-text
                 text-color="#ff9900"
-                text-template="{value}星"
+                score-template="{value}星"
               />
             </el-form-item>
           </el-col>
@@ -393,6 +393,7 @@
 <script>
 import { getHomestayList, addHomestay, updateHomestay, deleteHomestay } from '@/api/homestay'
 import { getVillageList } from '@/api/village'
+import request from '@/utils/request'
 
 export default {
   name: 'VillageHomestayList',
@@ -410,6 +411,7 @@ export default {
       selectedLongitude: null,
       coverImageList: [],
       qualificationImageList: [],
+      baseUrl: '',
       queryParams: {
         page: 1,
         pageSize: 10,
@@ -459,10 +461,79 @@ export default {
   },
   created() {
     console.log('=== 组件创建，开始获取数据 ===')
+    this.getBaseUrl()
     this.getVillageList()
     this.getList()
   },
   methods: {
+    // 获取基础URL
+    getBaseUrl() {
+      this.baseUrl = process.env.VUE_APP_BASE_API || 'http://localhost:8020'
+      console.log('基础URL:', this.baseUrl)
+    },
+
+    // 获取图片完整URL
+    getImageUrl(imagePath) {
+      if (!imagePath) return ''
+
+      console.log('原始图片路径:', imagePath)
+
+      // 如果已经是完整URL，直接返回
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        console.log('完整URL，直接返回:', imagePath)
+        return imagePath
+      }
+
+      // 如果是相对路径，拼接基础URL
+      if (imagePath.startsWith('/uploads/')) {
+        const fullUrl = this.baseUrl + imagePath
+        console.log('相对路径，拼接后:', fullUrl)
+        return fullUrl
+      }
+
+      // 如果只是文件名，添加默认路径
+      const fullUrl = this.baseUrl + '/uploads/' + imagePath
+      console.log('文件名，添加路径后:', fullUrl)
+      return fullUrl
+    },
+
+    // 图片加载错误处理
+    handleImageError(event) {
+      console.log('图片加载失败:', event.target.src)
+    },
+
+    // 上传图片到服务器
+    async uploadImage(file) {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        const response = await request({
+          url: '/api/file/upload',
+          method: 'post',
+          data: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+
+        console.log('图片上传响应:', response)
+
+        // 根据您的后端接口，返回的数据结构是 { filename, originalName, size, url }
+        if (response && response.filename) {
+          return response.filename
+        } else if (response && response.data && response.data.filename) {
+          return response.data.filename
+        } else {
+          throw new Error('上传响应格式错误')
+        }
+      } catch (error) {
+        console.error('图片上传失败:', error)
+        this.$message.error('图片上传失败')
+        throw error
+      }
+    },
+
     // 获取乡村列表
     getVillageList() {
       console.log('=== 开始获取乡村列表 ===')
@@ -471,20 +542,13 @@ export default {
       getVillageList().then(response => {
         console.log('=== 乡村列表API响应 ===')
         console.log('完整响应：', response)
-        console.log('响应类型：', typeof response)
-        console.log('是否为数组：', Array.isArray(response))
 
-        // 直接处理数组响应
         if (Array.isArray(response)) {
           this.villageList = response
           console.log('=== 乡村数据设置成功 ===')
-          console.log('乡村列表：', this.villageList)
-          console.log('乡村列表长度：', this.villageList.length)
         } else if (response && response.code === 1) {
-          // 如果是标准格式
           this.villageList = response.data || []
           console.log('=== 乡村数据设置成功（标准格式）===')
-          console.log('乡村列表：', this.villageList)
         } else {
           console.error('乡村API返回格式异常：', response)
           this.$message.error('获取乡村列表失败：数据格式异常')
@@ -501,28 +565,18 @@ export default {
     // 获取民宿列表
     getList() {
       console.log('=== 开始获取民宿列表 ===')
-      console.log('查询参数：', this.queryParams)
       this.loading = true
 
       getHomestayList(this.queryParams).then(response => {
         console.log('=== 民宿列表API响应 ===')
         console.log('完整响应：', response)
-        console.log('响应码：', response.code)
-        console.log('响应消息：', response.msg)
-        console.log('响应数据：', response.data)
 
         if (Array.isArray(response)) {
           this.homestayList = response
           this.total = response.length
-          console.log('=== 民宿数据设置成功（数组格式）===')
-          console.log('民宿列表：', this.homestayList)
-          console.log('总数：', this.total)
         } else if (response.code === 1) {
           this.homestayList = response.data.records || []
           this.total = response.data.total
-          console.log('=== 民宿数据设置成功（标准格式）===')
-          console.log('民宿列表：', this.homestayList)
-          console.log('总数：', this.total)
         } else {
           console.error('API返回错误：', response.msg)
           this.$message.error(response.msg || '获取数据失败')
@@ -587,8 +641,10 @@ export default {
       if (row.coverImage) {
         this.coverImageList = [{
           name: 'cover.jpg',
-          url: row.coverImage
+          url: this.getImageUrl(row.coverImage)
         }]
+      } else {
+        this.coverImageList = []
       }
 
       // 处理资质凭证图片
@@ -597,11 +653,14 @@ export default {
           const images = JSON.parse(row.qualificationImages)
           this.qualificationImageList = images.map((img, index) => ({
             name: `qualification_${index + 1}.jpg`,
-            url: img
+            url: this.getImageUrl(img)
           }))
         } catch (e) {
           console.error('解析资质凭证图片失败:', e)
+          this.qualificationImageList = []
         }
+      } else {
+        this.qualificationImageList = []
       }
     },
 
@@ -622,8 +681,6 @@ export default {
         type: 'warning'
       }).then(() => {
         deleteHomestay(row.id).then(response => {
-          console.log('删除响应：', response)
-          // 删除API的响应处理也需要检查格式
           if (Array.isArray(response) || (response && response.code === 1)) {
             this.$message.success('删除成功')
             this.getList()
@@ -637,24 +694,53 @@ export default {
     },
 
     // 提交表单
-    submitForm() {
-      this.$refs.homestayForm.validate((valid) => {
+    async submitForm() {
+      this.$refs.homestayForm.validate(async (valid) => {
         if (valid) {
-          // 处理封面图
-          if (this.coverImageList.length > 0) {
-            this.homestayForm.coverImage = this.coverImageList[0].url
-          }
+          try {
+            // 处理封面图上传
+            if (this.coverImageList.length > 0) {
+              const coverImage = this.coverImageList[0]
+              if (coverImage.raw) {
+                // 新上传的文件，需要上传到服务器
+                console.log('上传封面图:', coverImage.name)
+                const fileName = await this.uploadImage(coverImage.raw)
+                this.homestayForm.coverImage = fileName
+              } else if (coverImage.url) {
+                // 已存在的文件，提取文件名
+                const fileName = coverImage.url.split('/').pop()
+                this.homestayForm.coverImage = fileName
+              }
+            } else {
+              this.homestayForm.coverImage = ''
+            }
 
-          // 处理资质凭证图片
-          if (this.qualificationImageList.length > 0) {
-            const images = this.qualificationImageList.map(item => item.url)
-            this.homestayForm.qualificationImages = JSON.stringify(images)
-          }
+            // 处理资质凭证图片上传
+            if (this.qualificationImageList.length > 0) {
+              const images = []
+              for (const item of this.qualificationImageList) {
+                if (item.raw) {
+                  // 新上传的文件，需要上传到服务器
+                  console.log('上传资质凭证图片:', item.name)
+                  const fileName = await this.uploadImage(item.raw)
+                  images.push(fileName)
+                } else if (item.url) {
+                  // 已存在的文件，提取文件名
+                  const fileName = item.url.split('/').pop()
+                  images.push(fileName)
+                }
+              }
+              this.homestayForm.qualificationImages = JSON.stringify(images)
+            } else {
+              this.homestayForm.qualificationImages = ''
+            }
 
-          const api = this.homestayForm.id ? updateHomestay : addHomestay
-          api(this.homestayForm).then(response => {
+            console.log('提交的表单数据:', this.homestayForm)
+
+            const api = this.homestayForm.id ? updateHomestay : addHomestay
+            const response = await api(this.homestayForm)
+
             console.log('提交响应：', response)
-            // 新增/编辑API的响应处理也需要检查格式
             if (Array.isArray(response) || (response && response.code === 1)) {
               this.$message.success(this.homestayForm.id ? '更新成功' : '新增成功')
               this.dialogVisible = false
@@ -662,9 +748,10 @@ export default {
             } else {
               this.$message.error(response.msg || '操作失败')
             }
-          }).catch(() => {
+          } catch (error) {
+            console.error('提交失败:', error)
             this.$message.error('操作失败')
-          })
+          }
         }
       })
     },
@@ -719,11 +806,6 @@ export default {
       return statusMap[status] || '未知'
     },
 
-    // 图片加载错误处理
-    handleImageError() {
-      console.log('图片加载失败')
-    },
-
     // 地图相关方法
     openMapDialog() {
       this.mapDialogVisible = true
@@ -739,35 +821,25 @@ export default {
       }
 
       try {
-        // 创建地图实例
         this.map = new BMap.Map("mapContainer")
 
-        // 设置地图中心点和缩放级别
         if (this.homestayForm.latitude && this.homestayForm.longitude) {
           const point = new BMap.Point(this.homestayForm.longitude, this.homestayForm.latitude)
           this.map.centerAndZoom(point, 15)
-
-          // 添加标记
           this.marker = new BMap.Marker(point)
           this.map.addOverlay(this.marker)
         } else {
-          // 默认中心点（北京）
           const point = new BMap.Point(116.404, 39.915)
           this.map.centerAndZoom(point, 11)
         }
 
-        // 添加地图控件
         this.map.addControl(new BMap.NavigationControl())
         this.map.addControl(new BMap.ScaleControl())
         this.map.addControl(new BMap.OverviewMapControl())
         this.map.addControl(new BMap.MapTypeControl())
         this.map.setCurrentCity("北京")
 
-        // 添加地图点击事件
         this.map.addEventListener("click", (e) => {
-          console.log('地图点击事件触发', e)
-
-          // 获取点击位置的坐标
           let lat, lng
           if (e.latLng) {
             lat = e.latLng.lat
@@ -776,7 +848,6 @@ export default {
             lat = e.point.lat
             lng = e.point.lng
           } else {
-            // 使用地图中心点作为备选
             const center = this.map.getCenter()
             lat = center.lat
             lng = center.lng
@@ -785,20 +856,16 @@ export default {
           this.selectedLatitude = lat
           this.selectedLongitude = lng
 
-          // 清除之前的标记
           if (this.marker) {
             this.map.removeOverlay(this.marker)
           }
 
-          // 添加新标记
           this.marker = new BMap.Marker(new BMap.Point(lng, lat))
           this.map.addOverlay(this.marker)
 
-          // 通过坐标获取地址
           this.getAddressByCoordinates(lat, lng)
         })
 
-        // 启用地图交互
         this.map.enableDragging()
         this.map.enableScrollWheelZoom()
         this.map.enableDoubleClickZoom()
@@ -817,11 +884,9 @@ export default {
 
       geoc.getLocation(point, (result) => {
         if (result) {
-          console.log('逆地理编码结果:', result)
           this.homestayForm.address = result.address
           this.$message.success('地址获取成功')
         } else {
-          console.log('无法获取地址信息')
           this.$message.warning('无法获取该位置的地址信息')
         }
       })
@@ -838,24 +903,19 @@ export default {
             this.homestayForm.latitude = lat
             this.homestayForm.longitude = lng
 
-            // 更新地图中心点
             if (this.map) {
               const point = new BMap.Point(lng, lat)
               this.map.centerAndZoom(point, 15)
 
-              // 清除旧标记
               if (this.marker) {
                 this.map.removeOverlay(this.marker)
               }
 
-              // 添加新标记
               this.marker = new BMap.Marker(point)
               this.map.addOverlay(this.marker)
             }
 
-            // 获取地址
             this.getAddressByCoordinates(lat, lng)
-
             this.$message.success('获取当前位置成功')
           },
           (error) => {
