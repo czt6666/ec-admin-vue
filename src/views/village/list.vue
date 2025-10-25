@@ -5,9 +5,7 @@
       <el-button type="primary" icon="el-icon-plus" @click="showAddDialog">
         新增村庄
       </el-button>
-      <el-button type="success" icon="el-icon-refresh" @click="getData">
-        刷新
-      </el-button>
+
     </div>
 
     <!-- 数据表格 -->
