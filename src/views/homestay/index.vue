@@ -709,29 +709,26 @@ export default {
     },
 
     initMap() {
-      // 检查百度地图API是否加载
+      console.log('开始初始化地图')
+
       if (typeof BMap === 'undefined') {
-        this.$message.error('百度地图API未加载，请检查网络连接')
+        console.error('百度地图API未加载')
+        this.$message.error('百度地图API未加载')
         return
       }
 
       try {
-        // 创建地图实例
+        console.log('创建地图实例')
         this.map = new BMap.Map("mapContainer")
 
-        // 设置地图中心点和缩放级别
-        if (this.homestayForm.latitude && this.homestayForm.longitude) {
-          const point = new BMap.Point(this.homestayForm.longitude, this.homestayForm.latitude)
-          this.map.centerAndZoom(point, 15)
+        // 设置地图中心点
+        const point = new BMap.Point(116.404, 39.915)
+        this.map.centerAndZoom(point, 11)
 
-          // 添加标记
-          this.marker = new BMap.Marker(point)
-          this.map.addOverlay(this.marker)
-        } else {
-          // 默认中心点（北京）
-          const point = new BMap.Point(116.404, 39.915)
-          this.map.centerAndZoom(point, 11)
-        }
+        // 启用地图交互
+        this.map.enableDragging()
+        this.map.enableScrollWheelZoom()
+        this.map.enableDoubleClickZoom()
 
         // 添加地图控件
         this.map.addControl(new BMap.NavigationControl())
@@ -740,35 +737,39 @@ export default {
         this.map.addControl(new BMap.MapTypeControl())
         this.map.setCurrentCity("北京")
 
-        // 添加地图点击事件
+        console.log('绑定点击事件')
+        // 使用不同的方式绑定事件
         this.map.addEventListener("click", (e) => {
-          console.log('地图点击事件触发', e)
-          this.selectedLatitude = e.latLng.lat
-          this.selectedLongitude = e.latLng.lng
+          console.log('=== 地图点击事件触发 ===')
+          console.log('完整事件对象:', e)
 
-          // 清除之前的标记
+          // 使用百度地图的坐标转换
+          const point = this.map.getCenter()
+          const lat = point.lat
+          const lng = point.lng
+
+          console.log('获取到的坐标:', lat, lng)
+
+          this.selectedLatitude = lat
+          this.selectedLongitude = lng
+
+          // 清除旧标记
           if (this.marker) {
             this.map.removeOverlay(this.marker)
           }
 
           // 添加新标记
-          this.marker = new BMap.Marker(e.latLng)
+          this.marker = new BMap.Marker(point)
           this.map.addOverlay(this.marker)
 
-          console.log('选中位置：', this.selectedLatitude, this.selectedLongitude)
+          console.log('标记已添加')
+          this.$message.success('位置选择成功')
         })
 
-        // 启用地图拖拽
-        this.map.enableDragging()
-        // 启用滚轮缩放
-        this.map.enableScrollWheelZoom()
-        // 启用双击缩放
-        this.map.enableDoubleClickZoom()
-
-        console.log('地图初始化成功')
+        console.log('地图初始化完成')
       } catch (error) {
         console.error('地图初始化失败:', error)
-        this.$message.error('地图初始化失败：' + error.message)
+        this.$message.error('地图初始化失败: ' + error.message)
       }
     },
 
