@@ -709,40 +709,47 @@ export default {
     },
 
     initMap() {
-      if (window.AMap) {
-        this.map = new AMap.Map('mapContainer', {
-          zoom: 13,
-          center: this.homestayForm.latitude && this.homestayForm.longitude
-            ? [this.homestayForm.longitude, this.homestayForm.latitude]
-            : [116.397428, 39.90923]
-        })
+      if (window.BMap) {  // 改为百度地图
+        // 创建地图实例
+        this.map = new BMap.Map("mapContainer")
 
-        this.map.on('click', (e) => {
-          this.selectedLatitude = e.lnglat.getLat()
-          this.selectedLongitude = e.lnglat.getLng()
+        // 设置地图中心点和缩放级别
+        if (this.homestayForm.latitude && this.homestayForm.longitude) {
+          const point = new BMap.Point(this.homestayForm.longitude, this.homestayForm.latitude)
+          this.map.centerAndZoom(point, 15)
 
+          // 添加标记
+          this.marker = new BMap.Marker(point)
+          this.map.addOverlay(this.marker)
+        } else {
+          // 默认中心点（北京）
+          const point = new BMap.Point(116.404, 39.915)
+          this.map.centerAndZoom(point, 11)
+        }
+
+        // 添加地图控件
+        this.map.addControl(new BMap.NavigationControl())
+        this.map.addControl(new BMap.ScaleControl())
+        this.map.addControl(new BMap.OverviewMapControl())
+        this.map.addControl(new BMap.MapTypeControl())
+        this.map.setCurrentCity("北京")
+
+        // 添加地图点击事件
+        this.map.addEventListener("click", (e) => {
+          this.selectedLatitude = e.latLng.lat
+          this.selectedLongitude = e.latLng.lng
+
+          // 清除之前的标记
           if (this.marker) {
-            this.map.remove(this.marker)
+            this.map.removeOverlay(this.marker)
           }
 
-          this.marker = new AMap.Marker({
-            position: [this.selectedLongitude, this.selectedLatitude],
-            title: '选中位置'
-          })
-          this.map.add(this.marker)
+          // 添加新标记
+          this.marker = new BMap.Marker(e.latLng)
+          this.map.addOverlay(this.marker)
         })
-
-        if (this.homestayForm.latitude && this.homestayForm.longitude) {
-          this.selectedLatitude = this.homestayForm.latitude
-          this.selectedLongitude = this.homestayForm.longitude
-          this.marker = new AMap.Marker({
-            position: [this.homestayForm.longitude, this.homestayForm.latitude],
-            title: '当前位置'
-          })
-          this.map.add(this.marker)
-        }
       } else {
-        this.$message.error('地图API未加载，请检查网络连接')
+        this.$message.error('百度地图API未加载，请检查网络连接')
       }
     },
 
