@@ -180,8 +180,13 @@
           </el-col>
         </el-row>
 
+        <!-- 地址输入（移除搜索按钮） -->
         <el-form-item label="地址" prop="address">
-          <el-input v-model="homestayForm.address" placeholder="请输入地址" />
+          <el-input
+            v-model="homestayForm.address"
+            placeholder="请输入地址"
+            style="width: 100%;"
+          />
         </el-form-item>
 
         <!-- 经纬度输入区域 -->
@@ -228,6 +233,7 @@
             </div>
             <div v-if="homestayForm.latitude && homestayForm.longitude" class="coordinates-display">
               <p>当前位置：纬度 {{ homestayForm.latitude }}, 经度 {{ homestayForm.longitude }}</p>
+              <p v-if="homestayForm.address">地址：{{ homestayForm.address }}</p>
             </div>
           </div>
         </el-form-item>
@@ -709,26 +715,28 @@ export default {
     },
 
     initMap() {
-      console.log('开始初始化地图')
-
       if (typeof BMap === 'undefined') {
-        console.error('百度地图API未加载')
-        this.$message.error('百度地图API未加载')
+        this.$message.error('百度地图API未加载，请检查网络连接')
         return
       }
 
       try {
-        console.log('创建地图实例')
+        // 创建地图实例
         this.map = new BMap.Map("mapContainer")
 
-        // 设置地图中心点
-        const point = new BMap.Point(116.404, 39.915)
-        this.map.centerAndZoom(point, 11)
+        // 设置地图中心点和缩放级别
+        if (this.homestayForm.latitude && this.homestayForm.longitude) {
+          const point = new BMap.Point(this.homestayForm.longitude, this.homestayForm.latitude)
+          this.map.centerAndZoom(point, 15)
 
-        // 启用地图交互
-        this.map.enableDragging()
-        this.map.enableScrollWheelZoom()
-        this.map.enableDoubleClickZoom()
+          // 添加标记
+          this.marker = new BMap.Marker(point)
+          this.map.addOverlay(this.marker)
+        } else {
+          // 默认中心点（北京）
+          const point = new BMap.Point(116.404, 39.915)
+          this.map.centerAndZoom(point, 11)
+        }
 
         // 添加地图控件
         this.map.addControl(new BMap.NavigationControl())
@@ -737,48 +745,99 @@ export default {
         this.map.addControl(new BMap.MapTypeControl())
         this.map.setCurrentCity("北京")
 
-        console.log('绑定点击事件')
-        // 使用不同的方式绑定事件
+        // 添加地图点击事件
         this.map.addEventListener("click", (e) => {
-          console.log('=== 地图点击事件触发 ===')
-          console.log('完整事件对象:', e)
+          console.log('地图点击事件触发', e)
 
-          // 使用百度地图的坐标转换
-          const point = this.map.getCenter()
-          const lat = point.lat
-          const lng = point.lng
-
-          console.log('获取到的坐标:', lat, lng)
+          // 获取点击位置的坐标
+          let lat, lng
+          if (e.latLng) {
+            lat = e.latLng.lat
+            lng = e.latLng.lng
+          } else if (e.point) {
+            lat = e.point.lat
+            lng = e.point.lng
+          } else {
+            // 使用地图中心点作为备选
+            const center = this.map.getCenter()
+            lat = center.lat
+            lng = center.lng
+          }
 
           this.selectedLatitude = lat
           this.selectedLongitude = lng
 
-          // 清除旧标记
+          // 清除之前的标记
           if (this.marker) {
             this.map.removeOverlay(this.marker)
           }
 
           // 添加新标记
-          this.marker = new BMap.Marker(point)
+          this.marker = new BMap.Marker(new BMap.Point(lng, lat))
           this.map.addOverlay(this.marker)
 
-          console.log('标记已添加')
-          this.$message.success('位置选择成功')
+          // 通过坐标获取地址
+          this.getAddressByCoordinates(lat, lng)
         })
 
-        console.log('地图初始化完成')
+        // 启用地图交互
+        this.map.enableDragging()
+        this.map.enableScrollWheelZoom()
+        this.map.enableDoubleClickZoom()
+
+        console.log('地图初始化成功')
       } catch (error) {
         console.error('地图初始化失败:', error)
-        this.$message.error('地图初始化失败: ' + error.message)
+        this.$message.error('地图初始化失败：' + error.message)
       }
     },
 
+    // 通过坐标获取地址
+    getAddressByCoordinates(lat, lng) {
+      const geoc = new BMap.Geocoder()
+      const point = new BMap.Point(lng, lat)
+
+      geoc.getLocation(point, (result) => {
+        if (result) {
+          console.log('逆地理编码结果:', result)
+          this.homestayForm.address = result.address
+          this.$message.success('地址获取成功')
+        } else {
+          console.log('无法获取地址信息')
+          this.$message.warning('无法获取该位置的地址信息')
+        }
+      })
+    },
+
+    // 获取当前位置
     getCurrentLocation() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            this.homestayForm.latitude = position.coords.latitude
-            this.homestayForm.longitude = position.coords.longitude
+            const lat = position.coords.latitude
+            const lng = position.coords.longitude
+
+            this.homestayForm.latitude = lat
+            this.homestayForm.longitude = lng
+
+            // 更新地图中心点
+            if (this.map) {
+              const point = new BMap.Point(lng, lat)
+              this.map.centerAndZoom(point, 15)
+
+              // 清除旧标记
+              if (this.marker) {
+                this.map.removeOverlay(this.marker)
+              }
+
+              // 添加新标记
+              this.marker = new BMap.Marker(point)
+              this.map.addOverlay(this.marker)
+            }
+
+            // 获取地址
+            this.getAddressByCoordinates(lat, lng)
+
             this.$message.success('获取当前位置成功')
           },
           (error) => {
@@ -790,12 +849,15 @@ export default {
       }
     },
 
+    // 清除坐标
     clearCoordinates() {
       this.homestayForm.latitude = null
       this.homestayForm.longitude = null
-      this.$message.info('已清除坐标')
+      this.homestayForm.address = ''
+      this.$message.info('已清除坐标和地址')
     },
 
+    // 确认位置选择
     confirmLocation() {
       if (this.selectedLatitude && this.selectedLongitude) {
         this.homestayForm.latitude = this.selectedLatitude
@@ -807,6 +869,7 @@ export default {
       }
     },
 
+    // 关闭地图对话框
     closeMapDialog() {
       this.mapDialogVisible = false
       this.selectedLatitude = null
