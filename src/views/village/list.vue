@@ -216,8 +216,9 @@
           <div>
             <p>1. 请按照Excel格式填写数据</p>
             <p>2. 必填字段：村庄名称、详细地址</p>
-            <p>3. 支持批量导入，建议单次导入不超过1000条</p>
-            <p>4. 文件格式：Excel (.xlsx)</p>
+            <p>3. 联系方式必须是11位数字，以1开头</p>
+            <p>4. 支持批量导入，建议单次导入不超过1000条</p>
+            <p>5. 文件格式：Excel (.xlsx)</p>
           </div>
         </el-alert>
 
@@ -300,6 +301,10 @@ export default {
         ],
         address: [
           { required: true, message: '请输入详细地址', trigger: 'blur' }
+        ],
+        secretaryPhone: [
+          { required: false, message: '请输入联系方式', trigger: 'blur' },
+          { pattern: /^1[3-9]\d{9}$/, message: '请输入以1开头的11位手机号码', trigger: 'blur' }
         ]
       }
     }
