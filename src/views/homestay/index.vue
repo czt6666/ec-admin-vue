@@ -347,22 +347,99 @@
 
         <!-- 资质凭证上传 -->
         <el-form-item label="资质凭证" prop="qualificationImages">
-          <el-upload
-            ref="qualificationUpload"
-            :auto-upload="false"
-            :on-change="handleQualificationImageChange"
-            :before-upload="beforeQualificationImageUpload"
-            :file-list="qualificationImageList"
-            accept="image/*"
-            :limit="5"
-            action=""
-            list-type="picture-card"
-          >
-            <i class="el-icon-plus"></i>
-            <div slot="tip" class="el-upload__tip">
-              最多上传5张图片，支持jpg/png格式，每张不超过2MB
+          <div class="qualification-upload-container">
+            <!-- 特别说明 -->
+            <div class="special-notice">
+              <i class="el-icon-info"></i>
+              <span>特别说明：产权资质仅用于验证房源真实与合法性，不会用于任何对外展示、宣传上，请上传真实有效的、可证明房屋产权归属的资质图片，图片中<strong style="color: #F56C6C;">必须包含完整且清晰可见的房屋地址信息！</strong></span>
             </div>
-          </el-upload>
+
+            <!-- 资质类型选择 -->
+            <div class="qualification-types">
+              <div class="type-title">资质类型1</div>
+              <el-radio-group v-model="selectedQualificationType" class="type-buttons">
+                <el-radio-button label="property">房产证</el-radio-button>
+                <el-radio-button label="lease">租赁合同</el-radio-button>
+                <el-radio-button label="utility">水/电/燃气缴费记录</el-radio-button>
+                <el-radio-button label="other">其他</el-radio-button>
+              </el-radio-group>
+            </div>
+
+            <!-- 资质说明 -->
+            <div class="qualification-instructions">
+              <div v-if="selectedQualificationType === 'property'" class="instructions">
+                <div class="instruction-item">
+                  <span class="number">1.</span>
+                  <span>房产证中地址必须与房源所填写详细地址、户型结构、面积保持一致</span>
+                </div>
+                <div class="instruction-item">
+                  <span class="number">2.</span>
+                  <span>若房东存在多套房源请上传多张证书</span>
+                </div>
+              </div>
+              <div v-if="selectedQualificationType === 'lease'" class="instructions">
+                <div class="instruction-item">
+                  <span class="number">1.</span>
+                  <span>租赁合同必须包含完整的房屋地址信息</span>
+                </div>
+                <div class="instruction-item">
+                  <span class="number">2.</span>
+                  <span>合同期限应覆盖民宿经营期间</span>
+                </div>
+              </div>
+              <div v-if="selectedQualificationType === 'utility'" class="instructions">
+                <div class="instruction-item">
+                  <span class="number">1.</span>
+                  <span>缴费记录必须显示完整的房屋地址</span>
+                </div>
+                <div class="instruction-item">
+                  <span class="number">2.</span>
+                  <span>记录时间应在最近6个月内</span>
+                </div>
+              </div>
+              <div v-if="selectedQualificationType === 'other'" class="instructions">
+                <div class="instruction-item">
+                  <span class="number">1.</span>
+                  <span>其他资质文件必须包含房屋地址信息</span>
+                </div>
+                <div class="instruction-item">
+                  <span class="number">2.</span>
+                  <span>文件应能证明房屋使用权或所有权</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 帮助信息 -->
+            <div class="help-section">
+              <i class="el-icon-question"></i>
+              <span>什么样的资质符合平台审核标准？</span>
+            </div>
+
+            <!-- 图片上传区域 -->
+            <div class="upload-section">
+              <div class="upload-title">{{ getQualificationTypeName(selectedQualificationType) }}</div>
+              <div class="upload-instruction">
+                请将含有地址信息的图片上传为第一张图片，此图片将会用于房屋资质审核
+              </div>
+              <div class="upload-area">
+                <el-upload
+                  ref="qualificationUpload"
+                  :auto-upload="false"
+                  :on-change="handleQualificationImageChange"
+                  :before-upload="beforeQualificationImageUpload"
+                  :file-list="getCurrentQualificationImages()"
+                  accept="image/*"
+                  :limit="15"
+                  action=""
+                  list-type="picture-card"
+                  class="qualification-upload"
+                >
+                  <i class="el-icon-camera"></i>
+                  <div class="upload-text">{{ getCurrentQualificationImages().length }}/15</div>
+                </el-upload>
+              </div>
+            </div>
+          </div>
         </el-form-item>
 
         <el-form-item label="民宿简介">
@@ -425,7 +502,14 @@ export default {
       selectedLatitude: null,
       selectedLongitude: null,
       coverImageList: [],
-      qualificationImageList: [],
+      // 分类存储每个资质类型的图片
+      qualificationImagesByType: {
+        property: [],
+        lease: [],
+        utility: [],
+        other: []
+      },
+      selectedQualificationType: 'property',
       baseUrl: '',
       queryParams: {
         page: 1,
@@ -662,21 +746,51 @@ export default {
         this.coverImageList = []
       }
 
-      // 处理资质凭证图片
-      if (row.qualificationImages) {
+      // 处理资质凭证图片 - 分类加载
+      this.loadQualificationImagesByType(row.qualificationImages)
+    },
+
+    // 加载分类的资质图片
+    loadQualificationImagesByType(qualificationImages) {
+      // 重置所有类型的图片
+      this.qualificationImagesByType = {
+        property: [],
+        lease: [],
+        utility: [],
+        other: []
+      }
+
+      if (qualificationImages) {
         try {
-          const images = JSON.parse(row.qualificationImages)
-          this.qualificationImageList = images.map((img, index) => ({
-            name: `qualification_${index + 1}.jpg`,
-            url: this.getImageUrl(img)
-          }))
+          const imagesData = JSON.parse(qualificationImages)
+          if (Array.isArray(imagesData)) {
+            // 如果是旧格式（只有图片文件名数组），默认归类到房产证
+            imagesData.forEach((img, index) => {
+              this.qualificationImagesByType.property.push({
+                name: `property_${index + 1}.jpg`,
+                url: this.getImageUrl(img)
+              })
+            })
+          } else if (typeof imagesData === 'object') {
+            // 如果是新格式（按类型分类的对象）
+            Object.keys(imagesData).forEach(type => {
+              if (this.qualificationImagesByType[type] && Array.isArray(imagesData[type])) {
+                this.qualificationImagesByType[type] = imagesData[type].map((img, index) => ({
+                  name: `${type}_${index + 1}.jpg`,
+                  url: this.getImageUrl(img)
+                }))
+              }
+            })
+          }
         } catch (e) {
           console.error('解析资质凭证图片失败:', e)
-          this.qualificationImageList = []
         }
-      } else {
-        this.qualificationImageList = []
       }
+    },
+
+    // 获取当前选中类型的图片列表
+    getCurrentQualificationImages() {
+      return this.qualificationImagesByType[this.selectedQualificationType] || []
     },
 
     // 查看订单
@@ -730,13 +844,14 @@ export default {
               this.homestayForm.coverImage = ''
             }
 
-            // 处理资质凭证图片上传
-            if (this.qualificationImageList.length > 0) {
+            // 处理资质凭证图片上传 - 分类处理
+            const qualificationImagesData = {}
+            for (const type in this.qualificationImagesByType) {
               const images = []
-              for (const item of this.qualificationImageList) {
+              for (const item of this.qualificationImagesByType[type]) {
                 if (item.raw) {
                   // 新上传的文件，需要上传到服务器
-                  console.log('上传资质凭证图片:', item.name)
+                  console.log(`上传${type}资质图片:`, item.name)
                   const fileName = await this.uploadImage(item.raw)
                   images.push(fileName)
                 } else if (item.url) {
@@ -745,10 +860,11 @@ export default {
                   images.push(fileName)
                 }
               }
-              this.homestayForm.qualificationImages = JSON.stringify(images)
-            } else {
-              this.homestayForm.qualificationImages = ''
+              if (images.length > 0) {
+                qualificationImagesData[type] = images
+              }
             }
+            this.homestayForm.qualificationImages = JSON.stringify(qualificationImagesData)
 
             console.log('提交的表单数据:', this.homestayForm)
 
@@ -793,7 +909,13 @@ export default {
         linkAddress: ''
       }
       this.coverImageList = []
-      this.qualificationImageList = []
+      this.qualificationImagesByType = {
+        property: [],
+        lease: [],
+        utility: [],
+        other: []
+      }
+      this.selectedQualificationType = 'property'
       this.$nextTick(() => {
         if (this.$refs.homestayForm) {
           this.$refs.homestayForm.clearValidate()
@@ -819,6 +941,17 @@ export default {
         3: '已下架'
       }
       return statusMap[status] || '未知'
+    },
+
+    // 获取资质类型名称
+    getQualificationTypeName(type) {
+      const typeMap = {
+        property: '房产证',
+        lease: '租赁合同',
+        utility: '水/电/燃气缴费记录',
+        other: '其他'
+      }
+      return typeMap[type] || '房产证'
     },
 
     // 地图相关方法
@@ -994,7 +1127,8 @@ export default {
     },
 
     handleQualificationImageChange(file, fileList) {
-      this.qualificationImageList = fileList
+      // 更新当前选中类型的图片列表
+      this.qualificationImagesByType[this.selectedQualificationType] = fileList
     },
 
     beforeQualificationImageUpload(file) {
@@ -1140,5 +1274,199 @@ export default {
 .operation-buttons {
   padding: 0;
   margin: 0;
+}
+
+/* 资质上传样式 */
+.qualification-upload-container {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.special-notice {
+  background: #f0f9ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.special-notice i {
+  color: #409eff;
+  margin-right: 8px;
+  margin-top: 2px;
+  font-size: 16px;
+}
+
+.special-notice span {
+  color: #303133;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.qualification-types {
+  margin-bottom: 20px;
+}
+
+.type-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+}
+
+.type-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.type-buttons .el-radio-button {
+  flex: 1;
+}
+
+.type-buttons .el-radio-button__inner {
+  width: 100%;
+  text-align: center;
+  border-radius: 6px;
+  border: 1px solid #dcdfe6;
+  background: #f5f7fa;
+  color: #606266;
+  transition: all 0.3s;
+}
+
+.type-buttons .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+  background: #ffd700;
+  border-color: #ffd700;
+  color: #303133;
+  font-weight: 600;
+}
+
+.qualification-instructions {
+  margin-bottom: 16px;
+}
+
+.instructions {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.instruction-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 修复数字与文字对齐问题 */
+.instruction-item .number {
+  color: #409eff;
+  font-weight: 600;
+  margin-right: 8px;
+  min-width: 20px;
+  line-height: 1.5;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.instruction-item span:last-child {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.5;
+  display: inline-block;
+  vertical-align: top;
+  flex: 1;
+}
+
+.help-section {
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.help-section:hover {
+  background: #fff2d9;
+}
+
+.help-section i {
+  color: #fa8c16;
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.help-section span {
+  color: #d46b08;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.upload-section {
+  margin-bottom: 20px;
+}
+
+.upload-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.upload-instruction {
+  color: #909399;
+  font-size: 14px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.upload-area {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.qualification-upload {
+  flex: 1;
+}
+
+.qualification-upload .el-upload--picture-card {
+  width: 120px;
+  height: 120px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.qualification-upload .el-upload--picture-card:hover {
+  border-color: #409eff;
+  background: #f0f9ff;
+}
+
+.qualification-upload .el-upload--picture-card i {
+  font-size: 32px;
+  color: #c0c4cc;
+  margin-bottom: 8px;
+}
+
+.upload-text {
+  font-size: 12px;
+  color: #909399;
 }
 </style>
