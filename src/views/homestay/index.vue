@@ -92,7 +92,7 @@
       style="width: 100%"
     >
       <el-table-column prop="id" label="ID" width="80" />
-      <el-table-column label="封面图" width="100">
+      <el-table-column label="封面" width="100">
         <template slot-scope="scope">
           <el-image
             v-if="scope.row.coverImage"
@@ -129,8 +129,7 @@
       <el-table-column prop="maxCapacity" label="最大接待" width="100" />
       <el-table-column prop="contactName" label="负责人" width="100" />
       <el-table-column prop="contactPhone" label="联系电话" width="120" />
-      <el-table-column prop="latitude" label="纬度" width="100" />
-      <el-table-column prop="longitude" label="经度" width="100" />
+      <el-table-column prop="createTime" label="创建时间" width="160" />
       <el-table-column label="操作" width="200" fixed="right">
         <template slot-scope="scope">
           <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
@@ -252,7 +251,7 @@
         </el-form-item>
 
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="营业状态" prop="status">
               <el-select v-model="homestayForm.status" placeholder="请选择状态" style="width: 100%">
                 <el-option label="营业" :value="1" />
@@ -261,7 +260,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="星级" prop="starLevel">
               <el-rate
                 v-model="homestayForm.starLevel"
@@ -270,11 +269,6 @@
                 text-color="#ff9900"
                 score-template="{value}星"
               />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="链接地址" prop="linkAddress">
-              <el-input v-model="homestayForm.linkAddress" placeholder="请输入链接地址" />
             </el-form-item>
           </el-col>
         </el-row>
