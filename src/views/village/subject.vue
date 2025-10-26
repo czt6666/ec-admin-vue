@@ -12,10 +12,19 @@
         <el-form-item>
           <el-input v-model="listQuery.keyword" placeholder="请输入新闻标题或关键词" style="width: 200px;"></el-input>
         </el-form-item>
+        <!-- 发布状态筛选移到右侧，不在查询表单内 -->
+        <!-- 原位置已移除 -->
         <el-form-item>
           <el-button type="primary" @click="handleFilter">查询</el-button>
         </el-form-item>
       </el-form>
+      <div class="status-filter">
+        <el-select v-model="listQuery.publishStatus" placeholder="发布状态" clearable style="width: 160px;" @change="onPublishStatusChange">
+          <el-option label="草稿" :value="1" />
+          <el-option label="已发布" :value="2" />
+          <el-option label="已下线" :value="3" />
+        </el-select>
+      </div>
     </div>
 
     <el-table v-loading="listLoading" :data="list" border fit highlight-current-row>
@@ -28,6 +37,12 @@
       <el-table-column prop="author" label="作者" align="center"></el-table-column>
       <el-table-column prop="villagename" label="乡村名称" align="center"></el-table-column>
       <el-table-column prop="themename" label="主题" align="center">
+      </el-table-column>
+      <!-- 新增：发布状态列 -->
+      <el-table-column label="发布状态" align="center" width="120">
+        <template slot-scope="scope">
+          <span>{{ publishStatusText(scope.row) }}</span>
+        </template>
       </el-table-column>
       <el-table-column prop="imageUrl" label="图片" align="center" width="120">
         <template slot-scope="scope">
@@ -70,7 +85,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="主题" prop="themename">
-              <el-select v-model="tempNews.themename" placeholder="请选择主题" filterable style="width: 100%" @change="onThemeChange">
+              <el-select v-model="tempNews.themenameList" multiple placeholder="请选择主题" filterable style="width: 100%" @change="onThemeChange">
                 <el-option v-for="item in themes" :key="String(item.id)" :label="item.name" :value="item.name" />
               </el-select>
             </el-form-item>
@@ -91,27 +106,36 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row :gutter="10">
+          <el-col :span="12">
+            <el-form-item label="发布状态" prop="publishStatus">
+              <el-select v-model="tempNews.publishStatus" placeholder="请选择发布状态" style="width: 100%">
+                <el-option label="草稿" value="草稿" />
+                <el-option label="已发布" value="已发布" />
+                <el-option label="已下线" value="已下线" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="新闻图片" prop="imageUrl">
           <el-upload
-            class="upload-demo"
+            :class="['upload-demo', tempNews.imageFile ? 'has-file' : '']"
             action=""
             :on-change="handleImageChange"
+            :on-remove="handleImageRemove"
             :auto-upload="false"
             :file-list="tempNews.imageFile ? [tempNews.imageFile] : []"
             list-type="picture-card"
             :limit="1"
             :on-exceed="() => $message.warning('最多上传1张图片')"
           >
-            <i class="el-icon-plus"></i>   
+            <i class="el-icon-plus" v-if="!tempNews.imageFile"></i>
           </el-upload>
+          <div class="upload-tip">最多上传1张，图片大小不超过10MB</div>
         </el-form-item>
-        <el-form-item label="新闻内容" prop="content">
-          <el-input
-            v-model="tempNews.content"
-            type="textarea"
-            :rows="8"
-            placeholder="请输入新闻内容"
-          ></el-input>
+        <el-form-item prop="content" class="content-editor-item">
+          <div class="content-label">新闻内容</div>
+          <div ref="contentEditor" class="quill-editor"></div>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -124,6 +148,7 @@
 <script>
 import {mapGetters} from 'vuex'
 import { fetchVillagePage } from '@/api/village'
+import E from 'wangeditor'
 
 export default {
   name: 'NewsManage',
@@ -137,7 +162,8 @@ export default {
       listQuery: {
         pageNum: 1,
         pageRow: 10,
-        keyword: ''
+        keyword: '',
+        publishStatus: null
       },
       // 对话框状态
       dialogFormVisible: false,
@@ -149,10 +175,14 @@ export default {
         author: '',
         villagename: '',
         themename: '',
+        themenameList: [],
         imageUrl: '',
         imageFile: null,
-        content: ''
+        content: '',
+        publishStatus: ''
       },
+      // 编辑器实例
+      wEditor: null,
       // 下拉选择数据
       users: [],
       villages: [],
@@ -160,7 +190,8 @@ export default {
       // 表单验证规则
       rules: {
         title: [
-          { required: true, message: '请输入新闻标题', trigger: 'blur' }
+          { required: true, message: '请输入新闻标题', trigger: 'blur' },
+          { type: 'string', max: 15, message: '标题不能超过15个字', trigger: 'change' }
         ],
         author: [
           { required: true, message: '请输入作者', trigger: 'blur' }
@@ -177,34 +208,147 @@ export default {
       }
     }
   },
+  computed: {
+    // 保留占位，当前不使用前端过滤
+  },
+  watch: {
+    dialogFormVisible(val) {
+      if (val) {
+        this.$nextTick(() => {
+          this.initWangEditor()
+        })
+      } else {
+        this.destroyWangEditor()
+      }
+    }
+  },
   created() {
     this.getList()
     this.getUsersAndVillages()
     this.getThemeNamesFromNews()
   },
   methods: {
-    // 获取列表数据
-    getList() {
+    initWangEditor() {
+      try {
+        if (!E) {
+          this.$message.error('编辑器资源未加载')
+          return
+        }
+        // 已存在则刷新内容，避免重复创建
+        if (this.wEditor && this.$refs.contentEditor) {
+          const html = this.tempNews.content || ''
+          try {
+            this.wEditor.txt && this.wEditor.txt.html(html)
+          } catch (_) {}
+          return
+        }
+        if (this.$refs.contentEditor) this.$refs.contentEditor.innerHTML = ''
+        this.wEditor = new E(this.$refs.contentEditor)
+        this.wEditor.config.menus = [
+          'head','bold','italic','underline','strikeThrough','indent',
+          'fontSize','fontName','foreColor','backColor','lineHeight',
+          'list','justify','image','undo','redo'
+        ]
+        this.wEditor.config.height = 360
+        this.wEditor.config.onchange = (html) => {
+          this.tempNews.content = html
+        }
+        this.wEditor.config.customUploadImg = async (files, insertImgFn) => {
+          if (!files || !files.length) return
+          const file = files[0]
+          try {
+            const resp = await this.uploadImage(file)
+            const url = (resp && resp.url) ? resp.url : ''
+            const fullUrl = this.formatImageUrl(url)
+            if (fullUrl) insertImgFn(fullUrl)
+            else this.$message.error('图片上传失败')
+          } catch (e) {
+            this.$message.error('图片上传失败')
+          }
+        }
+        this.wEditor.create()
+        try {
+          const html = this.tempNews.content || ''
+          this.wEditor.txt && this.wEditor.txt.html(html)
+        } catch (_) {}
+      } catch (e) {
+        console.error(e)
+      }
+    },
+    destroyWangEditor() {
+      try {
+        if (this.wEditor) {
+          try { this.wEditor.destroy && this.wEditor.destroy() } catch (_) {}
+          this.wEditor = null
+        }
+        if (this.$refs.contentEditor) {
+          this.$refs.contentEditor.innerHTML = ''
+        }
+      } catch (_) {}
+    },
+    // 已移除：Quill 图片处理方法
+    // 获取列表数据（useStatus 控制是否携带发布状态参数）
+    getList(useStatus = true) {
       this.listLoading = true
+      // 拼装查询参数：只选择必要字段，避免同时传 publishStatus/publish_status
+      const params = {
+        pageNum: this.listQuery.pageNum,
+        pageRow: this.listQuery.pageRow,
+        keyword: this.listQuery.keyword
+      }
+      if (useStatus) {
+        const val = this.listQuery.publishStatus
+        if (val != null && val !== '') {
+          params.publish_status = val
+        }
+      }
       this.api({
         url: '/village/news/list',
         method: 'get',
-        params: this.listQuery
+        params
       }).then(data => {
         this.listLoading = false
         const raw = data.list || []
+        // 兼容后端返回 total/totalCount
+        this.totalCount = (data.total != null ? data.total : (data.totalCount || 0))
+        // 如果当前页在筛选后为空但仍有总数，自动回到第一页补齐显示
+        if (raw.length === 0 && this.totalCount > 0 && this.listQuery.pageNum > 1) {
+          this.listQuery.pageNum = 1
+          this.getList(useStatus)
+          return
+        }
         this.list = raw.map(n => ({
           ...n,
+          publishStatus: (n.publishStatus != null ? n.publishStatus : (n.publish_status != null ? n.publish_status : (n.status != null ? n.status : n.publishState))),
           author: n.author || n.authorName || '',
           villagename: n.villagename || n.villageName || (n.villageId != null ? String(n.villageId) : ''),
           themename: n.themename || n.themeName || n.theme || '',
           rawImageUrl: n.imageUrl,
           imageUrl: this.formatImageUrl(n.imageUrl)
         }))
-        this.totalCount = data.totalCount || 0
       }).catch(() => {
         this.listLoading = false
       })
+    },
+    // 发布状态显示（将数值或其他字段名统一映射为中文）
+    publishStatusText(row) {
+      const val = row && (row.publishStatus != null ? row.publishStatus
+        : (row.publish_status != null ? row.publish_status
+          : (row.status != null ? row.status : row.publishState)))
+      return this.statusTextFromValue(val)
+    },
+    statusTextFromValue(val) {
+      const map = { 1: '草稿', 2: '已发布', 3: '已下线' }
+      const num = Number(val)
+      if (!isNaN(num) && map[num]) return map[num]
+      const text = String(val || '').trim()
+      // 兼容后端返回中文或空（含“未发布”的老文案）
+      if (['草稿', '未发布', '已发布', '已下线'].includes(text)) return text
+      return '草稿'
+    },
+    statusCodeFromText(text) {
+      const map = { '未发布': 1, '草稿': 1, '已发布': 2, '已下线': 3 }
+      return map[String(text || '').trim()] || 1
     },
     // 获取用户和乡村数据
     getUsersAndVillages() {
@@ -268,10 +412,10 @@ export default {
       this.listQuery.pageRow = val
       this.getList()
     },
-    // 处理查询
+    // 处理查询（仅内容关键词，不携带发布状态）
     handleFilter() {
       this.listQuery.pageNum = 1
-      this.getList()
+      this.getList(false)
     },
     // 获取表格序号
     getIndex($index) {
@@ -286,9 +430,11 @@ export default {
         author: '',
         villagename: '',
         themename: '',
+        themenameList: [],
         imageUrl: '',
         imageFile: null,
-        content: ''
+        content: '',
+        publishStatus: ''
       }
       // 每次打开弹窗都刷新主题列表，避免主题管理页新增后这里不更新
       this.getThemeNamesFromNews()
@@ -303,26 +449,45 @@ export default {
       const author = news.author || news.authorId || ''
       const rawUrl = news.rawImageUrl || news.imageUrl
       const previewUrl = this.formatImageUrl(rawUrl)
+      const tlist = Array.isArray(tname) ? tname : String(tname || '').split(',').map(s => s.trim()).filter(Boolean)
+      const statusVal = (news.publishStatus != null ? news.publishStatus : (news.publish_status != null ? news.publish_status : (news.status != null ? news.status : news.publishState)))
       this.tempNews = {
         id: news.id || '',
         title: news.title || '',
         author: author || '',
         villagename: vname ? String(vname) : '',
         themename: tname ? String(tname) : '',
+        themenameList: tlist,
         imageUrl: rawUrl || '',
         imageFile: previewUrl ? {
           name: (rawUrl || '').split('/').pop(),
           url: previewUrl,
           status: 'success'
         } : null,
-        content: news.content || ''
+        content: news.content || '',
+        publishStatus: this.statusTextFromValue(statusVal)
       }
       // 编辑时也刷新主题列表，确保最新主题可选
       this.getThemeNamesFromNews()
       this.dialogFormVisible = true
+      // 若编辑器已存在，仅刷新内容避免重复初始化
+      this.$nextTick(() => {
+        if (this.wEditor) {
+          try {
+            const html = this.tempNews.content || ''
+            this.wEditor.txt && this.wEditor.txt.html(html)
+          } catch (_) {}
+        }
+      })
     },
     onThemeChange(val) {
-      this.tempNews.themename = val === '' ? '' : String(val)
+      if (Array.isArray(val)) {
+        this.tempNews.themenameList = val
+        this.tempNews.themename = val.length ? val.join(',') : ''
+      } else {
+        this.tempNews.themenameList = val ? [String(val)] : []
+        this.tempNews.themename = val === '' ? '' : String(val)
+      }
     },
     onVillageChange(val) {
       this.tempNews.villagename = val === '' ? '' : String(val)
@@ -330,10 +495,17 @@ export default {
     // 处理图片变化（仅限1张）
     handleImageChange(file, fileList) {
       const lastFile = fileList[fileList.length - 1]
-      this.tempNews.imageFile = lastFile
-      const raw = lastFile && lastFile.raw
+      const raw = (file && file.raw) || (lastFile && lastFile.raw)
       if (!raw) {
         this.$message.warning('请选择图片文件')
+        return
+      }
+      // 大小校验：不超过10MB
+      const maxSize = 10 * 1024 * 1024
+      if (raw.size > maxSize) {
+        this.$message.error('图片大小不能超过10MB')
+        this.tempNews.imageFile = null
+        this.tempNews.imageUrl = ''
         return
       }
       // 说明：this.api 会直接返回 res.info 或 res.data，这里按 data 结构 { url, fileName } 读取
@@ -346,18 +518,25 @@ export default {
           this.tempNews.imageUrl = url
           // 预览使用可访问的完整URL
           this.tempNews.imageFile = {
-            name: lastFile.name,
+            name: lastFile && lastFile.name ? lastFile.name : (file && file.name ? file.name : ''),
             url: fullUrl,
             status: 'success'
           }
         } else {
           this.$message.error('图片上传失败')
           this.tempNews.imageUrl = ''
+          this.tempNews.imageFile = null
         }
       }).catch(() => {
         this.$message.error('图片上传失败')
         this.tempNews.imageUrl = ''
+        this.tempNews.imageFile = null
       })
+    },
+    // 缺失方法补充：删除已选图片
+    handleImageRemove() {
+      this.tempNews.imageFile = null
+      this.tempNews.imageUrl = ''
     },
     // 将相对图片路径转为可访问的完整URL（用于显示）
     formatImageUrl(url) {
@@ -386,7 +565,6 @@ export default {
 
         // 明确构造基础字段，避免拷贝后删除的混乱
         const baseData = {
-
           title: this.tempNews.title,
           author: this.tempNews.author,
           villageName: this.tempNews.villagename,
@@ -394,6 +572,11 @@ export default {
           imageUrl: this.tempNews.imageUrl,
           content: this.tempNews.content
         }
+
+        // 发布状态：文本->数值，同时兼容驼峰/下划线
+        const statusCode = this.statusCodeFromText(this.tempNews.publishStatus)
+        baseData.publishStatus = statusCode
+        baseData.publish_status = statusCode
 
          if (this.dialogStatus === 'create') {
            const data = {
@@ -460,6 +643,11 @@ export default {
       }).catch(() => {
         this.$message.info('已取消删除')
       })
+    },
+    // 发布状态筛选变化：重置到第一页并重新获取列表（后端分页过滤）
+    onPublishStatusChange() {
+      this.listQuery.pageNum = 1
+      this.getList()
     }
   }
 }
@@ -467,6 +655,13 @@ export default {
 <style scoped>
 .filter-container {
   padding-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.status-filter {
+  min-width: 180px;
+  text-align: right;
 }
 .title-text {
   font-size: 18px;
@@ -481,5 +676,34 @@ export default {
   width: 120px;
   height: 120px;
 }
-
+.upload-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+}
+.content-editor-item ::v-deep .el-form-item__label {
+  float: none !important;
+  display: block;
+  width: 100% !important;
+  margin: 0 0 6px 0;
+  padding: 0;
+}
+.content-editor-item ::v-deep .el-form-item__content {
+  margin-left: 0 !important;
+  display: block;
+}
+.quill-editor {
+  min-height: 240px;
+}
+.content-editor-item .content-label {
+  display: block;
+  margin: 0 0 6px 0;
+  color: #606266;
+  line-height: 20px;
+}
+.content-editor-item.is-required .content-label::before {
+  content: '*';
+  color: #f56c6c;
+  margin-right: 4px;
+}
 </style>

@@ -209,4 +209,5 @@ export default {
 <style scoped>
 .filter-container { padding-bottom: 10px; }
 .title-text { font-size: 18px; font-weight: bold; margin-left: 20px; }
+.pagination-container { margin-top: 20px; text-align: right; }
 </style>
