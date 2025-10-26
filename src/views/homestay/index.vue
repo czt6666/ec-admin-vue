@@ -132,16 +132,22 @@
       <el-table-column prop="createTime" label="创建时间" width="160" />
       <el-table-column label="操作" width="200" fixed="right">
         <template slot-scope="scope">
-          <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
-          <el-button
-            v-if="scope.row.linkAddress"
-            size="mini"
-            type="success"
-            @click="viewOrders(scope.row)"
-          >
-            查看订单
-          </el-button>
-          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+          <div class="operation-buttons">
+            <el-button size="mini" type="primary" @click="handleEdit(scope.row)">
+              <i class="el-icon-edit"></i> 编辑
+            </el-button>
+            <el-button
+              v-if="scope.row.linkAddress"
+              size="mini"
+              type="success"
+              @click="viewOrders(scope.row)"
+            >
+              <i class="el-icon-view"></i> 查看订单
+            </el-button>
+            <el-button size="mini" type="danger" @click="handleDelete(scope.row)">
+              <i class="el-icon-delete"></i> 删除
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -303,6 +309,21 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <!-- 订单链接设置 -->
+        <el-form-item label="订单链接" prop="linkAddress">
+          <el-input
+            v-model="homestayForm.linkAddress"
+            placeholder="请输入订单页面链接地址"
+            style="width: 100%;"
+          >
+            <template slot="prepend">http://</template>
+          </el-input>
+          <div class="link-tip">
+            <i class="el-icon-info"></i>
+            设置后，用户可以通过"查看订单"按钮访问该民宿的订单页面
+          </div>
+        </el-form-item>
 
         <!-- 封面图上传 -->
         <el-form-item label="封面图" prop="coverImage">
@@ -1049,5 +1070,75 @@ export default {
 .map-info p {
   margin: 5px 0;
   color: #606266;
+}
+
+.link-tip {
+  margin-top: 5px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.link-tip i {
+  margin-right: 4px;
+}
+
+/* 操作按钮样式优化 - 修复对齐问题 */
+.operation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.operation-buttons .el-button {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.operation-buttons .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.operation-buttons .el-button i {
+  margin-right: 6px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* 按钮颜色优化 */
+.operation-buttons .el-button--primary {
+  background-color: #409EFF;
+  border-color: #409EFF;
+}
+
+.operation-buttons .el-button--success {
+  background-color: #67C23A;
+  border-color: #67C23A;
+}
+
+.operation-buttons .el-button--danger {
+  background-color: #F56C6C;
+  border-color: #F56C6C;
+}
+
+/* 确保按钮在表格单元格中正确对齐 */
+.el-table .cell {
+  padding: 8px;
+}
+
+.operation-buttons {
+  padding: 0;
+  margin: 0;
 }
 </style>
