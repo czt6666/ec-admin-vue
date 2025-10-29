@@ -24,6 +24,9 @@
           <el-option label="已发布" :value="2" />
           <el-option label="已下线" :value="3" />
         </el-select>
+        <el-select v-model="listQuery.themeFilterList" multiple clearable filterable placeholder="筛选主题" style="width: 240px; margin-left: 10px;" @change="onThemeFilterChange">
+          <el-option v-for="t in themes" :key="String(t.id)" :label="t.name" :value="t.name" />
+        </el-select>
       </div>
     </div>
 
@@ -120,7 +123,10 @@
         <el-form-item label="新闻图片" prop="imageUrl">
           <el-upload
             :class="['upload-demo', tempNews.imageFile ? 'has-file' : '']"
+            ref="imageUpload"
             action=""
+            :before-upload="validateImageBeforeUpload"
+            accept="image/*"
             :on-change="handleImageChange"
             :on-remove="handleImageRemove"
             :auto-upload="false"
@@ -163,7 +169,8 @@ export default {
         pageNum: 1,
         pageRow: 10,
         keyword: '',
-        publishStatus: null
+        publishStatus: null,
+        themeFilterList: []
       },
       // 对话框状态
       dialogFormVisible: false,
@@ -187,6 +194,8 @@ export default {
       users: [],
       villages: [],
       themes: [],
+      // 上传状态标记：是否选中了超过限制的图片
+      oversizeImageSelected: false,
       // 表单验证规则
       rules: {
         title: [
@@ -223,9 +232,9 @@ export default {
     }
   },
   created() {
+    this.getThemeNamesFromNews()
     this.getList()
     this.getUsersAndVillages()
-    this.getThemeNamesFromNews()
   },
   methods: {
     initWangEditor() {
@@ -326,6 +335,15 @@ export default {
           rawImageUrl: n.imageUrl,
           imageUrl: this.formatImageUrl(n.imageUrl)
         }))
+        const selected = Array.isArray(this.listQuery.themeFilterList) ? this.listQuery.themeFilterList : []
+        if (selected.length > 0) {
+          const selSet = new Set(selected.map(s => String(s)))
+          this.list = this.list.filter(item => {
+            const names = Array.isArray(item.themename) ? item.themename : String(item.themename || '').split(',').map(s => s.trim()).filter(Boolean)
+            return names.some(name => selSet.has(name))
+          })
+          this.totalCount = this.list.length
+        }
       }).catch(() => {
         this.listLoading = false
       })
@@ -500,12 +518,13 @@ export default {
         this.$message.warning('请选择图片文件')
         return
       }
-      // 大小校验：不超过10MB
+      // 大小校验：不超过10MB（双重校验）
       const maxSize = 10 * 1024 * 1024
-      if (raw.size > maxSize) {
+      if ((raw.size || file.size || 0) > maxSize) {
         this.$message.error('图片大小不能超过10MB')
         this.tempNews.imageFile = null
         this.tempNews.imageUrl = ''
+        this.$refs.imageUpload && this.$refs.imageUpload.clearFiles()
         return
       }
       // 说明：this.api 会直接返回 res.info 或 res.data，这里按 data 结构 { url, fileName } 读取
@@ -648,6 +667,11 @@ export default {
     onPublishStatusChange() {
       this.listQuery.pageNum = 1
       this.getList()
+    },
+    // 主题多选筛选变化：重置到第一页并进行本地过滤刷新
+    onThemeFilterChange() {
+      this.listQuery.pageNum = 1
+      this.getList(false)
     }
   }
 }
@@ -707,3 +731,16 @@ export default {
   margin-right: 4px;
 }
 </style>
+
+validateImageBeforeUpload(file) {
+  const maxSize = 10 * 1024 * 1024
+  const size = file && file.size ? file.size : 0
+  if (size > maxSize) {
+    this.$message.error('图片大小不能超过10MB')
+    this.tempNews.imageFile = null
+    this.tempNews.imageUrl = ''
+    this.$refs.imageUpload && this.$refs.imageUpload.clearFiles()
+    return false
+  }
+  return true
+},
