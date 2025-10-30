@@ -38,7 +38,7 @@
       </el-table-column>
       <el-table-column prop="title" label="新闻标题" align="center" width="300"></el-table-column>
       <el-table-column prop="author" label="作者" align="center"></el-table-column>
-      <el-table-column prop="villagename" label="乡村名称" align="center"></el-table-column>
+      <el-table-column prop="villagename" label="乡村名称" align="center" :formatter="formatVillageName"></el-table-column>
       <el-table-column prop="themename" label="主题" align="center">
       </el-table-column>
       <!-- 新增：发布状态列 -->
@@ -469,11 +469,17 @@ export default {
       const previewUrl = this.formatImageUrl(rawUrl)
       const tlist = Array.isArray(tname) ? tname : String(tname || '').split(',').map(s => s.trim()).filter(Boolean)
       const statusVal = (news.publishStatus != null ? news.publishStatus : (news.publish_status != null ? news.publish_status : (news.status != null ? news.status : news.publishState)))
+      // 将可能为ID的村庄字段映射为名称，用于编辑表单显示
+      const vid = (news.villageId != null && news.villageId !== '')
+        ? news.villageId
+        : (/^\d+$/.test(String(vname)) ? Number(vname) : null)
+      const vDisplayName = vid != null ? (this.resolveVillageNameById(vid) || '') : String(vname || '')
       this.tempNews = {
         id: news.id || '',
         title: news.title || '',
         author: author || '',
-        villagename: vname ? String(vname) : '',
+        // 这里保持表单显示名称（不是ID）
+        villagename: vDisplayName ? String(vDisplayName) : '',
         themename: tname ? String(tname) : '',
         themenameList: tlist,
         imageUrl: rawUrl || '',
@@ -509,6 +515,12 @@ export default {
     },
     onVillageChange(val) {
       this.tempNews.villagename = val === '' ? '' : String(val)
+    },
+    // 解析村庄名称（根据ID查找名称，用于显示表单初始化与表格格式化）
+    resolveVillageNameById(id) {
+      const villages = Array.isArray(this.villages) ? this.villages : []
+      const target = villages.find(v => String(v.id) === String(id))
+      return target ? (target.villageName || target.name || '') : ''
     },
     // 处理图片变化（仅限1张）
     handleImageChange(file, fileList) {
@@ -563,6 +575,16 @@ export default {
       if (url.startsWith('http') || url.startsWith('data:')) return url
       return (window.webofdConfig && window.webofdConfig.BASE_URL ? (window.webofdConfig.BASE_URL + url) : url)
     },
+    // 解析村庄名称对应的ID（提交时将名称映射为ID），若未找到且为数字字符串，则使用该数字作为ID
+    resolveVillageIdByName(name) {
+      const s = String(name || '').trim()
+      if (!s) return null
+      const vs = Array.isArray(this.villages) ? this.villages : []
+      const m = vs.find(v => (v.villageName || v.name) === s)
+      if (m && m.id != null) return m.id
+      const num = Number(s)
+      return isNaN(num) ? null : num
+    },
     // 上传图片
     uploadImage(file) {
       const formData = new FormData()
@@ -582,14 +604,17 @@ export default {
       this.$refs.newsForm.validate((valid) => {
         if (!valid) return false
 
+        const resolvedVillageId = this.resolveVillageIdByName(this.tempNews.villagename)
         // 明确构造基础字段，避免拷贝后删除的混乱
         const baseData = {
           title: this.tempNews.title,
           author: this.tempNews.author,
-          villageName: this.tempNews.villagename,
           themeName: this.tempNews.themename,
           imageUrl: this.tempNews.imageUrl,
-          content: this.tempNews.content
+          content: this.tempNews.content,
+          // 后端期望 village_id；为兼容可能的驼峰字段，一并传递
+          villageId: resolvedVillageId,
+          village_id: resolvedVillageId
         }
 
         // 发布状态：文本->数值，同时兼容驼峰/下划线
@@ -606,7 +631,7 @@ export default {
          } else {
            const data = {
              ...baseData,
-            // 编辑：需传 id 与主题名称
+            // 编辑：需传 id
             id: this.tempNews.id
            }
            this.updateNews(data)
@@ -662,6 +687,29 @@ export default {
       }).catch(() => {
         this.$message.info('已取消删除')
       })
+    },
+    // 将表格中的乡村ID映射为名称显示
+    formatVillageName(row, column, cellValue, index) {
+      const villages = Array.isArray(this.villages) ? this.villages : []
+      const fromCell = cellValue != null ? String(cellValue) : ''
+      const fromRowName = row.villageName || row.villagename || ''
+      const fromRowId = row.villageId
+      let id = null
+      if (fromRowId != null && fromRowId !== '') {
+        id = fromRowId
+      } else if (/^\d+$/.test(fromCell)) {
+        id = Number(fromCell)
+      } else if (/^\d+$/.test(String(fromRowName))) {
+        id = Number(fromRowName)
+      }
+      if (id != null) {
+        const found = villages.find(v => String(v.id) === String(id))
+        if (found) {
+          return found.villageName || found.name || String(id)
+        }
+        return String(id)
+      }
+      return String(fromRowName || fromCell || '')
     },
     // 发布状态筛选变化：重置到第一页并重新获取列表（后端分页过滤）
     onPublishStatusChange() {
@@ -731,16 +779,3 @@ export default {
   margin-right: 4px;
 }
 </style>
-
-validateImageBeforeUpload(file) {
-  const maxSize = 10 * 1024 * 1024
-  const size = file && file.size ? file.size : 0
-  if (size > maxSize) {
-    this.$message.error('图片大小不能超过10MB')
-    this.tempNews.imageFile = null
-    this.tempNews.imageUrl = ''
-    this.$refs.imageUpload && this.$refs.imageUpload.clearFiles()
-    return false
-  }
-  return true
-},
