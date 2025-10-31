@@ -91,7 +91,7 @@
       border
       style="width: 100%"
     >
-      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column  v-if="false" prop="id" label="ID" width="80" />
       <el-table-column label="封面" width="100">
         <template slot-scope="scope">
           <el-image

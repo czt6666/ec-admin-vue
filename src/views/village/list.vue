@@ -25,7 +25,7 @@
       border
       style="width: 100%"
     >
-      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column v-if="false" prop="id" label="ID" width="80" />
       <el-table-column prop="villageName" label="村庄名称" min-width="120" />
       <el-table-column prop="address" label="详细地址" min-width="150" />
       <el-table-column prop="secretaryName" label="村书记" width="100" />
