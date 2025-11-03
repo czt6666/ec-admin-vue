@@ -645,7 +645,7 @@ export default {
         if (Array.isArray(response)) {
           this.villageList = response
           console.log('=== 乡村数据设置成功 ===')
-        } else if (response && response.code === 1) {
+        } else if (response && response.code === 200) {
           this.villageList = response.data || []
           console.log('=== 乡村数据设置成功（标准格式）===')
         } else {
@@ -673,7 +673,7 @@ export default {
         if (Array.isArray(response)) {
           this.homestayList = response
           this.total = response.length
-        } else if (response.code === 1) {
+        } else if (response.code === 200) {
           this.homestayList = response.data.records || []
           this.total = response.data.total
         } else {
