@@ -256,64 +256,17 @@
         </el-form-item>
         
         <!-- 规格管理 -->
-        <el-form-item label="商品规格" prop="specifications" :rules="{
-          validator: (rule, value, callback) => {
-            // 检查是否至少有一个完整的规格项
-            const hasCompleteSpec = this.tempProduct.specifications.some(spec => {
-              return spec.specName && spec.price !== '' && spec.stock !== '';
-            });
-            
-            if (!hasCompleteSpec) {
-              callback(new Error('请至少填写一组完整的商品规格（销售规格、价格、库存）'));
-              return;
-            }
-            
-            // 检查是否有重复的销售规格
-            const specNames = this.tempProduct.specifications
-              .filter(spec => spec.specName)
-              .map(spec => spec.specName.trim());
-            const uniqueSpecNames = [...new Set(specNames)];
-            
-            if (specNames.length !== uniqueSpecNames.length) {
-              callback(new Error('销售规格不能重复'));
-              return;
-            }
-            
-            callback();
-          },
-          trigger: 'change'
-        }">
+        <el-form-item label="商品规格" prop="specifications">
           <el-table
             :data="tempProduct.specifications"
-            style="width: 100%"
+            style="width: 100%;"
             border
           >
             <el-table-column label="销售规格">
               <template slot-scope="scope">
                 <el-form-item
                   :prop="`specifications.${scope.$index}.specName`"
-                  :rules="[{
-                    required: true,
-                    message: '销售规格为必填项',
-                    trigger: 'blur,change'
-                  }, {
-                    validator: (rule, value, callback) => {
-                      // 检查销售规格是否重复
-                      if (value) {
-                        const trimmedValue = value.trim();
-                        // 检查当前商品规格数组中是否有重复的销售规格
-                        const isDuplicate = this.tempProduct.specifications.some((spec, index) => {
-                          return index !== scope.$index && spec.specName && spec.specName.trim() === trimmedValue;
-                        });
-                        if (isDuplicate) {
-                          callback(new Error('销售规格不能重复'));
-                          return;
-                        }
-                      }
-                      callback();
-                    },
-                    trigger: 'blur,change'
-                  }]"
+                  style="min-height: 60px;"
                 >
                   <el-input 
                     v-model="scope.row.specName" 
@@ -327,16 +280,11 @@
               <template slot-scope="scope">
                 <el-form-item
                   :prop="`specifications.${scope.$index}.price`"
-                  :rules="[{
-                    required: true,
-                    message: '价格为必填项',
-                    trigger: 'blur,change'
-                  }, {
-                    type: 'number',
-                    min: 0,
-                    message: '价格不能为负数',
-                    trigger: 'blur,change'
-                  }]"
+                  :rules="[
+                    { required: true, message: '价格为必填项', trigger: 'blur,change' },
+                    { type: 'number', min: 0, message: '价格必须为非负数', trigger: 'blur,change' }
+                  ]"
+                  style="min-height: 60px;"
                 >
                   <el-input 
                     v-model.number="scope.row.price" 
@@ -351,20 +299,11 @@
               <template slot-scope="scope">
                 <el-form-item
                   :prop="`specifications.${scope.$index}.stock`"
-                  :rules="[{
-                    required: true,
-                    message: '库存为必填项',
-                    trigger: 'blur,change'
-                  }, {
-                    type: 'number',
-                    min: 0,
-                    message: '库存不能为负数',
-                    trigger: 'blur,change'
-                  }, {
-                    pattern: /^\d+$/,
-                    message: '库存必须为整数',
-                    trigger: 'blur,change'
-                  }]"
+                  :rules="[
+                    { required: true, message: '库存为必填项', trigger: 'blur,change' },
+                    { type: 'number', min: 0, message: '库存必须为非负数', trigger: 'blur,change' }
+                  ]"
+                  style="min-height: 60px;"
                 >
                   <el-input 
                     v-model.number="scope.row.stock" 
@@ -394,9 +333,9 @@
               </template>
             </el-table-column>
           </el-table>
-          <div style="color: #909399; font-size: 12px; margin-top: 5px;">
-            * 说明：销售规格、价格、库存均为必填项，销售规格不能重复，价格和库存必须为非负数，库存必须为整数
-          </div>
+            <div style="color: #909399; font-size: 12px; margin-top: 5px;">
+              * 说明：销售规格、价格、库存均为必填项，价格、库存必须为非负数
+            </div>
         </el-form-item>
       </el-form>
       
@@ -789,6 +728,15 @@ export default {
       this.$refs.productForm.validate(async (valid) => {
         if (valid) {
           try {
+            // 检查销售规格是否重复
+            const specNames = this.tempProduct.specifications.map(spec => spec.specName.trim())
+            const uniqueSpecNames = new Set(specNames)
+            
+            if (specNames.length !== uniqueSpecNames.size) {
+              this.$message.error('销售规格不能重复')
+              return
+            }
+            
             // 显示加载状态
             this.$loading({
               lock: true,
