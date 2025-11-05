@@ -266,12 +266,7 @@
               <template slot-scope="scope">
                 <el-form-item
                   :prop="`specifications.${scope.$index}.specName`"
-                  :rules="[{
-                    required: true,
-                    message: '销售规格为必填项',
-                    trigger: 'blur,change'
-                  }]"
-                   style="min-height: 60px;"
+                  style="min-height: 60px;"
                 >
                   <el-input 
                     v-model="scope.row.specName" 
@@ -285,11 +280,10 @@
               <template slot-scope="scope">
                 <el-form-item
                   :prop="`specifications.${scope.$index}.price`"
-                  :rules="[{
-                    required: true,
-                    message: '价格为必填项',
-                    trigger: 'blur,change'
-                  }]"
+                  :rules="[
+                    { required: true, message: '价格为必填项', trigger: 'blur,change' },
+                    { type: 'number', min: 0, message: '价格必须为非负数', trigger: 'blur,change' }
+                  ]"
                   style="min-height: 60px;"
                 >
                   <el-input 
@@ -305,11 +299,10 @@
               <template slot-scope="scope">
                 <el-form-item
                   :prop="`specifications.${scope.$index}.stock`"
-                  :rules="[{
-                    required: true,
-                    message: '库存为必填项',
-                    trigger: 'blur,change'
-                  }]"
+                  :rules="[
+                    { required: true, message: '库存为必填项', trigger: 'blur,change' },
+                    { type: 'number', min: 0, message: '库存必须为非负数', trigger: 'blur,change' }
+                  ]"
                   style="min-height: 60px;"
                 >
                   <el-input 
@@ -341,7 +334,7 @@
             </el-table-column>
           </el-table>
             <div style="color: #909399; font-size: 12px; margin-top: 5px;">
-              * 说明：销售规格、价格、库存均为必填项
+              * 说明：销售规格、价格、库存均为必填项，价格、库存必须为非负数
             </div>
         </el-form-item>
       </el-form>
@@ -735,6 +728,15 @@ export default {
       this.$refs.productForm.validate(async (valid) => {
         if (valid) {
           try {
+            // 检查销售规格是否重复
+            const specNames = this.tempProduct.specifications.map(spec => spec.specName.trim())
+            const uniqueSpecNames = new Set(specNames)
+            
+            if (specNames.length !== uniqueSpecNames.size) {
+              this.$message.error('销售规格不能重复')
+              return
+            }
+            
             // 显示加载状态
             this.$loading({
               lock: true,
