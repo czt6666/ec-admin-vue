@@ -182,9 +182,9 @@ export const asyncRouterMap = [
       },
       {
         path: 'business',
-        name: '商业经营管理',
+        name: '购物车',
         component: _import('products/business'),
-        meta: { title: '商业经营管理', icon: 'password' },
+        meta: { title: '购物车', icon: 'password' },
         menu: 'role'
       },
     ]
