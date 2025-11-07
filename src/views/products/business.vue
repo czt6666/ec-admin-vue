@@ -5,12 +5,12 @@
         <span>购物车</span>
       </div>
 
-      <!-- 查询（仅分页查询） -->
+      <!-- 查询（用户ID可选） -->
       <el-form :inline="true" :model="queryForm" size="small" @submit.native.prevent>
         <el-form-item label="用户ID">
           <el-input
             v-model.trim="queryForm.userId"
-            placeholder="请输入用户ID"
+            placeholder="请输入用户ID（可留空）"
             clearable
             @keyup.enter.native="handleSearch"
             style="width:220px"
@@ -44,7 +44,6 @@
         :header-cell-style="{ background: '#f5f7fa' }"
         empty-text="暂无数据"
       >
-
         <el-table-column prop="userId" label="用户ID" width="100" />
         <el-table-column prop="skuId" label="商品ID" width="140" />
         <el-table-column prop="createTime" label="创建时间" min-width="180" />
@@ -56,18 +55,19 @@
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
-      <el-pagination
-        class="mt16"
-        background
-        layout="total, sizes, prev, pager, next, jumper"
-        :current-page="pagination.page"
-        :page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="pagination.total"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
+      <!-- 分页（右下角对齐） -->
+      <div class="mt16 pager-right">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :current-page="pagination.page"
+          :page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="pagination.total"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -80,27 +80,29 @@ export default {
   data() {
     return {
       loading: false,
-      queryForm: { userId: '' },
+      queryForm: { userId: '' }, // 用户ID保留，可选
       addForm: { userId: '', skuId: '' },
       tableData: [],
       pagination: { page: 1, pageSize: 10, total: 0 }
     }
   },
+  created() {
+    this.handleSearch(1)
+  },
   methods: {
     async handleSearch(page = this.pagination.page) {
-      if (!this.queryForm.userId) {
-        this.$message.warning('请先输入用户ID')
-        return
-      }
       this.loading = true
       try {
         const params = {
-          userId: Number(this.queryForm.userId),
           page: Number(page) || 1,
           pageSize: Number(this.pagination.pageSize) || 10
         }
+        // 仅当填写了 userId 时传给后端进行过滤
+        if (this.queryForm.userId !== '' && this.queryForm.userId != null) {
+          params.userId = Number(this.queryForm.userId)
+        }
+
         const res = await pageCart(params)
-        console.log('cart/page params:', params, 'resp:', res)
         if (res && (res.code === 200 || res.code === 1 || res.code === '200' || res.code === '1')) {
           const d = res.data || {}
           const rows = Array.isArray(d.list) ? d.list : []
@@ -118,7 +120,12 @@ export default {
         this.loading = false
       }
     },
-    // 新增（保留）
+    handleReset() {
+      this.queryForm.userId = ''
+      this.pagination.page = 1
+      this.pagination.pageSize = 10
+      this.handleSearch(1)
+    },
     async handleAdd() {
       if (!this.addForm.userId || !this.addForm.skuId) {
         this.$message.warning('请填写用户ID与商品ID')
@@ -131,9 +138,7 @@ export default {
         })
         if (res.code === 200 || res.code === 1) {
           this.$message.success('加入购物车成功')
-          if (this.queryForm.userId && String(this.queryForm.userId) === String(this.addForm.userId)) {
-            await this.handleSearch()
-          }
+          await this.handleSearch(this.pagination.page)
           this.addForm.userId = ''
           this.addForm.skuId = ''
         } else {
@@ -143,15 +148,13 @@ export default {
         this.$message.error('请求异常')
       }
     },
-
-    // 删除（保留）
     async handleDelete(row) {
       try {
         await this.$confirm('确认删除该商品吗？', '提示', { type: 'warning' })
         const res = await deleteCartItem(row.userId, row.skuId)
         if (res.code === 200 || res.code === 1) {
           this.$message.success('删除成功')
-          this.handleSearch()
+          this.handleSearch(this.pagination.page)
         } else {
           this.$message.error(res.msg || '删除失败')
         }
@@ -159,8 +162,6 @@ export default {
         if (e !== 'cancel') this.$message.error('请求异常')
       }
     },
-
-    // 分页交互
     handleSizeChange(size) {
       this.pagination.pageSize = size
       this.pagination.page = 1
@@ -175,4 +176,8 @@ export default {
 
 <style scoped>
 .mt16 { margin-top: 16px; }
+.pager-right {
+  display: flex;
+  justify-content: flex-end;
+}
 </style>
