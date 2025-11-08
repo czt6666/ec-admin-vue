@@ -27,7 +27,7 @@
         <el-form-item label="用户ID">
           <el-input v-model.trim="addForm.userId" placeholder="用户ID" style="width:180px" />
         </el-form-item>
-        <el-form-item label="商品ID">
+        <el-form-item label="商品规格ID">
           <el-input v-model.trim="addForm.skuId" placeholder="SKU ID" style="width:180px" />
         </el-form-item>
         <el-form-item>
@@ -45,7 +45,48 @@
         empty-text="暂无数据"
       >
         <el-table-column prop="userId" label="用户ID" width="100" />
-        <el-table-column prop="skuId" label="商品ID" width="140" />
+        <el-table-column label="商品信息" min-width="200">
+          <template slot-scope="{ row }">
+            <div style="display: flex; align-items: center;">
+              <el-image
+                v-if="row.previewImage"
+                :src="row.previewImage"
+                style="width: 60px; height: 60px; margin-right: 10px; border-radius: 4px;"
+                fit="cover"
+                :preview-src-list="[row.previewImage]"
+              />
+              <div>
+                <div style="font-weight: bold; margin-bottom: 4px;">{{ row.title || '-' }}</div>
+                <div style="font-size: 12px; color: #909399;">{{ row.intro || '-' }}</div>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="规格" width="150">
+          <template slot-scope="{ row }">
+            <el-tag size="small" type="info">{{ row.specs || '-' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="价格" width="100" align="right">
+          <template slot-scope="{ row }">
+            <span style="color: #f56c6c; font-weight: bold;">¥{{ (row.price / 100).toFixed(2) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="库存" width="80" align="center">
+          <template slot-scope="{ row }">
+            <span :style="{ color: row.stock > 0 ? '#67c23a' : '#f56c6c' }">
+              {{ row.stock || 0 }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="商品状态" width="100" align="center">
+          <template slot-scope="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+              {{ row.status === 1 ? '上架' : '下架' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="skuId" label="SKU ID" width="100" />
         <el-table-column prop="createTime" label="创建时间" min-width="180" />
         <el-table-column prop="updateTime" label="更新时间" min-width="180" />
         <el-table-column label="操作" width="120" fixed="right">
@@ -80,7 +121,7 @@ export default {
   data() {
     return {
       loading: false,
-      queryForm: { userId: '' }, // 用户ID保留，可选
+      queryForm: { userId: '' },
       addForm: { userId: '', skuId: '' },
       tableData: [],
       pagination: { page: 1, pageSize: 10, total: 0 }
@@ -97,7 +138,6 @@ export default {
           page: Number(page) || 1,
           pageSize: Number(this.pagination.pageSize) || 10
         }
-        // 仅当填写了 userId 时传给后端进行过滤
         if (this.queryForm.userId !== '' && this.queryForm.userId != null) {
           params.userId = Number(this.queryForm.userId)
         }
@@ -128,7 +168,7 @@ export default {
     },
     async handleAdd() {
       if (!this.addForm.userId || !this.addForm.skuId) {
-        this.$message.warning('请填写用户ID与商品ID')
+        this.$message.warning('请填写用户ID与商品规格ID')
         return
       }
       try {
