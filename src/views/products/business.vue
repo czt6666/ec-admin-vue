@@ -182,10 +182,13 @@ export default {
           this.addForm.userId = ''
           this.addForm.skuId = ''
         } else {
-          this.$message.error(res.msg || '加入失败')
+          // 显示后端返回的具体错误信息（如"商品已下架，无法加入购物车"）
+          this.$message.error(res.msg || res.message || '加入失败')
         }
       } catch (e) {
-        this.$message.error('请求异常')
+        // 捕获网络异常等，显示详细错误信息
+        console.error('加入购物车异常:', e)
+
       }
     },
     async handleDelete(row) {
