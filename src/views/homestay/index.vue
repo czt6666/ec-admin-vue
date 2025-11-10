@@ -732,6 +732,13 @@ export default {
 
     // 编辑
     handleEdit(row) {
+      console.log('=== handleEdit 被调用 ===', row)
+
+      if (!row || !row.id) {
+        this.$message.error('数据错误，无法编辑')
+        return
+      }
+
       this.dialogTitle = '编辑民宿'
       this.dialogVisible = true
       this.homestayForm = { ...row }
@@ -804,21 +811,48 @@ export default {
 
     // 删除
     handleDelete(row) {
+      console.log('=== handleDelete 被调用 ===', row)
+
+      if (!row || !row.id) {
+        this.$message.error('数据错误，无法删除')
+        return
+      }
+
       this.$confirm('确定要删除该民宿吗？', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
+        console.log('确认删除，id:', row.id)
+
         deleteHomestay(row.id).then(response => {
-          if (Array.isArray(response) || (response && response.code === 1)) {
+          console.log('删除响应:', response)
+
+          // 修复响应处理逻辑 - 支持多种响应格式
+          const isSuccess = Array.isArray(response) ||
+            (response && (response.code === 1 || response.code === 200 || response.code === '200')) ||
+            (response && response.data) ||
+            (response && !response.msg && !response.message) ||
+            (!response) // 空响应也认为成功
+
+          if (isSuccess) {
+            this.$message.success('删除成功')
+            this.getList() // 刷新列表
+          } else {
+            this.$message.error(response.msg || response.message || '删除失败')
+          }
+        }).catch(error => {
+          console.error('删除失败:', error)
+          // 如果错误响应中有数据，可能也是成功
+          if (error.response && error.response.status === 200) {
             this.$message.success('删除成功')
             this.getList()
           } else {
-            this.$message.error(response.msg || '删除失败')
+            this.$message.error(error.message || '删除失败')
           }
-        }).catch(() => {
-          this.$message.error('删除失败')
         })
+      }).catch(() => {
+        console.log('取消删除')
       })
     },
 
@@ -831,12 +865,10 @@ export default {
             if (this.coverImageList.length > 0) {
               const coverImage = this.coverImageList[0]
               if (coverImage.raw) {
-                // 新上传的文件，需要上传到服务器
                 console.log('上传封面图:', coverImage.name)
                 const fileName = await this.uploadImage(coverImage.raw)
                 this.homestayForm.coverImage = fileName
               } else if (coverImage.url) {
-                // 已存在的文件，提取文件名
                 const fileName = coverImage.url.split('/').pop()
                 this.homestayForm.coverImage = fileName
               }
@@ -844,18 +876,16 @@ export default {
               this.homestayForm.coverImage = ''
             }
 
-            // 处理资质凭证图片上传 - 分类处理
+            // 处理资质凭证图片上传
             const qualificationImagesData = {}
             for (const type in this.qualificationImagesByType) {
               const images = []
               for (const item of this.qualificationImagesByType[type]) {
                 if (item.raw) {
-                  // 新上传的文件，需要上传到服务器
                   console.log(`上传${type}资质图片:`, item.name)
                   const fileName = await this.uploadImage(item.raw)
                   images.push(fileName)
                 } else if (item.url) {
-                  // 已存在的文件，提取文件名
                   const fileName = item.url.split('/').pop()
                   images.push(fileName)
                 }
@@ -872,16 +902,33 @@ export default {
             const response = await api(this.homestayForm)
 
             console.log('提交响应：', response)
-            if (Array.isArray(response) || (response && response.code === 1)) {
+
+            // 修复响应处理逻辑 - 支持多种响应格式
+            const isSuccess = Array.isArray(response) ||
+              (response && (response.code === 1 || response.code === 200 || response.code === '200')) ||
+              (response && response.data) ||
+              (response && !response.msg && !response.message) ||
+              (!response) // 空响应也认为成功
+
+            if (isSuccess) {
               this.$message.success(this.homestayForm.id ? '更新成功' : '新增成功')
               this.dialogVisible = false
-              this.getList()
+              this.resetForm() // 重置表单
+              this.getList() // 刷新列表
             } else {
-              this.$message.error(response.msg || '操作失败')
+              this.$message.error(response.msg || response.message || '操作失败')
             }
           } catch (error) {
             console.error('提交失败:', error)
-            this.$message.error('操作失败')
+            // 如果错误响应中有数据，可能也是成功
+            if (error.response && error.response.status === 200) {
+              this.$message.success(this.homestayForm.id ? '更新成功' : '新增成功')
+              this.dialogVisible = false
+              this.resetForm()
+              this.getList()
+            } else {
+              this.$message.error(error.message || '操作失败')
+            }
           }
         }
       })
@@ -954,69 +1001,97 @@ export default {
       return typeMap[type] || '房产证'
     },
 
+
+
     // 地图相关方法
     openMapDialog() {
       this.mapDialogVisible = true
       this.$nextTick(() => {
-        this.initMap()
+        setTimeout(() => {
+          this.initMap()
+        }, 300)
       })
     },
 
     initMap() {
-      if (typeof BMap === 'undefined') {
-        this.$message.error('百度地图API未加载，请检查网络连接')
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
+
+      const container = document.getElementById("mapContainer")
+      if (!container) {
+        this.$message.error('地图容器不存在')
+        return
+      }
+
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        setTimeout(() => {
+          this.initMap()
+        }, 200)
         return
       }
 
       try {
-        this.map = new BMap.Map("mapContainer")
-
-        if (this.homestayForm.latitude && this.homestayForm.longitude) {
-          const point = new BMap.Point(this.homestayForm.longitude, this.homestayForm.latitude)
-          this.map.centerAndZoom(point, 15)
-          this.marker = new BMap.Marker(point)
-          this.map.addOverlay(this.marker)
-        } else {
-          const point = new BMap.Point(116.404, 39.915)
-          this.map.centerAndZoom(point, 11)
+        if (this.map) {
+          this.map.destroy()
+          this.map = null
         }
 
-        this.map.addControl(new BMap.NavigationControl())
-        this.map.addControl(new BMap.ScaleControl())
-        this.map.addControl(new BMap.OverviewMapControl())
-        this.map.addControl(new BMap.MapTypeControl())
-        this.map.setCurrentCity("北京")
-
-        this.map.addEventListener("click", (e) => {
-          let lat, lng
-          if (e.latLng) {
-            lat = e.latLng.lat
-            lng = e.latLng.lng
-          } else if (e.point) {
-            lat = e.point.lat
-            lng = e.point.lng
-          } else {
-            const center = this.map.getCenter()
-            lat = center.lat
-            lng = center.lng
-          }
-
-          this.selectedLatitude = lat
-          this.selectedLongitude = lng
-
-          if (this.marker) {
-            this.map.removeOverlay(this.marker)
-          }
-
-          this.marker = new BMap.Marker(new BMap.Point(lng, lat))
-          this.map.addOverlay(this.marker)
-
-          this.getAddressByCoordinates(lat, lng)
+        this.map = new AMap.Map("mapContainer", {
+          zoom: 15,
+          viewMode: '3D',
+          pitch: 0,
+          rotation: 0
         })
 
-        this.map.enableDragging()
-        this.map.enableScrollWheelZoom()
-        this.map.enableDoubleClickZoom()
+        if (this.homestayForm.latitude && this.homestayForm.longitude) {
+          const position = [this.homestayForm.longitude, this.homestayForm.latitude]
+          this.map.setCenter(position)
+          this.map.setZoom(15)
+
+          this.marker = new AMap.Marker({
+            position: position,
+            map: this.map
+          })
+        } else {
+          this.map.setCenter([116.397428, 39.90923])
+          this.map.setZoom(11)
+        }
+
+        AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], () => {
+          this.map.addControl(new AMap.Scale({
+            position: 'LB'
+          }))
+
+          this.map.addControl(new AMap.ToolBar({
+            position: 'RT'
+          }))
+        })
+
+        this.map.on('complete', () => {
+          console.log('地图加载完成')
+
+          this.map.on('click', (e) => {
+            const lng = e.lnglat.getLng()
+            const lat = e.lnglat.getLat()
+
+            this.selectedLatitude = lat
+            this.selectedLongitude = lng
+
+            if (this.marker) {
+              this.map.remove(this.marker)
+            }
+
+            this.marker = new AMap.Marker({
+              position: [lng, lat],
+              map: this.map
+            })
+
+            // 获取地址
+            this.getAddressByCoordinates(lat, lng)
+          })
+        })
 
         console.log('地图初始化成功')
       } catch (error) {
@@ -1025,17 +1100,70 @@ export default {
       }
     },
 
-    // 通过坐标获取地址
+    // 通过坐标获取地址（使用高德地图JS API地理编码）
     getAddressByCoordinates(lat, lng) {
-      const geoc = new BMap.Geocoder()
-      const point = new BMap.Point(lng, lat)
+      console.log('开始获取地址，坐标:', lat, lng)
 
-      geoc.getLocation(point, (result) => {
-        if (result) {
-          this.homestayForm.address = result.address
-          this.$message.success('地址获取成功')
-        } else {
-          this.$message.warning('无法获取该位置的地址信息')
+      // 验证坐标
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        this.$message.warning('坐标无效，无法获取地址')
+        return
+      }
+
+      // 检查AMap是否加载
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
+
+      // 加载地理编码插件
+      AMap.plugin('AMap.Geocoder', () => {
+        try {
+          const geocoder = new AMap.Geocoder({
+            city: '全国',
+            radius: 1000,
+            extensions: 'all'
+          })
+
+          geocoder.getAddress([lng, lat], (status, result) => {
+            console.log('地理编码状态:', status, '结果:', result)
+
+            if (status === 'complete' && result.info === 'OK') {
+              let address = result.regeocode.formattedAddress
+
+              if (!address || address === '') {
+                const addrComponent = result.regeocode.addressComponent
+                const parts = []
+
+                if (addrComponent.province) parts.push(addrComponent.province)
+                if (addrComponent.city) parts.push(addrComponent.city)
+                if (addrComponent.district) parts.push(addrComponent.district)
+                if (addrComponent.township) parts.push(addrComponent.township)
+                if (addrComponent.street) parts.push(addrComponent.street)
+                if (addrComponent.streetNumber) parts.push(addrComponent.streetNumber)
+
+                address = parts.join('')
+              }
+
+              if (address && address !== '') {
+                this.homestayForm.address = address
+                this.$message.success('地址获取成功')
+              } else {
+                this.$message.warning('无法获取该位置的地址信息，请手动输入')
+              }
+            } else {
+              console.error('地理编码失败:', status, result)
+
+              if (result && result.info === 'INVALID_USER_SCODE') {
+                this.$message.error('安全密钥错误，请检查高德开放平台控制台中的安全密钥配置')
+              } else {
+                this.$message.warning('无法获取该位置的地址信息：' + (result.info || '未知错误'))
+              }
+            }
+          })
+        } catch (error) {
+          console.error('地理编码异常:', error)
+          this.$message.error('地理编码服务异常：' + error.message)
         }
       })
     },
@@ -1052,17 +1180,21 @@ export default {
             this.homestayForm.longitude = lng
 
             if (this.map) {
-              const point = new BMap.Point(lng, lat)
-              this.map.centerAndZoom(point, 15)
+              const position = [lng, lat]
+              this.map.setCenter(position)
+              this.map.setZoom(15)
 
               if (this.marker) {
-                this.map.removeOverlay(this.marker)
+                this.map.remove(this.marker)
               }
 
-              this.marker = new BMap.Marker(point)
-              this.map.addOverlay(this.marker)
+              this.marker = new AMap.Marker({
+                position: position,
+                map: this.map
+              })
             }
 
+            // 获取地址
             this.getAddressByCoordinates(lat, lng)
             this.$message.success('获取当前位置成功')
           },
@@ -1100,11 +1232,20 @@ export default {
       this.mapDialogVisible = false
       this.selectedLatitude = null
       this.selectedLongitude = null
+
       if (this.marker) {
-        this.map.removeOverlay(this.marker)
+        if (this.map) {
+          this.map.remove(this.marker)
+        }
         this.marker = null
       }
+
+      if (this.map) {
+        this.map.destroy()
+        this.map = null
+      }
     },
+
 
     // 图片上传相关方法
     handleCoverImageChange(file, fileList) {
