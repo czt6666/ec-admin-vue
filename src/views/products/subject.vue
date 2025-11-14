@@ -2,8 +2,11 @@
   <div class="app-container">
     <div class="filter-container">
       <el-form :inline="true" :model="searchForm" size="small">
-        <el-form-item label="商品标题">
-          <el-input v-model="searchForm.title" placeholder="请输入商品标题" clearable></el-input>
+        <el-form-item label="商品名称">
+          <el-input v-model="searchForm.title" placeholder="请输入商品名称" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="店铺名称">
+          <el-input v-model="searchForm.shopName" placeholder="请输入店铺名称" clearable></el-input>
         </el-form-item>
         <el-form-item label="上架状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
@@ -84,8 +87,14 @@
       
       <el-table-column
         prop="title"
-        label="商品标题"
+        label="商品名称"
         min-width="200"
+      ></el-table-column>
+      
+      <el-table-column
+        prop="shopName"
+        label="店铺名称"
+        min-width="150"
       ></el-table-column>
       
       <el-table-column
@@ -212,10 +221,9 @@
           </el-upload>
         </el-form-item>
         
-        <el-form-item label="商品标题" prop="title">
-          <el-input v-model="tempProduct.title" placeholder="请输入商品标题"></el-input>
+        <el-form-item label="商品名称" prop="title">
+          <el-input v-model="tempProduct.title" placeholder="请输入商品名称"></el-input>
         </el-form-item>
-        
         <el-form-item label="商品简介" prop="description">
           <el-input
             v-model="tempProduct.description"
@@ -362,6 +370,7 @@ export default {
       // 筛选条件
       searchForm: {
         title: '',
+        shopName: '',
         status: '',
         startTime: '',
         endTime: ''
@@ -376,6 +385,7 @@ export default {
           previewImages: [],
           detailImages: [],
           title: '',
+          shopName: '',
           description: '',
           productUrl: '',
           status: '1',
@@ -393,7 +403,7 @@ export default {
       // 表单验证规则
       rules: {
         title: [
-          { required: true, message: '请输入商品标题', trigger: 'blur' }
+          { required: true, message: '请输入商品名称', trigger: 'blur' }
         ],
         description: [
           { required: true, message: '请输入商品简介', trigger: 'blur' }
@@ -421,10 +431,23 @@ export default {
         pageRow: this.pageSize,
         // 只传递有值的筛选条件
         ...(this.searchForm.title && { title: this.searchForm.title }),
+        ...(this.searchForm.shopName && { shopName: this.searchForm.shopName }),
         ...(this.searchForm.status !== '' && { status: this.searchForm.status }),
         ...(this.searchForm.startTime && { startTime: this.searchForm.startTime }),
         ...(this.searchForm.endTime && { endTime: this.searchForm.endTime })
       }
+      
+      // 遍历当前用户的roleIds，如果有1，就不传userId参数，如果没有1，就传userId参数
+      // 注意：不传递roleIds参数本身
+      const roleIds = this.$store.getters.roleIds || [];
+      const hasRoleOne = roleIds.includes(1);
+      if (!hasRoleOne && this.$store.getters.userId) {
+        // 将userId转换为Long类型
+        params.userId = parseInt(this.$store.getters.userId, 10)
+      }
+      
+      // 打印请求参数到控制台，便于调试
+      console.log('商品列表请求参数:', params)
       
       this.api({
         url: '/products/subject/list',
@@ -440,7 +463,12 @@ export default {
       }).catch(error => {
         this.listLoading = false
         console.error('获取商品列表失败:', error)
-        this.$message.error('获取商品列表失败')
+        // 显示更详细的错误信息
+        if (error && error.message) {
+          this.$message.error('获取商品列表失败: ' + error.message)
+        } else {
+          this.$message.error('获取商品列表失败')
+        }
       })
     },
     
@@ -452,6 +480,7 @@ export default {
         previewImages: [],
         detailImages: [],
         title: '',
+        shopName: '',
         description: '',
         productUrl: '',
         status: '1',
@@ -554,6 +583,7 @@ export default {
       
       this.tempProduct = {
         ...row,
+        shopName: row.shopName || '',
         // 将图片URL数组转换为文件列表格式
         fileList: row.previewImages && row.previewImages.length > 0 
           ? row.previewImages.map((url, index) => ({ 
@@ -861,6 +891,7 @@ export default {
     resetSearch() {
       this.searchForm = {
         title: '',
+        shopName: '',
         status: '',
         startTime: '',
         endTime: ''

@@ -175,9 +175,9 @@ export const asyncRouterMap = [
     children: [
       {
         path: 'subject',
-        name: '主体信息管理',
+        name: '商品管理',
         component: _import('products/subject'),
-        meta: { title: '主体信息管理', icon: 'user' },
+        meta: { title: '商品管理', icon: 'user' },
         menu: 'user'
       },
       {
