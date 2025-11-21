@@ -361,7 +361,7 @@ export default {
 
       try {
         console.log('开始导出...')
-        console.log('请求URL：', 'http://localhost:8020/admin/ecadmin/village/export')
+        console.log('请求URL：', 'http://8.145.38.163:8020/admin/ecadmin/village/export')
 
         const response = await exportVillages()
         console.log('导出响应：', response)

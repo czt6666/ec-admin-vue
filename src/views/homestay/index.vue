@@ -567,7 +567,7 @@ export default {
   methods: {
     // 获取基础URL
     getBaseUrl() {
-      this.baseUrl = process.env.VUE_APP_BASE_API || 'http://localhost:8020'
+      this.baseUrl = process.env.VUE_APP_BASE_API || 'http://8.145.38.163:8020'
       console.log('基础URL:', this.baseUrl)
     },
 

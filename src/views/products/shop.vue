@@ -64,6 +64,7 @@
 
     <!-- 表格 -->
     <el-table v-loading="loading" :data="shopList" border style="width: 100%">
+      <el-table-column prop="displayNo" label="序号" width="120" />
       <el-table-column label="店铺图片" width="120">
         <template slot-scope="scope">
           <el-image
@@ -77,7 +78,6 @@
           <span v-else style="color: #999; font-size: 12px;">暂无图片</span>
         </template>
       </el-table-column>
-      <el-table-column prop="displayNo" label="序号" width="120" />
       <el-table-column prop="shopName" label="店铺名称" min-width="160" />
       <el-table-column prop="productType" label="产品类型" width="140" />
       <el-table-column label="经营状态" width="120">

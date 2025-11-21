@@ -16,7 +16,7 @@ const signPath = ["/tags/getInfo"] //验签黑名单，数组内请求路径为�
 
 // 创建axios实例
 const service = axios.create({
-  baseURL: window.webofdConfig.BASE_URL || 'http://localhost:8020/admin', // 添加默认值
+  baseURL: window.webofdConfig.BASE_URL || 'http://8.145.38.163:8020/admin', // 添加默认值
   timeout: 180000                  // 请求超时时间
 })
 
