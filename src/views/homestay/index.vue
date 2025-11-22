@@ -1168,43 +1168,82 @@ export default {
       })
     },
 
-    // 获取当前位置
+    // 获取当前位置 - 使用高德地图定位API（支持HTTP环境）
     getCurrentLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const lat = position.coords.latitude
-            const lng = position.coords.longitude
+      // 检查高德地图API是否加载
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
 
-            this.homestayForm.latitude = lat
-            this.homestayForm.longitude = lng
+      // 加载定位插件
+      AMap.plugin('AMap.Geolocation', () => {
+        try {
+          const geolocation = new AMap.Geolocation({
+            enableHighAccuracy: true, // 是否使用高精度定位
+            timeout: 10000, // 超时时间
+            maximumAge: 0, // 定位结果缓存时间
+            convert: true, // 自动偏移坐标
+            showButton: false, // 不显示定位按钮
+            buttonDom: null,
+            showMarker: false,
+            showCircle: false,
+            panToLocation: false,
+            zoomToAccuracy: false
+          })
 
-            if (this.map) {
-              const position = [lng, lat]
-              this.map.setCenter(position)
-              this.map.setZoom(15)
+          // 获取当前位置
+          geolocation.getCurrentPosition((status, result) => {
+            console.log('定位状态:', status, '结果:', result)
 
-              if (this.marker) {
-                this.map.remove(this.marker)
+            if (status === 'complete') {
+              // 定位成功
+              const lat = result.position.lat
+              const lng = result.position.lng
+
+              this.homestayForm.latitude = lat
+              this.homestayForm.longitude = lng
+
+              // 如果地图已打开，更新地图中心点和标记
+              if (this.map) {
+                const position = [lng, lat]
+                this.map.setCenter(position)
+                this.map.setZoom(15)
+
+                if (this.marker) {
+                  this.map.remove(this.marker)
+                }
+
+                this.marker = new AMap.Marker({
+                  position: position,
+                  map: this.map
+                })
               }
 
-              this.marker = new AMap.Marker({
-                position: position,
-                map: this.map
-              })
-            }
+              // 获取地址
+              this.getAddressByCoordinates(lat, lng)
+              this.$message.success('获取当前位置成功')
+            } else {
+              // 定位失败
+              console.error('定位失败:', result)
+              let errorMsg = '获取当前位置失败'
 
-            // 获取地址
-            this.getAddressByCoordinates(lat, lng)
-            this.$message.success('获取当前位置成功')
-          },
-          (error) => {
-            this.$message.error('获取当前位置失败：' + error.message)
-          }
-        )
-      } else {
-        this.$message.error('浏览器不支持地理位置获取')
-      }
+              if (result && result.message) {
+                errorMsg += '：' + result.message
+              } else if (status === 'error') {
+                errorMsg += '：定位服务异常，请检查网络连接或浏览器定位权限'
+              } else if (status === 'timeout') {
+                errorMsg += '：定位超时，请重试'
+              }
+
+              this.$message.error(errorMsg)
+            }
+          })
+        } catch (error) {
+          console.error('定位异常:', error)
+          this.$message.error('定位服务异常：' + error.message)
+        }
+      })
     },
 
     // 清除坐标

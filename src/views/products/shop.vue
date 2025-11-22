@@ -352,7 +352,7 @@ export default {
   },
   methods: {
     getBaseUrl() {
-      this.baseUrl = process.env.VUE_APP_BASE_API || 'http://localhost:8020'
+      this.baseUrl = process.env.VUE_APP_BASE_API || 'http://8.145.38.163:8020'
     },
     refreshUploadHeaders() {
       this.uploadHeaders = { token: getToken() || '' }
