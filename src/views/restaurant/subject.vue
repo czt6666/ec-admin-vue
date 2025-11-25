@@ -1,6 +1,5 @@
 <template>
   <div class="restaurant-page">
-    <!-- 筛选 -->
     <el-card shadow="hover" class="filter-card">
       <el-form :inline="true" :model="filters">
         <el-form-item label="门店名称">
@@ -14,8 +13,14 @@
           </el-radio-group>
         </el-form-item>
 
-        <el-form-item label="所属村">
-          <el-select v-model="filters.villageId" placeholder="选择所属村" clearable>
+        <el-form-item label="所属乡村">
+          <el-select
+            v-model="filters.villageId"
+            placeholder="选择所属乡村"
+            clearable
+            :loading="villageLoading"
+            style="width: 200px"
+          >
             <el-option
               v-for="item in villageOptions"
               :key="item.id"
@@ -28,19 +33,14 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
-        </el-form-item>
-
-        <el-form-item>
           <el-button type="success" @click="openDialog()">新增</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 列表 -->
     <el-card>
       <el-table :data="tableData" border stripe>
         <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="id" label="门店ID" width="120" />
         <el-table-column prop="name" label="门店名称" min-width="200" show-overflow-tooltip />
         <el-table-column label="经营状态" width="120">
           <template slot-scope="{ row }">
@@ -49,7 +49,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="villageName" label="所属村" width="180" />
+        <el-table-column prop="villageName" label="所属乡村" width="180" />
         <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column prop="updateTime" label="更新时间" width="180" />
         <el-table-column label="操作" width="160" fixed="right">
@@ -72,7 +72,6 @@
       </div>
     </el-card>
 
-    <!-- 新增/编辑弹窗 -->
     <el-dialog
       :title="dialogTitle"
       :visible.sync="dialogVisible"
@@ -86,17 +85,12 @@
 
         <el-form-item label="关联用户" prop="userId">
           <el-select v-model="form.userId" filterable placeholder="选择用户">
-            <el-option
-              v-for="item in userOptions"
-              :key="item.id"
-              :label="item.username"
-              :value="item.id"
-            />
+            <el-option v-for="item in userOptions" :key="item.id" :label="item.username" :value="item.id" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="所属村" prop="villageId">
-          <el-select v-model="form.villageId" filterable placeholder="选择所属村">
+        <el-form-item label="所属乡村" prop="villageId">
+          <el-select v-model="form.villageId" filterable placeholder="选择所属乡村">
             <el-option
               v-for="item in villageOptions"
               :key="item.id"
@@ -147,12 +141,7 @@
           <el-input v-model="form.address" maxlength="200" show-word-limit />
         </el-form-item>
 
-        <el-form-item label="门店坐标" required>
-          <div class="coord-inputs">
-            <el-input-number v-model="form.coordinateLat" placeholder="纬度" :precision="6" :step="0.000001" />
-            <el-input-number v-model="form.coordinateLng" placeholder="经度" :precision="6" :step="0.000001" />
-          </div>
-        </el-form-item>
+
 
         <el-form-item label="联系电话" prop="phone">
           <el-input v-model="form.phone" maxlength="20" show-word-limit />
@@ -215,13 +204,14 @@ import { getVillageList } from '@/api/village'
 import { listUserOptions } from '@/api/user'
 
 export default {
-  name: 'RestaurantBusiness',
+  name: 'RestaurantPage',
   data () {
     return {
       filters: { name: '', status: null, villageId: null },
       pagination: { pageNum: 1, pageSize: 10, total: 0 },
       tableData: [],
       villageOptions: [],
+      villageLoading: false,
       userOptions: [],
       dialogVisible: false,
       dialogTitle: '新增门店',
@@ -235,7 +225,7 @@ export default {
           { max: 100, message: '不超过100字符', trigger: 'blur' }
         ],
         userId: [{ required: true, message: '请选择关联用户', trigger: 'change' }],
-        villageId: [{ required: true, message: '请选择所属村', trigger: 'change' }],
+        villageId: [{ required: true, message: '请选择所属乡村', trigger: 'change' }],
         status: [{ required: true, message: '请选择状态', trigger: 'change' }],
         businessStartTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
         businessEndTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
@@ -249,7 +239,8 @@ export default {
     }
   },
   created () {
-    this.loadOptions()
+    this.loadVillageOptions()   // 关键：获取乡村列表
+    this.loadUserOptions()
     this.loadData()
   },
   methods: {
@@ -271,13 +262,26 @@ export default {
         licenseUrls: ''
       }
     },
-    async loadOptions () {
-      const [users, villages] = await Promise.all([
-        listUserOptions(),
-        getVillageList()
-      ])
-      this.userOptions = users.data || []
-      this.villageOptions = villages.data || []
+    async loadVillageOptions () {
+      this.villageLoading = true
+      try {
+        const res = await getVillageList()
+        if (Array.isArray(res)) {
+          this.villageOptions = res
+        } else if (res && res.code === 200) {
+          this.villageOptions = res.data || []
+        } else {
+          this.$message.error('获取乡村列表失败：数据格式异常')
+        }
+      } catch (e) {
+        this.$message.error('获取乡村列表失败，请检查网络连接')
+      } finally {
+        this.villageLoading = false
+      }
+    },
+    async loadUserOptions () {
+      const res = await listUserOptions()
+      this.userOptions = res.data || []
     },
     async loadData () {
       const params = {
@@ -318,12 +322,14 @@ export default {
         this.logoList = [{ name: 'logo', url: this.form.logoUrl }]
       }
       const licenses = JSON.parse(this.form.licenseUrls || '[]')
-      this.businessList = licenses
-        .filter(item => item.type === 'business')
-        .map(item => ({ name: item.url.split('/').pop(), url: item.url }))
-      this.foodList = licenses
-        .filter(item => item.type === 'food')
-        .map(item => ({ name: item.url.split('/').pop(), url: item.url }))
+      this.businessList = licenses.filter(item => item.type === 'business').map(item => ({
+        name: item.url.split('/').pop(),
+        url: item.url
+      }))
+      this.foodList = licenses.filter(item => item.type === 'food').map(item => ({
+        name: item.url.split('/').pop(),
+        url: item.url
+      }))
     },
     handleLogoSuccess (response, file, fileList) {
       const url = fileList[0].url || response.url
@@ -377,9 +383,7 @@ export default {
       })
     },
     handleDelete (id) {
-      this.$confirm('删除后，门店信息不可恢复，确认是否删除？', '提示', {
-        type: 'warning'
-      })
+      this.$confirm('删除后，门店信息不可恢复，确认是否删除？', '提示', { type: 'warning' })
         .then(async () => {
           await deleteRestaurant(id)
           this.$message.success('删除成功')
@@ -407,14 +411,12 @@ export default {
 .coord-inputs {
   display: flex;
   gap: 12px;
-  width: 100%;
 }
 .time-sep {
   margin: 0 8px;
   color: #666;
 }
-.logo-uploader ::v-deep .el-upload--picture-card,
-.el-upload--picture-card {
+.logo-uploader ::v-deep .el-upload--picture-card {
   width: 120px;
   height: 120px;
 }
