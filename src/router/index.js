@@ -198,9 +198,9 @@ export const asyncRouterMap = [
     children: [
       {
         path: 'subject',
-        name: '主体信息管理',
+        name: '商户管理',
         component: _import('restaurant/subject'),
-        meta: { title: '主体信息管理', icon: 'user' },
+        meta: { title: '商户管理', icon: 'user' },
         menu: 'user'
       },
       {
