@@ -210,6 +210,13 @@ export const asyncRouterMap = [
         meta: { title: '商业经营管理', icon: 'password' },
         menu: 'role'
       },
+      {
+        path: 'dishCategory',
+        name: '菜品分类管理',
+        component: _import('restaurant/dishCategory'),
+        meta: { title: '菜品分类管理', icon: 'table' },
+        menu: 'user'
+      }
     ]
   },
   {
