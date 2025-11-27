@@ -108,7 +108,7 @@
     <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="600px" @close="resetForm">
       <el-form ref="dishCategoryFormRef" :model="dishCategoryForm" :rules="dishCategoryRules" label-width="120px">
         <el-form-item label="菜品分类" prop="categoryName">
-          <el-input v-model="dishCategoryForm.categoryName" placeholder="请输入菜品分类" />
+          <el-input v-model="dishCategoryForm.categoryName" placeholder="请输入菜品分类" maxlength="50" show-word-limit />
         </el-form-item>
         
         <el-form-item label="餐厅名称" prop="restaurantName">
@@ -452,7 +452,12 @@ export default {
 
 .operation-buttons {
   display: flex;
-  gap: 10px;
+  gap: 0;
+}
+
+.operation-buttons .el-button {
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
 .sort-buttons {

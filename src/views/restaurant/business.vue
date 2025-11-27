@@ -70,13 +70,19 @@
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="160" />
       <el-table-column prop="updateTime" label="更新时间" width="160" />
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="250" fixed="right">
         <template slot-scope="scope">
           <div class="operation-buttons">
-            <el-button size="mini" type="primary" @click="handleEdit(scope.row)">
+            <el-button size="mini" @click="moveUp(scope.$index)" :disabled="scope.$index === 0" style="padding: 4px 6px; border-color: white;">
+              <i class="el-icon-arrow-up"></i>
+            </el-button>
+            <el-button size="mini" @click="moveDown(scope.$index)" :disabled="scope.$index === dishList.length - 1" style="padding: 4px 6px; border-color: white;">
+              <i class="el-icon-arrow-down"></i>
+            </el-button>
+            <el-button size="small" type="primary" @click="handleEdit(scope.row)" style="padding: 6px 10px; font-size: 13px;">
               <i class="el-icon-edit"></i> 编辑
             </el-button>
-            <el-button size="mini" type="danger" @click="handleDelete(scope.row)">
+            <el-button size="small" type="danger" @click="handleDelete(scope.row)" style="padding: 6px 10px; font-size: 13px;">
               <i class="el-icon-delete"></i> 删除
             </el-button>
           </div>
@@ -164,7 +170,8 @@ import {
   getDishDetail, 
   createDish, 
   updateDish, 
-  deleteDish 
+  deleteDish,
+  updateDishSort
 } from '@/api/restaurant'
 import { getDishCategoryList } from '@/api/dishCategory'
 import request from '@/utils/shop_api'
@@ -386,6 +393,60 @@ export default {
         .catch(() => {})
     },
 
+    // 向上移动
+    async moveUp(index) {
+      if (index > 0) {
+        // 交换位置
+        [this.dishList[index], this.dishList[index - 1]] = 
+        [this.dishList[index - 1], this.dishList[index]]
+        
+        // 更新排序
+        await this.updateSort()
+      }
+    },
+    
+    // 向下移动
+    async moveDown(index) {
+      if (index < this.dishList.length - 1) {
+        // 交换位置
+        [this.dishList[index], this.dishList[index + 1]] = 
+        [this.dishList[index + 1], this.dishList[index]]
+        
+        // 更新排序
+        await this.updateSort()
+      }
+    },
+    
+    // 更新排序
+    async updateSort() {
+      try {
+        // 构造排序数据
+        const sortData = this.dishList.map((item, index) => ({
+          id: item.id,
+          sortNum: index + 1
+        }))
+        
+        // 调用API更新排序
+        const response = await updateDishSort(sortData)
+        
+        if (response && (response.code === 200 || response.code === '200')) {
+          this.$message.success('排序更新成功')
+          // 成功后重新获取列表以确保数据一致性
+          await this.getList()
+        } else {
+          const errorMsg = (response && response.msg) ? response.msg : '排序更新失败'
+          this.$message.error(errorMsg)
+          // 如果更新失败，重新获取列表以恢复原始顺序
+          await this.getList()
+        }
+      } catch (error) {
+        console.error('排序更新失败:', error)
+        this.$message.error('排序更新失败，请重试')
+        // 如果更新失败，重新获取列表以恢复原始顺序
+        await this.getList()
+      }
+    },
+
     // 提交表单
     submitForm() {
       this.$refs.dishFormRef.validate(async (valid) => {
@@ -578,6 +639,7 @@ export default {
 }
 .operation-buttons {
   display: flex;
-  gap: 10px;
+  gap: 5px;
+  flex-wrap: nowrap;
 }
 </style>

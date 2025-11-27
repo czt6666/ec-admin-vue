@@ -110,3 +110,14 @@ export function deleteDish(data) {
     data
   })
 }
+
+/**
+ * 更新菜品排序
+ */
+export function updateDishSort(data) {
+  return shopRequest({
+    url: '/restaurant/dish/updateSort',
+    method: 'post',
+    data
+  })
+}
