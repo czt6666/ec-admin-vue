@@ -608,13 +608,30 @@ export default {
       })
     },
     handleDelete (id) {
-      this.$confirm('删除后，门店信息不可恢复，确认是否删除？', '提示', { type: 'warning' })
-        .then(async () => {
-          await deleteRestaurant(id)
-          this.$message.success('删除成功')
-          this.loadData()
-        })
-        .catch(() => {})
+      this.$confirm('删除后，门店信息不可恢复，确认是否删除？', '删除确认', {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true,
+        dangerouslyUseHTMLString: false,
+        beforeClose: (action, instance, done) => {
+          if (action === 'confirm') {
+            instance.confirmButtonLoading = true
+            deleteRestaurant(id)
+              .then(() => {
+                this.$message.success('删除成功')
+                this.loadData()
+                done()
+              })
+              .catch(() => {
+                instance.confirmButtonLoading = false
+                this.$message.error('删除失败')
+              })
+          } else {
+            done()
+          }
+        }
+      }).catch(() => {})
     },
     resetForm () {
       if (this.$refs.formRef) {
