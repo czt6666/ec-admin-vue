@@ -200,7 +200,7 @@ export default {
       rules: {
         title: [
           { required: true, message: '请输入新闻标题', trigger: 'blur' },
-          { type: 'string', max: 15, message: '标题不能超过15个字', trigger: 'change' }
+          { type: 'string', max: 50, message: '标题不能超过50个字', trigger: 'change' }
         ],
         author: [
           { required: true, message: '请输入作者', trigger: 'blur' }
