@@ -19,17 +19,7 @@
             style="width: 200px"
           />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="请选择状态"
-            clearable
-            style="width: 120px"
-          >
-            <el-option label="启用" :value="1" />
-            <el-option label="禁用" :value="0" />
-          </el-select>
-        </el-form-item>
+
         <el-form-item>
           <el-button type="primary" @click="handleQuery">
             <i class="el-icon-search"></i> 搜索
@@ -122,12 +112,7 @@
           </el-select>
         </el-form-item>
         
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="dishCategoryForm.status" placeholder="请选择状态" style="width: 100%">
-            <el-option label="启用" :value="1" />
-            <el-option label="禁用" :value="0" />
-          </el-select>
-        </el-form-item>
+
       </el-form>
       
       <div slot="footer" class="dialog-footer">
@@ -161,8 +146,7 @@ export default {
         page: 1,
         pageSize: 10,
         categoryName: '',
-        restaurantName: '',
-        status: ''
+        restaurantName: ''
       },
       // 对话框可见性
       dialogVisible: false,
@@ -174,8 +158,7 @@ export default {
       dishCategoryForm: {
         id: '',
         categoryName: '',
-        restaurantName: '', // 动态获取餐厅名称
-        status: 1
+        restaurantName: '' // 动态获取餐厅名称
       },
       // 表单验证规则
       dishCategoryRules: {
@@ -186,9 +169,6 @@ export default {
         restaurantName: [
           { required: true, message: '请输入餐厅名称', trigger: 'blur' },
           { min: 1, max: 100, message: '餐厅名称长度在 1 到 100 个字符', trigger: 'blur' }
-        ],
-        status: [
-          { required: true, message: '请选择状态', trigger: 'change' }
         ]
       },
       
