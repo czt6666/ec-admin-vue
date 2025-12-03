@@ -122,7 +122,13 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="店铺名称" prop="shopName">
-              <el-input v-model="shopForm.shopName" placeholder="请输入店铺名称" />
+              <el-input
+                v-model="shopForm.shopName"
+                placeholder="请输入店铺名称"
+                :maxlength="100"
+                show-word-limit
+              />
+
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -161,7 +167,15 @@
         </el-form-item>
 
         <el-form-item label="店铺简介" prop="shopIntro">
-          <el-input v-model="shopForm.shopIntro" type="textarea" :rows="3" placeholder="请输入店铺简介" />
+          <el-input
+            v-model="shopForm.shopIntro"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入店铺简介"
+            :maxlength="500"
+            show-word-limit
+          />
+
         </el-form-item>
 
         <!-- 店铺头像 -->
@@ -170,12 +184,14 @@
             ref="avatarUpload"
             :auto-upload="false"
             :on-change="handleAvatarChange"
+            :on-remove="handleAvatarRemove"
             :before-upload="beforeAvatarUpload"
             :file-list="avatarList"
             accept="image/*"
             :limit="1"
             action=""
             list-type="picture-card"
+            :class="{ 'avatar-upload-hidden': avatarList.length >= 1 }"
           >
             <i class="el-icon-plus" />
             <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 2MB</div>
@@ -576,6 +592,10 @@ export default {
     handleAvatarChange(file, fileList) {
       this.avatarList = fileList
     },
+    // 新增的
+    handleAvatarRemove (file, fileList) {
+      this.avatarList = fileList   // 删除后变成 []，class 取消，+ 号重新出现
+    },
     beforeAvatarUpload(file) {
       const isImage = file.type.startsWith('image/')
       const isLt2M = file.size / 1024 / 1024 < 2
@@ -692,5 +712,20 @@ export default {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+/* 灰色提示 */
+.gray-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #999;
+}
+
+/* 有头像时隐藏“+”按钮 */
+.avatar-upload-hidden >>> .el-upload--picture-card {
+  display: none;
+}
+/* 如果不支持 >>>，可以用 /deep/ 或 ::v-deep 其中一种 */
+.avatar-upload-hidden /deep/ .el-upload--picture-card {
+  display: none;
 }
 </style>
