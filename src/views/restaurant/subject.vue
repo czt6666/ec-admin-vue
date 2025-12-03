@@ -286,7 +286,7 @@ export default {
   },
   methods: {
     getBaseUrl () {
-      this.baseUrl = process.env.VUE_APP_BASE_API || 'http://8.145.38.163:8020'
+      this.baseUrl = process.env.VUE_APP_BASE_API || 'https://dzk.czt666.cn/api'
     },
     refreshUploadHeaders () {
       this.uploadHeaders = { token: getToken() || '' }
