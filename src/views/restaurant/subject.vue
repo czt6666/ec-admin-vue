@@ -156,12 +156,14 @@
             ref="logoUpload"
             :auto-upload="false"
             :on-change="handleLogoChange"
+            :on-remove="handleLogoRemove"
             :before-upload="beforeLogoUpload"
             :file-list="logoList"
             accept="image/*"
             :limit="1"
             action=""
             list-type="picture-card"
+            :class="{ 'logo-upload-hidden': logoList.length >= 1 }"
           >
             <i class="el-icon-plus" />
             <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 2MB</div>
@@ -504,6 +506,9 @@ export default {
       }
       return false
     },
+    handleLogoRemove (file, fileList) {
+      this.logoList = fileList  // 删除后变成 []，class 取消，“+” 恢复显示
+    },
     handleLicenseChange (type, file, fileList) {
       if (type === 'business') {
         this.businessList = fileList
@@ -667,4 +672,10 @@ export default {
   width: 120px;
   height: 120px;
 }
+/* 已有 Logo 时隐藏上传按钮（+） */
+.logo-upload-hidden /deep/ .el-upload--picture-card {
+  display: none;
+}
+
+
 </style>
