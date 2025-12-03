@@ -107,7 +107,7 @@
     <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="600px" @close="resetForm">
       <el-form ref="dishFormRef" :model="dishForm" :rules="dishRules" label-width="120px">
         <el-form-item label="餐厅名称" prop="restaurantId">
-          <el-select v-model="dishForm.restaurantId" placeholder="请选择餐厅" filterable style="width: 100%">
+          <el-select v-model="dishForm.restaurantId" placeholder="请选择餐厅" filterable style="width: 100%" @change="handleRestaurantChange">
             <el-option
               v-for="item in restaurantList"
               :key="item.id"
@@ -118,9 +118,9 @@
         </el-form-item>
 
         <el-form-item label="菜品分类" prop="categoryId">
-          <el-select v-model="dishForm.categoryId" placeholder="请选择菜品分类" filterable style="width: 100%">
+          <el-select v-model="dishForm.categoryId" placeholder="请选择菜品分类" filterable style="width: 100%" :disabled="!dishForm.restaurantId">
             <el-option
-              v-for="item in categoryList"
+              v-for="item in filteredCategoryList"
               :key="item.id"
               :label="item.restaurantName + ' - ' + item.categoryName"
               :value="item.id"
@@ -150,6 +150,24 @@
         <el-form-item label="菜品描述" prop="description">
           <el-input v-model="dishForm.description" type="textarea" :rows="3" placeholder="请输入菜品描述" maxlength="30" show-word-limit />
         </el-form-item>
+
+        <el-form-item label="菜品图片">
+          <el-upload
+            class="avatar-uploader"
+            action=""
+            :auto-upload="false"
+            :show-file-list="true"
+            :file-list="dishForm.fileList"
+            :on-change="handleFileChange"
+            :before-upload="beforeImageUpload"
+            :on-remove="beforeImageRemove"
+            :limit="1"
+            list-type="picture-card"
+          >
+            <i v-if="dishForm.fileList.length < 1" class="el-icon-plus avatar-uploader-icon"></i>
+            <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过2MB，最多上传1张图片</div>
+          </el-upload>
+        </el-form-item>
       </el-form>
 
       <div slot="footer" class="dialog-footer">
@@ -161,6 +179,7 @@
     </el-dialog>
   </div>
 </template>
+
 
 <script>
 import { mapGetters } from 'vuex'
@@ -191,6 +210,7 @@ export default {
       dishList: [],
       restaurantList: [],
       categoryList: [],
+      filteredCategoryList: [], // 添加过滤后的分类列表
       total: 0,
       queryParams: {
         page: 1,
@@ -255,12 +275,33 @@ export default {
     // 获取菜品分类列表
     async loadCategoryList() {
       try {
-        const res = await getDishCategoryList({ userId: this.userId })
+        // 获取所有菜品分类，设置大的pageSize确保获取全部数据
+        const res = await getDishCategoryList({ userId: this.userId, page: 1, pageSize: 1000 })
         if (res && (res.code === 200 || res.code === '200')) {
           this.categoryList = (res.data && res.data.records) || []
+          // 初始化时显示所有分类
+          this.filteredCategoryList = this.categoryList
         }
       } catch (error) {
         this.$message.error('获取菜品分类列表失败')
+      }
+    },
+
+    // 处理餐厅选择变化
+    handleRestaurantChange(restaurantId) {
+      // 清空之前选择的分类
+      this.dishForm.categoryId = null
+      
+      // 根据选择的餐厅名称过滤分类列表
+      if (restaurantId) {
+        // 找到选中的餐厅名称
+        const selectedRestaurant = this.restaurantList.find(item => item.id === restaurantId)
+        if (selectedRestaurant) {
+          this.filteredCategoryList = this.categoryList.filter(item => item.restaurantName === selectedRestaurant.restaurantName)
+        }
+      } else {
+        // 如果没有选择餐厅，显示所有分类
+        this.filteredCategoryList = this.categoryList
       }
     },
 
@@ -538,43 +579,38 @@ export default {
     
     // 处理文件变化（仅验证，不上传）
     handleFileChange(file, fileList) {
-      // 检查是否有无效文件并显示错误提示
-      const invalidFiles = fileList.filter(item => {
-        // 只检查新添加的原始文件
-        if (!item.raw) return false
-        
+      // 只保留最后一张图片（最新的）
+      const latestFileList = fileList.slice(-1)
+      
+      // 检查文件是否有效
+      if (latestFileList.length > 0 && latestFileList[0].raw) {
+        const item = latestFileList[0]
         const isImage = item.raw.type && item.raw.type.startsWith('image/')
         const isLt2M = item.raw.size && item.raw.size / 1024 / 1024 < 2
         
-        // 如果文件不是图片或大于2MB，显示错误提示
+        // 如果文件不是图片或大于2MB，显示错误提示并清空文件列表
         if (!isImage) {
           this.$message.error(`菜品预览图 ${item.name} 只能是图片文件!`)
-          return true
+          this.dishForm.fileList = []
+          this.dishForm.coverImgUrl = ''
+          return
         }
         if (!isLt2M) {
           this.$message.error(`菜品预览图 ${item.name} 大小不能超过2MB!`)
-          return true
+          this.dishForm.fileList = []
+          this.dishForm.coverImgUrl = ''
+          return
         }
-        
-        return false
-      })
+      }
       
-      // 过滤掉验证失败的文件
-      const validFileList = fileList.filter(item => {
-        // 检查文件是否有效
-        const isImage = item.raw ? (item.raw.type && item.raw.type.startsWith('image/')) : true
-        const isLt2M = item.raw ? (item.raw.size && item.raw.size / 1024 / 1024 < 2) : true
-        return isImage && isLt2M
-      })
-      
-      this.dishForm.fileList = validFileList
+      this.dishForm.fileList = latestFileList
       
       // 保存图片URL
-      if (validFileList.length > 0 && validFileList[0].raw) {
-        this.dishForm.coverImgUrl = validFileList[0].raw.name
-      } else if (validFileList.length > 0 && validFileList[0].url) {
+      if (latestFileList.length > 0 && latestFileList[0].raw) {
+        this.dishForm.coverImgUrl = latestFileList[0].raw.name
+      } else if (latestFileList.length > 0 && latestFileList[0].url) {
         // 编辑时已存在的图片
-        this.dishForm.coverImgUrl = validFileList[0].url
+        this.dishForm.coverImgUrl = latestFileList[0].url
       } else {
         this.dishForm.coverImgUrl = ''
       }
@@ -631,6 +667,7 @@ export default {
 }
 </script>
 
+
 <style scoped>
 .pagination-container {
   margin-top: 20px;
@@ -641,5 +678,36 @@ export default {
   display: flex;
   gap: 5px;
   flex-wrap: nowrap;
+}
+
+.avatar-uploader ::v-deep .el-upload--picture-card {
+  width: 120px;
+  height: 120px;
+  line-height: 120px;
+  border-radius: 6px;
+  border: 1px dashed #ffffff; /* 将虚线边框改为白色 */
+}
+
+.avatar-uploader ::v-deep .el-upload-list--picture-card .el-upload-list__item {
+  width: 120px;
+  height: 120px;
+  border-radius: 6px;
+}
+
+.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 120px;
+  height: 120px;
+  line-height: 120px;
+  text-align: center;
+  border-radius: 6px;
+  border: 1px dashed #d9d9d9;
+}
+
+.el-upload__tip {
+  margin-top: 10px;
+  color: #606266;
+  font-size: 12px;
 }
 </style>
