@@ -34,6 +34,7 @@
         </el-form-item>
       </el-form>
     </el-card>
+
     <el-card>
       <el-table :data="tableData" border stripe>
         <el-table-column type="index" label="序号" width="60" />
@@ -87,6 +88,8 @@
         />
       </div>
     </el-card>
+
+    <!-- 新增/编辑对话框 -->
     <el-dialog
       :title="dialogTitle"
       :visible.sync="dialogVisible"
@@ -98,6 +101,7 @@
         <el-form-item label="门店名称" prop="name">
           <el-input v-model="form.name" maxlength="100" show-word-limit />
         </el-form-item>
+
         <el-form-item label="关联用户" prop="userId">
           <el-select
             v-model="form.userId"
@@ -114,6 +118,7 @@
             />
           </el-select>
         </el-form-item>
+
         <el-form-item label="所属乡村" prop="villageId">
           <el-select
             v-model="form.villageId"
@@ -130,12 +135,14 @@
             />
           </el-select>
         </el-form-item>
+
         <el-form-item label="经营状态" prop="status">
           <el-radio-group v-model="form.status">
             <el-radio :label="1">营业</el-radio>
             <el-radio :label="0">停业</el-radio>
           </el-radio-group>
         </el-form-item>
+
         <el-form-item label="营业时间" required>
           <el-time-picker
             v-model="form.businessStartTime"
@@ -151,6 +158,8 @@
             placeholder="结束时间"
           />
         </el-form-item>
+
+        <!-- 门店Logo -->
         <el-form-item label="门店Logo">
           <el-upload
             ref="logoUpload"
@@ -169,12 +178,27 @@
             <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 2MB</div>
           </el-upload>
         </el-form-item>
+
+        <!-- 门店地址 + 地图选址 -->
         <el-form-item label="门店地址" prop="address">
-          <el-input v-model="form.address" maxlength="200" show-word-limit />
+          <el-input
+            v-model="form.address"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入门店地址或使用地图选址"
+            style="width: 320px"
+          />
+          <el-button type="primary" plain size="mini" @click="openMapDialog" style="margin-left: 8px;">
+            地图选址
+          </el-button>
+          <el-button type="default" plain size="mini" @click="getCurrentLocation" style="margin-left: 4px;">
+            获取当前位置
+          </el-button>
         </el-form-item>
         <el-form-item label="联系电话" prop="phone">
           <el-input v-model="form.phone" maxlength="20" show-word-limit />
         </el-form-item>
+
         <el-form-item label="门店公告" prop="notice">
           <el-input
             type="textarea"
@@ -184,6 +208,7 @@
             :rows="3"
           />
         </el-form-item>
+
         <el-form-item label="营业执照">
           <el-upload
             ref="businessUpload"
@@ -200,6 +225,7 @@
             <div slot="tip" class="el-upload__tip">最多上传 15 张，每张不超过 2MB</div>
           </el-upload>
         </el-form-item>
+
         <el-form-item label="食品许可证">
           <el-upload
             ref="foodUpload"
@@ -217,10 +243,33 @@
           </el-upload>
         </el-form-item>
       </el-form>
+
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
       </span>
+    </el-dialog>
+
+    <!-- 地图选择对话框 -->
+    <el-dialog
+      title="选择门店位置"
+      :visible.sync="mapDialogVisible"
+      width="80%"
+      :before-close="closeMapDialog"
+    >
+      <div class="map-dialog-content">
+        <div id="restaurantMapContainer" style="width: 100%; height: 500px;"></div>
+        <div class="map-info">
+          <p>请在地图上点击选择位置</p>
+          <p v-if="selectedLatitude && selectedLongitude">
+            选中位置：纬度 {{ selectedLatitude }}，经度 {{ selectedLongitude }}
+          </p>
+        </div>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="closeMapDialog">取消</el-button>
+        <el-button type="primary" @click="confirmLocation">确定选择</el-button>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -258,6 +307,12 @@ export default {
       foodList: [],
       baseUrl: '',
       uploadHeaders: {},
+      // 地图相关
+      mapDialogVisible: false,
+      map: null,
+      marker: null,
+      selectedLatitude: null,
+      selectedLongitude: null,
       rules: {
         name: [
           { required: true, message: '请输入门店名称', trigger: 'blur' },
@@ -293,10 +348,10 @@ export default {
     },
     getImageUrl (imagePath) {
       if (!imagePath) return ''
-      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      if (imagePath.indexOf('http://') === 0 || imagePath.indexOf('https://') === 0) {
         return imagePath
       }
-      if (imagePath.startsWith('/uploads/')) {
+      if (imagePath.indexOf('/uploads/') === 0) {
         return this.baseUrl + imagePath
       }
       return this.baseUrl + '/uploads/' + imagePath
@@ -310,12 +365,9 @@ export default {
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data', ...this.uploadHeaders }
       })
-      if (response && response.data && response.data.filename) {
-        return response.data.filename
-      }
-      if (response && response.filename) {
-        return response.filename
-      }
+      const data = response && response.data ? response.data : {}
+      if (data.filename) return data.filename
+      if (response && response.filename) return response.filename
       throw new Error('上传响应格式错误')
     },
     initForm () {
@@ -378,7 +430,7 @@ export default {
         pageSize: this.pagination.pageSize
       }
       const res = await listRestaurant(params)
-      const data = res.data || {}
+      const data = res && res.data ? res.data : {}
       this.tableData = data.records || []
       this.pagination.total = data.total || 0
     },
@@ -395,7 +447,6 @@ export default {
       this.refreshUploadHeaders()
       if (row) {
         this.dialogTitle = '编辑门店'
-        // 确保下拉选项已加载后再加载详情
         Promise.all([
           this.loadVillageOptions(),
           this.loadUserOptions()
@@ -410,22 +461,16 @@ export default {
         this.foodList = []
       }
     },
-    // 修复：确保所有数据正确加载，包括关联用户和所属乡村
     async loadDetail (id) {
       try {
         const res = await getRestaurant(id)
-        const data = res.data || res
-
-        // 确保所有字段都正确赋值，特别注意类型转换
+        const data = res && res.data ? res.data : res
         this.form = {
           id: data.id || null,
           name: data.name || '',
-          // 确保 userId 类型匹配（可能是 Long 或 Number）
           userId: data.userId ? Number(data.userId) : null,
-          // 确保 villageId 类型匹配（可能是 Integer 或 Number）
           villageId: data.villageId ? Number(data.villageId) : null,
           status: data.status !== undefined && data.status !== null ? Number(data.status) : 1,
-          // 确保时间字段正确加载
           businessStartTime: data.businessStartTime || '',
           businessEndTime: data.businessEndTime || '',
           logoUrl: data.logoUrl || '',
@@ -437,7 +482,6 @@ export default {
           licenseUrls: data.licenseUrls || ''
         }
 
-        // 加载Logo
         if (this.form.logoUrl) {
           this.logoList = [{
             name: this.form.logoUrl.split('/').pop(),
@@ -448,39 +492,37 @@ export default {
           this.logoList = []
         }
 
-        // 加载证照图片
         this.businessList = []
         this.foodList = []
         if (this.form.licenseUrls) {
           try {
             const licenses = JSON.parse(this.form.licenseUrls)
             if (Array.isArray(licenses)) {
-              licenses.forEach((item, idx) => {
+              for (let i = 0; i < licenses.length; i++) {
+                const item = licenses[i]
                 if (item.type === 'business') {
                   this.businessList.push({
-                    uid: `business-${idx}`,
+                    uid: 'business-' + i,
                     name: item.url ? item.url.split('/').pop() : 'business',
                     url: this.getImageUrl(item.url),
                     status: 'success'
                   })
                 } else if (item.type === 'food') {
                   this.foodList.push({
-                    uid: `food-${idx}`,
+                    uid: 'food-' + i,
                     name: item.url ? item.url.split('/').pop() : 'food',
                     url: this.getImageUrl(item.url),
                     status: 'success'
                   })
                 }
-              })
+              }
             }
           } catch (e) {
             console.error('解析证照图片失败', e)
           }
         }
 
-        // 使用 $nextTick 确保下拉选项已渲染
         this.$nextTick(() => {
-          // 强制更新表单验证状态
           if (this.$refs.formRef) {
             this.$refs.formRef.clearValidate()
           }
@@ -493,8 +535,11 @@ export default {
     handleLogoChange (file, fileList) {
       this.logoList = fileList
     },
+    handleLogoRemove (file, fileList) {
+      this.logoList = fileList
+    },
     beforeLogoUpload (file) {
-      const isImage = file.type.startsWith('image/')
+      const isImage = file.type && file.type.indexOf('image/') === 0
       const isLt2M = file.size / 1024 / 1024 < 2
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
@@ -505,9 +550,6 @@ export default {
         return false
       }
       return false
-    },
-    handleLogoRemove (file, fileList) {
-      this.logoList = fileList  // 删除后变成 []，class 取消，“+” 恢复显示
     },
     handleLicenseChange (type, file, fileList) {
       if (type === 'business') {
@@ -517,7 +559,7 @@ export default {
       }
     },
     beforeLicenseUpload (file) {
-      const isImage = file.type.startsWith('image/')
+      const isImage = file.type && file.type.indexOf('image/') === 0
       const isLt2M = file.size / 1024 / 1024 < 2
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
@@ -529,72 +571,239 @@ export default {
       }
       return false
     },
+
+    // 地图：打开弹窗
+    openMapDialog () {
+      this.mapDialogVisible = true
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.initMap()
+        }, 300)
+      })
+    },
+    // 初始化高德地图
+    initMap () {
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
+      const container = document.getElementById('restaurantMapContainer')
+      if (!container) {
+        this.$message.error('地图容器不存在')
+        return
+      }
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        setTimeout(() => { this.initMap() }, 200)
+        return
+      }
+      try {
+        if (this.map) {
+          this.map.destroy()
+          this.map = null
+        }
+        this.map = new AMap.Map('restaurantMapContainer', {
+          zoom: 15,
+          viewMode: '3D'
+        })
+        if (this.form.coordinateLat && this.form.coordinateLng) {
+          const position = [this.form.coordinateLng, this.form.coordinateLat]
+          this.map.setCenter(position)
+          this.map.setZoom(15)
+          this.marker = new AMap.Marker({ position, map: this.map })
+        } else {
+          this.map.setCenter([116.397428, 39.90923])
+          this.map.setZoom(11)
+        }
+        AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], () => {
+          this.map.addControl(new AMap.Scale({ position: 'LB' }))
+          this.map.addControl(new AMap.ToolBar({ position: 'RT' }))
+        })
+        this.map.on('complete', () => {
+          this.map.on('click', (e) => {
+            const lng = e.lnglat.getLng()
+            const lat = e.lnglat.getLat()
+            this.selectedLatitude = lat
+            this.selectedLongitude = lng
+            if (this.marker) {
+              this.map.remove(this.marker)
+            }
+            this.marker = new AMap.Marker({
+              position: [lng, lat],
+              map: this.map
+            })
+            this.getAddressByCoordinates(lat, lng)
+          })
+        })
+      } catch (e) {
+        console.error('地图初始化失败:', e)
+        this.$message.error('地图初始化失败：' + e.message)
+      }
+    },
+    getAddressByCoordinates (lat, lng) {
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        this.$message.warning('坐标无效，无法获取地址')
+        return
+      }
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
+      AMap.plugin('AMap.Geocoder', () => {
+        try {
+          const geocoder = new AMap.Geocoder({
+            city: '全国',
+            radius: 1000,
+            extensions: 'all'
+          })
+          geocoder.getAddress([lng, lat], (status, result) => {
+            if (status === 'complete' && result.info === 'OK') {
+              let address = result.regeocode.formattedAddress
+              if (!address) {
+                const comp = result.regeocode.addressComponent
+                const parts = []
+                if (comp.province) parts.push(comp.province)
+                if (comp.city) parts.push(comp.city)
+                if (comp.district) parts.push(comp.district)
+                if (comp.township) parts.push(comp.township)
+                if (comp.street) parts.push(comp.street)
+                if (comp.streetNumber) parts.push(comp.streetNumber)
+                address = parts.join('')
+              }
+              if (address) {
+                this.form.address = address
+              } else {
+                this.$message.warning('无法获取该位置的地址信息，请手动输入')
+              }
+            } else {
+              this.$message.warning('无法获取该位置的地址信息')
+            }
+          })
+        } catch (e) {
+          console.error('地理编码异常:', e)
+          this.$message.error('地理编码服务异常：' + e.message)
+        }
+      })
+    },
+    getCurrentLocation () {
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
+      AMap.plugin('AMap.Geolocation', () => {
+        try {
+          const geolocation = new AMap.Geolocation({
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+            convert: true,
+            showButton: false,
+            showMarker: false,
+            showCircle: false,
+            panToLocation: false,
+            zoomToAccuracy: false
+          })
+          geolocation.getCurrentPosition((status, result) => {
+            if (status === 'complete') {
+              const lat = result.position.lat
+              const lng = result.position.lng
+              this.form.coordinateLat = lat
+              this.form.coordinateLng = lng
+              if (this.map) {
+                const position = [lng, lat]
+                this.map.setCenter(position)
+                this.map.setZoom(15)
+                if (this.marker) this.map.remove(this.marker)
+                this.marker = new AMap.Marker({ position, map: this.map })
+              }
+              this.getAddressByCoordinates(lat, lng)
+              this.$message.success('获取当前位置成功')
+            } else {
+              this.$message.error('获取当前位置失败')
+            }
+          })
+        } catch (e) {
+          console.error('定位异常:', e)
+          this.$message.error('定位服务异常：' + e.message)
+        }
+      })
+    },
+    clearCoordinates () {
+      this.form.coordinateLat = null
+      this.form.coordinateLng = null
+      this.$message.info('已清除坐标')
+    },
+    confirmLocation () {
+      if (this.selectedLatitude && this.selectedLongitude) {
+        this.form.coordinateLat = this.selectedLatitude
+        this.form.coordinateLng = this.selectedLongitude
+        this.$message.success('位置选择成功')
+        this.closeMapDialog()
+      } else {
+        this.$message.warning('请先在地图上选择位置')
+      }
+    },
+    closeMapDialog () {
+      this.mapDialogVisible = false
+      this.selectedLatitude = null
+      this.selectedLongitude = null
+      if (this.marker && this.map) {
+        this.map.remove(this.marker)
+      }
+      this.marker = null
+      if (this.map) {
+        this.map.destroy()
+        this.map = null
+      }
+    },
+
     async handleSubmit () {
       this.$refs.formRef.validate(async valid => {
         if (!valid) return
-
         this.submitLoading = true
         try {
-          // 1. 上传Logo
+          // 1. Logo
           if (this.logoList.length > 0) {
             const logo = this.logoList[0]
             if (logo.raw) {
               const fileName = await this.uploadImage(logo.raw)
               this.form.logoUrl = '/uploads/' + fileName
             } else if (logo.url) {
-              const match = logo.url.match(/\/uploads\/[^/]+$/)
-              if (match) {
-                this.form.logoUrl = match[0]
-              } else {
-                this.form.logoUrl = logo.url
-              }
+              const match = /\/uploads\/[^/]+$/.exec(logo.url)
+              this.form.logoUrl = match ? match[0] : logo.url
             }
           } else {
             this.form.logoUrl = ''
           }
 
-          // 2. 上传证照图片
+          // 2. 证照
           const licenseArray = []
-
-          for (const item of this.businessList) {
+          for (let i = 0; i < this.businessList.length; i++) {
+            const item = this.businessList[i]
             let url = ''
             if (item.raw) {
               const fileName = await this.uploadImage(item.raw)
               url = '/uploads/' + fileName
             } else if (item.url) {
-              const match = item.url.match(/\/uploads\/[^/]+$/)
-              if (match) {
-                url = match[0]
-              } else {
-                url = item.url
-              }
+              const match = /\/uploads\/[^/]+$/.exec(item.url)
+              url = match ? match[0] : item.url
             }
-            if (url) {
-              licenseArray.push({ type: 'business', url })
-            }
+            if (url) licenseArray.push({ type: 'business', url })
           }
-
-          for (const item of this.foodList) {
+          for (let i = 0; i < this.foodList.length; i++) {
+            const item = this.foodList[i]
             let url = ''
             if (item.raw) {
               const fileName = await this.uploadImage(item.raw)
               url = '/uploads/' + fileName
             } else if (item.url) {
-              const match = item.url.match(/\/uploads\/[^/]+$/)
-              if (match) {
-                url = match[0]
-              } else {
-                url = item.url
-              }
+              const match = /\/uploads\/[^/]+$/.exec(item.url)
+              url = match ? match[0] : item.url
             }
-            if (url) {
-              licenseArray.push({ type: 'food', url })
-            }
+            if (url) licenseArray.push({ type: 'food', url })
           }
-
           this.form.licenseUrls = JSON.stringify(licenseArray)
 
-          // 3. 提交表单
+          // 3. 提交
           if (this.form.id) {
             await updateRestaurant(this.form)
             this.$message.success('更新成功')
@@ -602,7 +811,6 @@ export default {
             await createRestaurant(this.form)
             this.$message.success('新增成功')
           }
-
           this.dialogVisible = false
           this.loadData()
         } catch (e) {
@@ -668,14 +876,37 @@ export default {
   margin: 0 8px;
   color: #666;
 }
-.logo-uploader ::v-deep .el-upload--picture-card {
-  width: 120px;
-  height: 120px;
+
+/* 坐标输入 */
+.coord-inputs {
+  display: flex;
+  gap: 12px;
 }
+
+/* 灰色提示 */
+.gray-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #999;
+}
+
 /* 已有 Logo 时隐藏上传按钮（+） */
 .logo-upload-hidden /deep/ .el-upload--picture-card {
   display: none;
 }
 
-
+/* 地图弹窗 */
+.map-dialog-content {
+  position: relative;
+}
+.map-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+.map-info p {
+  margin: 5px 0;
+  color: #606266;
+}
 </style>
