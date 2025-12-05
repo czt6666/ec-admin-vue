@@ -42,6 +42,10 @@
         <el-table-column prop="name" label="驿站名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="unifiedSocialCreditCode" label="统一社会信用代码" width="180" />
         <el-table-column prop="legalRepresentative" label="法定代表人" width="120" />
+        <el-table-column prop="serviceMode" label="服务模式" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="roomConfig" label="房型配置" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="careLevel" label="护理等级" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="priceRange" label="价格区间" min-width="140" show-overflow-tooltip />
         <el-table-column prop="officialPhone" label="官方联系电话" width="150" />
         <el-table-column label="营业状态" width="100" align="center">
           <template slot-scope="scope">
@@ -156,6 +160,22 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="主体类型">
+              <el-select
+                v-model="form.subjectTypeId"
+                placeholder="请选择主体类型"
+                clearable
+                filterable
+                style="width: 100%"
+              >
+                <el-option v-for="opt in subjectTypeOptions" :key="opt.id" :label="opt.name" :value="opt.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="注册资本（万元）">
               <el-input-number
                 v-model="form.registeredCapital"
@@ -223,26 +243,54 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="服务模式">
+              <el-input
+                v-model="form.serviceMode"
+                placeholder="如：机构住养,日间照料,上门服务,综合型（逗号分隔）"
+                maxlength="200"
+                show-word-limit
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="总床数">
               <el-input-number v-model="form.totalBeds" :min="0" style="width: 100%" />
             </el-form-item>
           </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="房型配置">
-              <el-input v-model="form.roomConfig" placeholder="如：单人,多人（逗号分隔）" maxlength="100" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="护理等级">
-              <el-input v-model="form.careLevel" placeholder="如：自理,半自理,非自理（逗号分隔）" maxlength="200" />
+              <el-select
+                v-model="form.roomConfig"
+                multiple
+                collapse-tags
+                filterable
+                placeholder="请选择房型配置"
+                style="width: 100%"
+              >
+                <el-option v-for="opt in roomConfigOptions" :key="opt" :label="opt" :value="opt" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="护理等级">
+              <el-select
+                v-model="form.careLevel"
+                multiple
+                collapse-tags
+                filterable
+                placeholder="请选择护理等级"
+                style="width: 100%"
+              >
+                <el-option v-for="opt in careLevelOptions" :key="opt" :label="opt" :value="opt" />
+              </el-select>
+            </el-form-item>
+          </el-col>
           <el-col :span="12">
             <el-form-item label="价格区间">
               <el-input v-model="form.priceRange" placeholder="如：2000-5000元/月" maxlength="100" />
@@ -365,14 +413,15 @@ export default {
         emergencyPhone: '',
         officialEmail: '',
         subjectTypeId: null,
+        serviceMode: '',
         elderlyLicenseNo: '',
         medicalLicenseNo: '',
         foodLicenseNo: '',
         fireAcceptanceNo: '',
         businessStatus: 1,
         totalBeds: 0,
-        roomConfig: '',
-        careLevel: '',
+        roomConfig: [],
+        careLevel: [],
         priceRange: '',
         environmentPhotos: ''
       },
@@ -393,13 +442,15 @@ export default {
           { required: true, message: '请输入法定代表人', trigger: 'blur' }
         ],
         officialPhone: [
-          { required: true, message: '请输入官方联系电话', trigger: 'blur' }
+          { required: true, message: '请输入官方联系电话', trigger: 'blur' },
+          { pattern: /^\d{11}$/, message: '请输入11位数字手机号', trigger: 'blur' }
         ],
         emergencyContact: [
           { required: true, message: '请输入紧急联系人', trigger: 'blur' }
         ],
         emergencyPhone: [
-          { required: true, message: '请输入紧急联系电话', trigger: 'blur' }
+          { required: true, message: '请输入紧急联系电话', trigger: 'blur' },
+          { pattern: /^\d{11}$/, message: '请输入11位数字手机号', trigger: 'blur' }
         ],
         businessStatus: [
           { required: true, message: '请选择营业状态', trigger: 'change' }
@@ -414,7 +465,10 @@ export default {
       selectedLongitude: null,
       mapTarget: 'registered', // 'registered' | 'business'
       // 预览与拼接使用的基础地址，可按环境修改
-      baseUrl: process.env.VUE_APP_BASE_API || 'http://localhost:8020'
+      baseUrl: process.env.VUE_APP_BASE_API || 'http://localhost:8020',
+      roomConfigOptions: ['单人', '多人'],
+      careLevelOptions: ['自理', '半自理', '非自理'],
+      subjectTypeOptions: []
     }
   },
   computed: {
@@ -434,10 +488,29 @@ export default {
   mounted() {
     // 可按需从 /api/file/getConfig 获取 baseUrl，这里使用环境变量/默认值
     this.loadData()
+    this.loadSubjectTypes()
     // 加载高德地图API
     this.loadAMapScript()
   },
   methods: {
+    // 加载主体类型选项（需后端提供接口）
+    async loadSubjectTypes() {
+      try {
+        // TODO: 替换为真实接口，如 getSubjectTypeList()
+        // 假数据占位，后端返回格式假定为 [{id: 1, name: '养老机构'}, ...]
+        // const res = await getSubjectTypeList()
+        // if (res.code === 200) this.subjectTypeOptions = res.data || []
+        this.subjectTypeOptions = [
+          { id: 1, name: '养老机构' },
+          { id: 2, name: '社区养老' },
+          { id: 3, name: '居家养老' },
+          { id: 4, name: '老年医院' },
+          { id: 5, name: '养老服务中心' }
+        ]
+      } catch (e) {
+        this.$message.error('加载主体类型失败')
+      }
+    },
     // 拼接图片完整 URL
     getImageUrl(imagePath) {
       if (!imagePath) return ''
@@ -512,6 +585,13 @@ export default {
         const res = await getStation(row.id)
         if (res.code === 200) {
           this.form = { ...res.data }
+          // 多选字段回显
+          this.form.roomConfig = res.data.roomConfig ? res.data.roomConfig.split(',').filter(Boolean) : []
+          this.form.careLevel = res.data.careLevel ? res.data.careLevel.split(',').filter(Boolean) : []
+          // 主体类型回显：确保选项中包含当前值
+          if (this.form.subjectTypeId && !this.subjectTypeOptions.find(o => o.id === this.form.subjectTypeId)) {
+            this.subjectTypeOptions.push({ id: this.form.subjectTypeId, name: `类型${this.form.subjectTypeId}` })
+          }
           // 处理环境照片
           if (this.form.environmentPhotos) {
             const photos = this.form.environmentPhotos.split(',').filter(p => p)
@@ -525,10 +605,16 @@ export default {
           } else {
             this.photoList = []
           }
-          // 坐标回显
-          if (this.form.latitude && this.form.longitude) {
-            this.selectedLatitude = this.form.latitude
-            this.selectedLongitude = this.form.longitude
+          // 坐标回显：优先注册地址，其次经营地址
+          if (this.form.registeredLatitude && this.form.registeredLongitude) {
+            this.selectedLatitude = this.form.registeredLatitude
+            this.selectedLongitude = this.form.registeredLongitude
+          } else if (this.form.businessLatitude && this.form.businessLongitude) {
+            this.selectedLatitude = this.form.businessLatitude
+            this.selectedLongitude = this.form.businessLongitude
+          } else {
+            this.selectedLatitude = null
+            this.selectedLongitude = null
           }
           this.dialogVisible = true
         }
@@ -561,6 +647,24 @@ export default {
       this.$refs.form.validate(async(valid) => {
         if (!valid) return
 
+        // 前端重复名称校验（同一页数据防重，后端仍需最终校验）
+        const dup = this.tableData.find(
+          item => item.name === this.form.name && item.id !== this.form.id
+        )
+        if (dup) {
+          this.$message.error('驿站名称已存在，请更换名称')
+          return
+        }
+
+        // 将多选下拉转为逗号分隔字符串提交
+        const payload = { ...this.form }
+        if (Array.isArray(payload.roomConfig)) {
+          payload.roomConfig = payload.roomConfig.join(',')
+        }
+        if (Array.isArray(payload.careLevel)) {
+          payload.careLevel = payload.careLevel.join(',')
+        }
+
         // 上传环境照片
         const newPhotos = []
         for (const file of this.photoList) {
@@ -582,12 +686,12 @@ export default {
             newPhotos.push(url)
           }
         }
-        this.form.environmentPhotos = newPhotos.join(',')
+        payload.environmentPhotos = newPhotos.join(',')
 
         this.submitLoading = true
         try {
           const api = this.isEdit ? updateStation : createStation
-          const res = await api(this.form)
+          const res = await api(payload)
           if (res.code === 200) {
             this.$message.success(this.isEdit ? '更新成功' : '新增成功')
             this.dialogVisible = false
@@ -609,8 +713,10 @@ export default {
         name: '',
         registeredAddress: '',
         businessAddress: '',
-        latitude: null,
-        longitude: null,
+        registeredLatitude: null,
+        registeredLongitude: null,
+        businessLatitude: null,
+        businessLongitude: null,
         unifiedSocialCreditCode: '',
         legalRepresentative: '',
         registeredCapital: null,
@@ -621,14 +727,15 @@ export default {
         emergencyPhone: '',
         officialEmail: '',
         subjectTypeId: null,
+        serviceMode: '',
         elderlyLicenseNo: '',
         medicalLicenseNo: '',
         foodLicenseNo: '',
         fireAcceptanceNo: '',
         businessStatus: 1,
         totalBeds: 0,
-        roomConfig: '',
-        careLevel: '',
+        roomConfig: [],
+        careLevel: [],
         priceRange: '',
         environmentPhotos: ''
       }
@@ -681,17 +788,10 @@ export default {
     },
     // 加载高德地图脚本
     loadAMapScript() {
-      if (window.AMap) {
-        return
+      if (!window.AMap) {
+        this.$message.error('高德地图脚本未加载，请检查 index.html 中的 key 和 securityJsCode')
       }
-      const script = document.createElement('script')
-      script.type = 'text/javascript'
-      script.src = 'https://webapi.amap.com/maps?v=1.4.15&key=YOUR_AMAP_KEY&callback=initAMap'
-      script.async = true
-      window.initAMap = () => {
-        // 地图加载完成
-      }
-      document.head.appendChild(script)
+
     },
     // 打开地图对话框
     openMapDialog(target = 'registered') {
@@ -761,21 +861,24 @@ export default {
     getAddressByCoordinates(lat, lng) {
       if (!window.AMap) return
 
-      const geocoder = new window.AMap.Geocoder()
-      geocoder.getAddress([lng, lat], (status, result) => {
-        if (status === 'complete' && result.info === 'OK') {
-          this.selectedAddress = result.regeocode.formattedAddress
-          // 按当前目标同步地址（注册/经营），与店铺逻辑一致
-          if (this.selectedAddress) {
-            if (this.mapTarget === 'business') {
-              this.form.businessAddress = this.selectedAddress
-            } else {
-              this.form.registeredAddress = this.selectedAddress
+      // 1.x 版本需先加载插件，否则会出现“Geocoder is not a constructor”
+      window.AMap.plugin('AMap.Geocoder', () => {
+        const geocoder = new window.AMap.Geocoder()
+        geocoder.getAddress([lng, lat], (status, result) => {
+          if (status === 'complete' && result.info === 'OK') {
+            this.selectedAddress = result.regeocode.formattedAddress
+            // 按当前目标同步地址（注册/经营）
+            if (this.selectedAddress) {
+              if (this.mapTarget === 'business') {
+                this.form.businessAddress = this.selectedAddress
+              } else {
+                this.form.registeredAddress = this.selectedAddress
+              }
             }
+          } else {
+            this.selectedAddress = ''
           }
-        } else {
-          this.selectedAddress = ''
-        }
+        })
       })
     },
     // 确认位置
