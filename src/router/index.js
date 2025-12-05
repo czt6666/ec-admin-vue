@@ -152,9 +152,9 @@ export const asyncRouterMap = [
     children: [
       {
         path: 'subject',
-        name: '主体信息管理',
+        name: '养老驿站管理',
         component: _import('elderlyCare/subject'),
-        meta: { title: '主体信息管理', icon: 'user' },
+        meta: { title: '养老驿站管理', icon: 'user' },
         menu: 'user'
       },
       {
