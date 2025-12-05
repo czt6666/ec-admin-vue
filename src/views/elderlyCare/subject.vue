@@ -43,6 +43,11 @@
         <el-table-column prop="unifiedSocialCreditCode" label="统一社会信用代码" width="180" />
         <el-table-column prop="legalRepresentative" label="法定代表人" width="120" />
         <el-table-column prop="serviceMode" label="服务模式" min-width="160" show-overflow-tooltip />
+        <el-table-column label="主体类型" min-width="140" show-overflow-tooltip>
+          <template slot-scope="scope">
+            {{ getSubjectTypeName(scope.row.subjectTypeId) || '—' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="roomConfig" label="房型配置" min-width="140" show-overflow-tooltip />
         <el-table-column prop="careLevel" label="护理等级" min-width="140" show-overflow-tooltip />
         <el-table-column prop="priceRange" label="价格区间" min-width="140" show-overflow-tooltip />
@@ -62,8 +67,8 @@
         </el-table-column>
         <el-table-column label="操作" width="180" align="center" fixed="right">
           <template slot-scope="scope">
-            <el-button type="text" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button type="text" size="small" style="color: #f56c6c" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -244,12 +249,16 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="服务模式">
-              <el-input
+              <el-select
                 v-model="form.serviceMode"
-                placeholder="如：机构住养,日间照料,上门服务,综合型（逗号分隔）"
-                maxlength="200"
-                show-word-limit
-              />
+                multiple
+                collapse-tags
+                filterable
+                placeholder="请选择服务模式"
+                style="width: 100%"
+              >
+                <el-option v-for="opt in serviceModeOptions" :key="opt.id" :label="opt.name" :value="opt.name" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -373,6 +382,8 @@
 
 <script>
 import { listStation, getStation, createStation, updateStation, deleteStation, uploadFile } from '@/api/station'
+import { getList as getSubjectTypeList } from '@/api/elderlyCare/subjectType'
+import { getList as getServiceModeList } from '@/api/elderlyCare/serviceMode'
 
 export default {
   name: 'StationManagement',
@@ -413,7 +424,7 @@ export default {
         emergencyPhone: '',
         officialEmail: '',
         subjectTypeId: null,
-        serviceMode: '',
+        serviceMode: [],
         elderlyLicenseNo: '',
         medicalLicenseNo: '',
         foodLicenseNo: '',
@@ -465,10 +476,11 @@ export default {
       selectedLongitude: null,
       mapTarget: 'registered', // 'registered' | 'business'
       // 预览与拼接使用的基础地址，可按环境修改
-      baseUrl: process.env.VUE_APP_BASE_API || 'http://localhost:8020',
+      baseUrl: process.env.VUE_APP_BASE_API || 'https://dzk.czt666.cn/api',
       roomConfigOptions: ['单人', '多人'],
       careLevelOptions: ['自理', '半自理', '非自理'],
-      subjectTypeOptions: []
+      subjectTypeOptions: [],
+      serviceModeOptions: []
     }
   },
   computed: {
@@ -489,26 +501,41 @@ export default {
     // 可按需从 /api/file/getConfig 获取 baseUrl，这里使用环境变量/默认值
     this.loadData()
     this.loadSubjectTypes()
+    this.loadServiceModes()
     // 加载高德地图API
     this.loadAMapScript()
   },
   methods: {
-    // 加载主体类型选项（需后端提供接口）
+    // 加载主体类型选项（真实接口）
     async loadSubjectTypes() {
       try {
-        // TODO: 替换为真实接口，如 getSubjectTypeList()
-        // 假数据占位，后端返回格式假定为 [{id: 1, name: '养老机构'}, ...]
-        // const res = await getSubjectTypeList()
-        // if (res.code === 200) this.subjectTypeOptions = res.data || []
-        this.subjectTypeOptions = [
-          { id: 1, name: '养老机构' },
-          { id: 2, name: '社区养老' },
-          { id: 3, name: '居家养老' },
-          { id: 4, name: '老年医院' },
-          { id: 5, name: '养老服务中心' }
-        ]
+        const res = await getSubjectTypeList({ page: 1, limit: 9999, status: 1 })
+        if (res && res.code === 200) {
+          const raw = res.data || {}
+          const list = raw.records || raw.list || raw || []
+          this.subjectTypeOptions = (Array.isArray(list) ? list : []).map(item => ({
+            id: item.id,
+            name: item.typeName
+          }))
+        }
       } catch (e) {
         this.$message.error('加载主体类型失败')
+      }
+    },
+    // 加载服务模式选项（真实接口）
+    async loadServiceModes() {
+      try {
+        const res = await getServiceModeList({ page: 1, limit: 9999, status: 1 })
+        if (res && res.code === 200) {
+          const raw = res.data || {}
+          const list = raw.records || raw.list || raw || []
+          this.serviceModeOptions = (Array.isArray(list) ? list : []).map(item => ({
+            id: item.id,
+            name: item.modeName
+          }))
+        }
+      } catch (e) {
+        this.$message.error('加载服务模式失败')
       }
     },
     // 拼接图片完整 URL
@@ -588,6 +615,19 @@ export default {
           // 多选字段回显
           this.form.roomConfig = res.data.roomConfig ? res.data.roomConfig.split(',').filter(Boolean) : []
           this.form.careLevel = res.data.careLevel ? res.data.careLevel.split(',').filter(Boolean) : []
+          // 服务模式回显：将逗号分隔字符串转为数组
+          if (res.data.serviceMode) {
+            const modeNames = res.data.serviceMode.split(',').filter(Boolean).map(s => s.trim())
+            this.form.serviceMode = modeNames
+            // 确保选项中包含当前值（如果选项中没有，添加到选项中）
+            modeNames.forEach(modeName => {
+              if (!this.serviceModeOptions.find(o => o.name === modeName)) {
+                this.serviceModeOptions.push({ id: null, name: modeName })
+              }
+            })
+          } else {
+            this.form.serviceMode = []
+          }
           // 主体类型回显：确保选项中包含当前值
           if (this.form.subjectTypeId && !this.subjectTypeOptions.find(o => o.id === this.form.subjectTypeId)) {
             this.subjectTypeOptions.push({ id: this.form.subjectTypeId, name: `类型${this.form.subjectTypeId}` })
@@ -664,6 +704,9 @@ export default {
         if (Array.isArray(payload.careLevel)) {
           payload.careLevel = payload.careLevel.join(',')
         }
+        if (Array.isArray(payload.serviceMode)) {
+          payload.serviceMode = payload.serviceMode.join(',')
+        }
 
         // 上传环境照片
         const newPhotos = []
@@ -727,7 +770,7 @@ export default {
         emergencyPhone: '',
         officialEmail: '',
         subjectTypeId: null,
-        serviceMode: '',
+        serviceMode: [],
         elderlyLicenseNo: '',
         medicalLicenseNo: '',
         foodLicenseNo: '',
@@ -746,6 +789,12 @@ export default {
       if (this.$refs.form) {
         this.$refs.form.resetFields()
       }
+    },
+    // 根据主体类型ID获取名称
+    getSubjectTypeName(id) {
+      if (!id) return ''
+      const found = this.subjectTypeOptions.find(o => o.id === id)
+      return found ? found.name : ''
     },
     // 对话框关闭
     handleDialogClose() {
@@ -1021,4 +1070,5 @@ export default {
   color: #606266;
 }
 </style>
+
 
