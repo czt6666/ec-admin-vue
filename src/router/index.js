@@ -123,46 +123,60 @@ export const asyncRouterMap = [
   {
     path: '/admin/study',
     component: Layout,
-    redirect: '/admin/study/subject',
+    redirect: '/admin/study/tourBase',
     name: 'ECadminStudy',
     meta: { title: '研学基地', icon: 'table' },
     children: [
       {
-        path: 'subject',
-        name: '主体信息管理',
-        component: _import('study/subject'),
-        meta: { title: '主体信息管理', icon: 'user' },
+        path: 'tourBase',
+        name: '研学基地管理',
+        component: _import('study/tourBase'),
+        meta: { title: '研学基地管理', icon: 'table' },
         menu: 'user'
       },
       {
-        path: 'business',
-        name: '商业经营管理',
-        component: _import('study/business'),
-        meta: { title: '商业经营管理', icon: 'password' },
-        menu: 'role'
+        path: 'tourType',
+        name: '研学类型管理',
+        component: _import('study/tourType'),
+        meta: { title: '研学类型管理', icon: 'table' },
+        menu: 'user'
+      },
+      {
+        path: 'tourPlan',
+        name: '研学方案管理',
+        component: _import('study/tourPlan'),
+        meta: { title: '研学方案管理', icon: 'table' },
+        menu: 'user'
+      },
+      {
+        path: 'tourActivity',
+        name: '研学活动管理',
+        component: _import('study/tourActivity'),
+        meta: { title: '研学活动管理', icon: 'table' },
+        menu: 'user'
       },
     ]
   },
   {
     path: '/admin/elderlyCare',
     component: Layout,
-    redirect: '/admin/elderlyCare/subject',
+    redirect: '/admin/elderlyCare/serviceMode',
     name: 'ECadmineElderlyCare',
     meta: { title: '养老经营', icon: 'table' },
     children: [
       {
-        path: 'subject',
-        name: '养老驿站管理',
-        component: _import('elderlyCare/subject'),
-        meta: { title: '养老驿站管理', icon: 'user' },
+        path: 'serviceMode',
+        name: '养老模式管理',
+        component: _import('elderlyCare/serviceMode'),
+        meta: { title: '养老模式管理', icon: 'table' },
         menu: 'user'
       },
       {
-        path: 'business',
-        name: '商业经营管理',
-        component: _import('elderlyCare/business'),
-        meta: { title: '商业经营管理', icon: 'password' },
-        menu: 'role'
+        path: 'subjectType',
+        name: '养老驿站类型管理',
+        component: _import('elderlyCare/subjectType/index'),
+        meta: { title: '养老驿站类型管理', icon: 'table' },
+        menu: 'user'
       },
     ]
   },
