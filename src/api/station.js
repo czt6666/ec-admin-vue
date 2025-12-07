@@ -1,4 +1,5 @@
 // 驿站管理 API
+
 import request from '@/utils/request'
 
 const baseUrl = '/admin/ecadmin/station'
@@ -59,3 +60,35 @@ export function uploadFile(file) {
     }
   })
 }
+
+// 导入驿站信息
+export function importStation(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: baseUrl + '/import',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+// 导出驿站信息
+export function exportStation() {
+  return request({
+    url: baseUrl + '/export',
+    method: 'get',
+    responseType: 'blob',
+    // 确保正确处理 blob 响应
+    transformResponse: [(data) => {
+      // 如果已经是 Blob，直接返回
+      if (data instanceof Blob) {
+        return data
+      }
+      return data
+    }]
+  })
+}
+

@@ -29,6 +29,8 @@
     <el-card class="table-card">
       <div slot="header" class="card-header">
         <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新增驿站</el-button>
+        <el-button type="success" icon="el-icon-upload2" @click="handleImport">导入</el-button>
+        <el-button type="warning" icon="el-icon-download" @click="handleExport">导出</el-button>
       </div>
 
       <!-- 表格 -->
@@ -377,11 +379,38 @@
         <el-button type="primary" @click="confirmLocation">确定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 导入对话框 -->
+    <el-dialog
+      title="导入驿站信息"
+      :visible.sync="importDialogVisible"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-upload
+        ref="upload"
+        :auto-upload="false"
+        :on-change="handleFileChange"
+        :file-list="fileList"
+        :limit="1"
+        accept=".xlsx,.xls"
+        action=""
+        drag
+      >
+        <i class="el-icon-upload" />
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <div slot="tip" class="el-upload__tip">只能上传 xlsx/xls 文件，且不超过 10MB</div>
+      </el-upload>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="importLoading" @click="handleImportSubmit">确定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listStation, getStation, createStation, updateStation, deleteStation, uploadFile } from '@/api/station'
+import { listStation, getStation, createStation, updateStation, deleteStation, uploadFile, importStation, exportStation } from '@/api/station'
 import { getList as getSubjectTypeList } from '@/api/elderlyCare/subjectType'
 import { getList as getServiceModeList } from '@/api/elderlyCare/serviceMode'
 
@@ -478,6 +507,9 @@ export default {
       // 预览与拼接使用的基础地址，可按环境修改
       baseUrl: process.env.VUE_APP_BASE_API || 'https://dzk.czt666.cn/api',
       roomConfigOptions: ['单人', '多人'],
+      importDialogVisible: false,
+      importLoading: false,
+      fileList: [],
       careLevelOptions: ['自理', '半自理', '非自理'],
       subjectTypeOptions: [],
       serviceModeOptions: []
@@ -630,7 +662,7 @@ export default {
           }
           // 主体类型回显：确保选项中包含当前值
           if (this.form.subjectTypeId && !this.subjectTypeOptions.find(o => o.id === this.form.subjectTypeId)) {
-            this.subjectTypeOptions.push({ id: this.form.subjectTypeId, name: `类型${this.form.subjectTypeId}` })
+
           }
           // 处理环境照片
           if (this.form.environmentPhotos) {
@@ -1021,6 +1053,136 @@ export default {
       this.selectedLongitude = null
       this.selectedAddress = ''
       this.$message.info('已清除坐标')
+    },
+    // 导入
+    handleImport() {
+      this.importDialogVisible = true
+      this.fileList = []
+    },
+    // 文件选择变化
+    handleFileChange(file, fileList) {
+      this.fileList = fileList
+    },
+    // 提交导入
+    async handleImportSubmit() {
+      if (this.fileList.length === 0) {
+        this.$message.warning('请选择要导入的文件')
+        return
+      }
+      const file = this.fileList[0].raw
+      if (!file) {
+        this.$message.warning('文件不存在')
+        return
+      }
+      // 检查文件类型
+      const fileName = file.name
+      const fileExt = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()
+      if (fileExt !== 'xlsx' && fileExt !== 'xls') {
+        this.$message.warning('只能上传 xlsx/xls 文件')
+        return
+      }
+      // 检查文件大小（10MB）
+      if (file.size > 10 * 1024 * 1024) {
+        this.$message.warning('文件大小不能超过 10MB')
+        return
+      }
+      this.importLoading = true
+      try {
+        const res = await importStation(file)
+        if (res && res.code === 200) {
+          const result = res.data
+          const successCount = result.successCount || 0
+          const errorCount = result.errorCount || 0
+          const errorMessages = result.errorMessages || []
+          let message = `导入完成！成功：${successCount} 条，失败：${errorCount} 条`
+          if (errorMessages.length > 0) {
+            message += '\n错误详情：\n' + errorMessages.slice(0, 10).join('\n')
+            if (errorMessages.length > 10) {
+              message += `\n...还有 ${errorMessages.length - 10} 条错误`
+            }
+          }
+          if (errorCount > 0) {
+            this.$message({
+              message: message,
+              type: 'warning',
+              duration: 10000
+            })
+          } else {
+            this.$message.success(message)
+          }
+          this.importDialogVisible = false
+          this.fileList = []
+          this.loadData()
+        } else {
+          this.$message.error(res.msg || '导入失败')
+        }
+      } catch (error) {
+        console.error('导入失败', error)
+        let errorMsg = '未知错误'
+        if (error.response && error.response.data) {
+          if (typeof error.response.data === 'string') {
+            errorMsg = error.response.data
+          } else if (error.response.data.msg) {
+            errorMsg = error.response.data.msg
+          } else if (error.response.data.message) {
+            errorMsg = error.response.data.message
+          }
+        } else if (error.message) {
+          errorMsg = error.message
+        }
+        this.$message.error('导入失败：' + errorMsg)
+      } finally {
+        this.importLoading = false
+      }
+    },
+    // 导出
+    async handleExport() {
+      try {
+        this.$message.info('正在导出，请稍候...')
+        // 直接使用 axios 或 request 的底层实现来处理 blob
+        const axios = require('axios').default || require('axios')
+        const response = await axios.get(`${this.baseUrl}/admin/ecadmin/station/export`, {
+          responseType: 'blob'
+        })
+
+        // axios 返回的 blob 在 response.data 中
+        const blob = response.data
+
+        // 验证 blob 是否有效
+        if (!blob || !(blob instanceof Blob)) {
+          // 尝试读取错误信息（可能是 JSON 格式的错误响应）
+          const text = await blob.text()
+          try {
+            const errorData = JSON.parse(text)
+            throw new Error(errorData.msg || errorData.message || '导出失败')
+          } catch (e) {
+            throw new Error('服务器返回了无效的数据格式')
+          }
+        }
+
+        if (blob.size === 0) {
+          throw new Error('导出的文件为空')
+        }
+
+        // 创建下载链接
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        const fileName = `驿站信息_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.xlsx`
+        link.setAttribute('download', fileName)
+        document.body.appendChild(link)
+        link.click()
+        // 延迟移除，确保下载开始
+        setTimeout(() => {
+          document.body.removeChild(link)
+          window.URL.revokeObjectURL(url)
+        }, 100)
+        this.$message.success('导出成功')
+      } catch (error) {
+        console.error('导出失败', error)
+        const errorMsg = error.message || error.toString() || '未知错误'
+        this.$message.error('导出失败：' + errorMsg)
+      }
     }
   }
 }
@@ -1045,8 +1207,8 @@ export default {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
 }
 
 .pagination-container {
