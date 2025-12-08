@@ -100,24 +100,39 @@ export const asyncRouterMap = [
   {
     path: '/admin/tourism',
     component: Layout,
-    redirect: '/admin/tourism/subject',
+    redirect: '/admin/tourism/company',
     name: 'ECadminTourism',
     meta: { title: '旅游经营', icon: 'table' },
     children: [
       {
-        path: 'subject',
-        name: '主体信息管理',
-        component: _import('tourism/subject'),
-        meta: { title: '主体信息管理', icon: 'user' },
+        path: 'company',
+        name: '旅游公司管理',
+        component: _import('tourism/company'), // 新路径
+        meta: { title: '旅游公司管理', icon: 'user' },
         menu: 'user'
       },
       {
-        path: 'business',
-        name: '商业经营管理',
-        component: _import('tourism/business'),
-        meta: { title: '商业经营管理', icon: 'password' },
+        path: 'route',
+        name: '线路管理',
+        component: _import('tourism/route'), // 新路径
+        meta: { title: '线路管理', icon: 'password' },
         menu: 'role'
       },
+      // 可选：线路类型、线路主题的字典页
+      {
+        path: 'route-type',
+        name: '线路类型管理',
+        component: _import('tourism/type'),
+        meta: { title: '线路类型管理', icon: 'table' },
+        menu: 'user'
+      },
+      {
+        path: 'route-theme',
+        name: '线路主题管理',
+        component: _import('tourism/theme'),
+        meta: { title: '线路主题管理', icon: 'table' },
+        menu: 'user'
+      }
     ]
   },
   {
