@@ -185,6 +185,8 @@
 import { mapGetters } from 'vuex'
 import { 
   listRestaurantNamesByUser,
+  getRestaurantIdByName,
+  listRestaurantsByUser,
   getDishList, 
   getDishDetail, 
   createDish, 
@@ -260,12 +262,18 @@ export default {
     // 获取餐厅列表
     async loadRestaurantList() {
       try {
-        const res = await listRestaurantNamesByUser(this.userId)
+        // 使用新的API直接获取包含id和name的餐厅列表
+        const res = await listRestaurantsByUser(this.userId)
         if (res && (res.code === 200 || res.code === '200')) {
-          // API返回的是餐厅名称数组，需要转换为对象数组以适配模板
-          this.restaurantList = Array.isArray(res.data) 
-            ? res.data.map((name, index) => ({ id: index + 1, restaurantName: name }))
-            : []
+          // API返回的是餐厅对象数组，直接赋值给restaurantList
+          if (Array.isArray(res.data)) {
+            this.restaurantList = res.data.map(restaurant => ({
+              id: restaurant.id,
+              restaurantName: restaurant.name
+            }))
+          } else {
+            this.restaurantList = []
+          }
         }
       } catch (error) {
         this.$message.error('获取餐厅列表失败')
@@ -279,6 +287,7 @@ export default {
         const res = await getDishCategoryList({ userId: this.userId, page: 1, pageSize: 1000 })
         if (res && (res.code === 200 || res.code === '200')) {
           this.categoryList = (res.data && res.data.records) || []
+          console.log('CategoryList data structure:', this.categoryList)
           // 初始化时显示所有分类
           this.filteredCategoryList = this.categoryList
         }
@@ -507,8 +516,20 @@ export default {
           }
           
           // 构造发送到后端的数据，使用coverImgUrl字段
+          // 确保restaurantId是正确的
+          let restaurantId = this.dishForm.restaurantId;
+          
+          // 验证restaurantId是否正确，如果不正确则重新获取
+          if (this.dishForm.restaurantId && this.restaurantList.length > 0) {
+            const selectedRestaurant = this.restaurantList.find(item => item.id === this.dishForm.restaurantId);
+            if (selectedRestaurant) {
+              restaurantId = selectedRestaurant.id;
+            }
+          }
+          
           const payload = { 
             ...this.dishForm, 
+            restaurantId: restaurantId,
             userId: this.userId,
             previewImage: undefined, // 移除旧字段
             cover_img_url: undefined // 移除旧字段
@@ -546,11 +567,6 @@ export default {
         description: '',
         coverImgUrl: '',
         fileList: []
-      }
-      
-      // 如果是新增菜品，设置默认餐厅ID为1（测试餐厅）
-      if (!this.isEdit) {
-        this.dishForm.restaurantId = 1
       }
       
       this.isEdit = false

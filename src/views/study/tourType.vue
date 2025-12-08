@@ -29,7 +29,7 @@
           <el-button @click="handleResetSearch">
             <i class="el-icon-refresh"></i> 重置
           </el-button>
-          <el-button type="success" @click="handleAdd">
+          <el-button type="primary" @click="handleAdd">
             <i class="el-icon-plus"></i> 新增
           </el-button>
         </el-form-item>
@@ -68,14 +68,14 @@
           <template slot-scope="scope">
             <el-button
               size="mini"
-              type="text"
+              type="primary"
               @click="handleUpdate(scope.$index, scope.row)"
             >
               编辑
             </el-button>
             <el-button
               size="mini"
-              type="text"
+              type="danger"
               @click="handleDelete(scope.$index, scope.row)"
             >
               删除

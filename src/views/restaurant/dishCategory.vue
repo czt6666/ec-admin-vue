@@ -112,6 +112,23 @@
           </el-select>
         </el-form-item>
         
+        <el-form-item label="分类图片">
+          <el-upload
+            class="avatar-uploader"
+            action=""
+            :auto-upload="false"
+            :show-file-list="true"
+            :file-list="dishCategoryForm.fileList"
+            :on-change="handleFileChange"
+            :before-upload="beforeImageUpload"
+            :on-remove="beforeImageRemove"
+            :limit="1"
+            list-type="picture-card"
+          >
+            <i v-if="dishCategoryForm.fileList.length < 1" class="el-icon-plus avatar-uploader-icon"></i>
+            <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过2MB，最多上传1张图片</div>
+          </el-upload>
+        </el-form-item>
 
       </el-form>
       
@@ -126,6 +143,7 @@
 <script>
 import { getDishCategoryList, createDishCategory, updateDishCategory, deleteDishCategory, updateDishCategorySort } from '@/api/dishCategory'
 import { listRestaurantNamesByUser } from '@/api/restaurant'
+import request from '@/utils/shop_api'
 
 export default {
   name: 'DishCategory',
@@ -158,7 +176,9 @@ export default {
       dishCategoryForm: {
         id: '',
         categoryName: '',
-        restaurantName: '' // 动态获取餐厅名称
+        restaurantName: '', // 动态获取餐厅名称
+        imageUrl: '', // 添加图片URL字段
+        fileList: [] // 添加文件列表字段
       },
       // 表单验证规则
       dishCategoryRules: {
@@ -317,12 +337,25 @@ export default {
       this.dialogVisible = true
     },
     
-    // 编辑
+    // 编辑菜品分类
     handleEdit(row) {
       this.isEdit = true
       this.dialogTitle = '编辑菜品分类'
+      // 深拷贝row对象，避免直接修改原数据
       this.dishCategoryForm = { ...row }
-      // 不再硬编码餐厅名称
+      
+      // 处理编辑时的图片显示
+      // 如果存在imageUrl，则构造fileList用于图片展示组件显示已有图片
+      if (row.imageUrl) {
+        this.dishCategoryForm.fileList = [{
+          name: row.imageUrl,
+          // API/uploads/ 图片访问路径
+          url: 'api/uploads/' + row.imageUrl
+        }]
+      } else {
+        this.dishCategoryForm.fileList = []
+      }
+      
       this.dialogVisible = true
     },
     
@@ -358,36 +391,59 @@ export default {
       this.$refs.dishCategoryFormRef.validate(async (valid) => {
         if (valid) {
           try {
+            // 处理图片上传
+            // 检查是否有选择的文件
+            if (this.dishCategoryForm.fileList && this.dishCategoryForm.fileList.length > 0) {
+              const file = this.dishCategoryForm.fileList[0].raw;
+              if (file) {
+                // 上传新选择的图片
+                const imageUrl = await this.uploadImage(file);
+                if (imageUrl) {
+                  // 设置图片URL到表单数据中
+                  this.dishCategoryForm.imageUrl = imageUrl;
+                } else {
+                  this.$message.error('图片上传失败');
+                  return;
+                }
+              } else if (this.dishCategoryForm.fileList[0].url) {
+                // 编辑时已存在的图片，直接使用已有的URL
+                this.dishCategoryForm.imageUrl = this.dishCategoryForm.fileList[0].url;
+              }
+            } else {
+              // 没有图片时清空imageUrl
+              this.dishCategoryForm.imageUrl = '';
+            }
+
             const formData = {
               ...this.dishCategoryForm,
               userId: this.$store.getters.userId
-            }
-            
-            let response
+            };
+
+            let response;
             if (this.isEdit) {
-              response = await updateDishCategory(formData)
+              response = await updateDishCategory(formData);
             } else {
-              response = await createDishCategory(formData)
+              response = await createDishCategory(formData);
             }
-            
+
             // 更健壮的响应处理，增加更多成功状态的判断
-            console.log('API响应:', response)
+            console.log('API响应:', response);
             if (response && (response.code === 200 || response.code === '200' || response.success || response.result === true)) {
-              this.$message.success(this.isEdit ? '更新成功' : '新增成功')
-              this.dialogVisible = false
-              this.getDishCategoryList()
+              this.$message.success(this.isEdit ? '更新成功' : '新增成功');
+              this.dialogVisible = false;
+              this.getDishCategoryList();
             } else {
-              console.error('操作失败，响应码:', response ? response.code : 'undefined')
+              console.error('操作失败，响应码:', response ? response.code : 'undefined');
               // 修复：当response.msg为null时提供默认错误消息
-              const errorMsg = response && response.msg ? response.msg : (this.isEdit ? '更新失败' : '新增失败')
-              this.$message.error(errorMsg)
+              const errorMsg = response && response.msg ? response.msg : (this.isEdit ? '更新失败' : '新增失败');
+              this.$message.error(errorMsg);
             }
           } catch (error) {
-            console.error(this.isEdit ? '更新菜品分类失败:' : '新增菜品分类失败:', error)
-            this.$message.error(this.isEdit ? '更新失败，请重试' : '新增失败，请重试')
+            console.error(this.isEdit ? '更新菜品分类失败:' : '新增菜品分类失败:', error);
+            this.$message.error(this.isEdit ? '更新失败，请重试' : '新增失败，请重试');
           }
         }
-      })
+      });
     },
     
     // 重置表单
@@ -396,7 +452,8 @@ export default {
         id: '',
         categoryName: '',
         restaurantName: '', // 动态获取餐厅名称
-        status: 1
+        imageUrl: '',
+        fileList: []
       }
       if (this.$refs.dishCategoryFormRef) {
         this.$refs.dishCategoryFormRef.resetFields()
@@ -414,6 +471,99 @@ export default {
     handleCurrentChange(val) {
       this.queryParams.page = val
       this.getDishCategoryList()
+    },
+    
+    // 图片上传前校验
+    beforeImageUpload(file) {
+      const isImage = file.type.startsWith('image/')
+      const isLt2M = file.size / 1024 / 1024 < 2
+
+      if (!isImage) {
+        this.$message.error('分类图片只能上传图片文件!')
+        return false
+      }
+      if (!isLt2M) {
+        this.$message.error('分类图片大小不能超过2MB!')
+        return false
+      }
+      return true
+    },
+    
+    // 图片移除前处理
+    beforeImageRemove(file, fileList) {
+      return true
+    },
+    
+    // 处理文件变化（仅验证，不上传）
+    handleFileChange(file, fileList) {
+      // 只保留最后一张图片（最新的）
+      const latestFileList = fileList.slice(-1)
+      
+      // 检查文件是否有效
+      if (latestFileList.length > 0 && latestFileList[0].raw) {
+        const item = latestFileList[0]
+        const isImage = item.raw.type && item.raw.type.startsWith('image/')
+        const isLt2M = item.raw.size && item.raw.size / 1024 / 1024 < 2
+        
+        // 如果文件不是图片或大于2MB，显示错误提示并清空文件列表
+        if (!isImage) {
+          this.$message.error(`分类图片 ${item.name} 只能是图片文件!`)
+          this.dishCategoryForm.fileList = []
+          this.dishCategoryForm.imageUrl = ''
+          return
+        }
+        if (!isLt2M) {
+          this.$message.error(`分类图片 ${item.name} 大小不能超过2MB!`)
+          this.dishCategoryForm.fileList = []
+          this.dishCategoryForm.imageUrl = ''
+          return
+        }
+      }
+      
+      this.dishCategoryForm.fileList = latestFileList
+      
+      // 保存图片URL
+      if (latestFileList.length > 0 && latestFileList[0].raw) {
+        this.dishCategoryForm.imageUrl = latestFileList[0].raw.name
+      } else if (latestFileList.length > 0 && latestFileList[0].url) {
+        // 编辑时已存在的图片
+        this.dishCategoryForm.imageUrl = latestFileList[0].url
+      } else {
+        this.dishCategoryForm.imageUrl = ''
+      }
+    },
+    
+    // 上传图片到服务器
+    async uploadImage(file) {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        // 发送图片上传请求到后端API
+        // 使用request实例发送POST请求到/api/file/upload端点
+        const response = await request({
+          url: '/api/file/upload',
+          method: 'post',
+          data: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+
+        // 根据您的后端接口，返回的数据结构是 { filename, originalName, size, url }
+        // 处理上传响应，提取文件名
+        if (response && response.filename) {
+          return response.filename
+        } else if (response && response.data && response.data.filename) {
+          return response.data.filename
+        } else {
+          throw new Error('上传响应格式错误')
+        }
+      } catch (error) {
+        console.error('图片上传失败:', error)
+        this.$message.error('图片上传失败: ' + (error.message || ''))
+        throw error
+      }
     }
   }
 }
@@ -468,5 +618,32 @@ export default {
 .sort-buttons .el-button:focus {
   color: #606266;
   border-color: #fff;
+}
+
+.avatar-uploader .el-upload {
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar-uploader .el-upload:hover {
+  border-color: #409EFF;
+}
+
+.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 120px;
+  height: 120px;
+  line-height: 120px;
+  text-align: center;
+}
+
+.avatar {
+  width: 120px;
+  height: 120px;
+  display: block;
 }
 </style>

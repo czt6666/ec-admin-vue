@@ -1,9 +1,9 @@
 import request from '@/utils/request'
 
-// 获取研学基地列表
+// 获取研学基地列表（分页）
 export function fetchList(params) {
   return request({
-    url: '/study/tour/base/list',
+    url: '/study/tour/base/page',
     method: 'get',
     params
   })

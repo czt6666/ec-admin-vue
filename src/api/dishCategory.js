@@ -54,3 +54,19 @@ export function updateDishCategorySort(data) {
     data
   })
 }
+
+/**
+ * 上传图片
+ */
+export function uploadImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/api/file/upload',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
