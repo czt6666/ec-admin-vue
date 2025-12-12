@@ -271,9 +271,9 @@ export const asyncRouterMap = [
       },
       {
         path: 'monitor',
-        name: '产业驾驶舱',
+        name: '各类型热度分析',
         component: _import('store/monitor'),
-        meta: { title: '产业驾驶舱', icon: 'password' },
+        meta: { title: '各类型热度分析', icon: 'password' },
         menu: 'role'
       },
     ]
