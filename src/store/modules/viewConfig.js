@@ -329,18 +329,28 @@ const viewConfig = {
       });
     },
     // 获取默认配置
+    // 注释掉原来的代码，因为后端不提供/file/getConfig接口
+    // GetViewConfig({state}) {
+    //   return new Promise((resolve, reject) => {
+    //     api({
+    //       url: "/file/getConfig",
+    //       method: 'post'
+    //     }).then(res => {
+    //       const config = JSON.parse(res);
+    //       deepAssign(state.permission.webofdConfig, config);
+    //       resolve();
+    //     }).catch(err => {
+    //       reject();
+    //     });
+    //   });
+    // },
+    
+    // 替代方案：直接使用默认配置
     GetViewConfig({state}) {
-      return new Promise((resolve, reject) => {
-        api({
-          url: "/file/getConfig",
-          method: 'post'
-        }).then(res => {
-          const config = JSON.parse(res);
-          deepAssign(state.permission.webofdConfig, config);
-          resolve();
-        }).catch(err => {
-          reject();
-        });
+      return new Promise((resolve) => {
+        // 直接使用默认配置，不从后端获取
+        // 如果需要自定义配置，可以在这里修改state.permission.webofdConfig的值
+        resolve();
       });
     },
     // 重置配置

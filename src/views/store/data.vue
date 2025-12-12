@@ -25,17 +25,19 @@
           </div>
         </el-card>
       </el-col>
+     
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-title">总记录数</div>
             <div class="stat-number">{{ formatNumber(stats.totalRecords) }}</div>
             <div class="stat-footer">
-              <span class="today-records">今日新增: {{ formatNumber(stats.todayRecords) }}</span>
+              <!-- <span class="today-records">今日新增: {{ formatNumber(stats.todayRecords) }}</span> -->
             </div>
           </div>
         </el-card>
       </el-col>
+      
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
@@ -75,35 +77,36 @@
       </div>
       
       <el-table :data="sources" style="width: 100%" v-loading="loading">
-        <el-table-column prop="name" label="数据源名称" width="200"></el-table-column>
-        <el-table-column prop="type" label="类型" width="150">
+        <el-table-column prop="name" label="数据源名称" width="150"></el-table-column>
+        <!-- <el-table-column prop="type" label="类型" width="150">
           <template slot-scope="scope">
             <el-tag size="mini">{{ scope.row.type }}</el-tag>
           </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        </el-table-column> -->
+        <el-table-column prop="status" label="状态" width="60">
           <template slot-scope="scope">
             <el-tag :type="getStatusType(scope.row.status)" size="mini">
               {{ scope.row.status === 'active' ? '活跃' : '非活跃' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="records" label="记录数" width="120">
+        <el-table-column prop="records" label="记录数" width="120" align="center" class-name="record-count-column">
           <template slot-scope="scope">
             {{ formatNumber(scope.row.records) }}
           </template>
         </el-table-column>
-        <el-table-column label="最后同步时间" width="160">
+        <el-table-column label="最后同步时间" width="180" class-name="last-sync-column">
           <template slot-scope="scope">
             {{ formatLastSyncTime(scope.row.lastSyncTime) }}
           </template>
         </el-table-column>
         <el-table-column prop="frequency" label="同步频率" width="120">
-  <template slot-scope="scope">
-    {{ DataAggregationUtil.getFrequency(scope.row.syncFrequency) }}
-  </template>
-</el-table-column>
-        <el-table-column label="操作">
+          <template slot-scope="scope">
+            {{ DataAggregationUtil.getFrequency(scope.row.syncFrequency) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="nextSync" label="下次同步" min-width="160"></el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
           <template slot-scope="scope">
             <el-button size="mini" @click="viewDetail(scope.row)">详情</el-button>
             <el-button size="mini" type="primary" @click="syncSource(scope.row)">同步</el-button>
@@ -251,7 +254,8 @@ export default {
         this.sources = data.sources.map(source => ({
         ...source,
         type: this.getSourceType(source.name),
-        frequency: DataAggregationUtil.getFrequency(source.syncFrequency)
+        frequency: DataAggregationUtil.getFrequency(source.syncFrequency),
+        nextSync: this.calculateNextSync(DataAggregationUtil.getFrequency(source.syncFrequency))
       }));
       } catch (error) {
         console.error('加载数据失败:', error);
@@ -422,15 +426,22 @@ export default {
     },
     
     calculateNextSync(frequency) {
+      if (!frequency) return '-';
+      
       const now = new Date();
       switch (frequency) {
         case '每分钟':
           return '持续同步';
         case '每小时':
           now.setHours(now.getHours() + 1);
+          now.setMinutes(0);
+          now.setSeconds(0);
           break;
         case '每天':
           now.setDate(now.getDate() + 1);
+          now.setHours(0);
+          now.setMinutes(0);
+          now.setSeconds(0);
           break;
         default:
           return '-';
@@ -440,7 +451,8 @@ export default {
         month: '2-digit', 
         day: '2-digit', 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit', 
+        second: '2-digit'
       }).replace(/\//g, '-');
     }
   }
@@ -495,6 +507,24 @@ export default {
 
 .today-records {
   color: #409eff;
+}
+
+/* 增加记录数列和最后同步时间列之间的间距 */
+.record-count-column {
+  padding-right: 15px !important;
+}
+
+.last-sync-column {
+  padding-left: 15px !important;
+}
+
+/* 减小表格行高 */
+::v-deep .el-table td {
+  padding: 4px 0 !important;
+}
+
+::v-deep .el-table th {
+  padding: 6px 0 !important;
 }
 
 ::v-deep .el-card__body {
