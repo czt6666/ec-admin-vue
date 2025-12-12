@@ -210,7 +210,6 @@
           <el-button type="default" plain size="mini" @click="getCurrentLocation" style="margin-left: 4px;">
             获取当前位置
           </el-button>
-
         </el-form-item>
 
         <!-- 资质凭证 -->
@@ -344,6 +343,7 @@ import { getToken } from '@/utils/auth'
 
 export default {
   name: 'ShopManagement',
+
   data () {
     return {
       loading: false,
@@ -402,23 +402,28 @@ export default {
       }
     }
   },
+
   created () {
     this.getBaseUrl()
     this.getVillageList()
     this.getList()
   },
+
   methods: {
     getBaseUrl () {
       this.baseUrl = process.env.VUE_APP_BASE_API || 'https://dzk.czt666.cn/api'
     },
+
     refreshUploadHeaders () {
       this.uploadHeaders = { token: getToken() || '' }
     },
+
     loadVillageList () {
       if (!this.villageList.length) {
         this.getVillageList()
       }
     },
+
     getQualificationTypeName (type) {
       const map = {
         license: '营业执照',
@@ -428,36 +433,48 @@ export default {
       }
       return map[type] || '资质'
     },
+
     getCurrentQualificationImages () {
       return this.qualificationImagesByType[this.selectedQualificationType] || []
     },
+
     getImageUrl (imagePath) {
       if (!imagePath) return ''
+
       if (imagePath.indexOf('http://') === 0 || imagePath.indexOf('https://') === 0) {
         return imagePath
       }
+
       if (imagePath.indexOf('/uploads/') === 0) {
         return this.baseUrl + imagePath
       }
+
       return this.baseUrl + '/uploads/' + imagePath
     },
+
     async uploadImage (file) {
       const formData = new FormData()
       formData.append('file', file)
+
       const response = await request({
         url: '/api/file/upload',
         method: 'post',
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data', ...this.uploadHeaders }
       })
+
       if (response && response.filename) return response.filename
       if (response && response.data && response.data.filename) return response.data.filename
+
       throw new Error('上传响应格式错误')
     },
+
     async getVillageList () {
       this.villageLoading = true
+
       try {
         const res = await getVillageList()
+
         if (Array.isArray(res)) {
           this.villageList = res
         } else if (res && (res.code === 200 || res.code === '200')) {
@@ -475,10 +492,13 @@ export default {
         this.villageLoading = false
       }
     },
+
     async getList () {
       this.loading = true
+
       try {
         const res = await getShopList(this.queryParams)
+
         if (Array.isArray(res)) {
           this.shopList = res.map((item, idx) => ({
             ...item,
@@ -505,10 +525,12 @@ export default {
         this.loading = false
       }
     },
+
     handleQuery () {
       this.queryParams.page = 1
       this.getList()
     },
+
     resetQuery () {
       this.queryParams = {
         page: 1,
@@ -520,15 +542,18 @@ export default {
       }
       this.getList()
     },
+
     handleSizeChange (val) {
       this.queryParams.pageSize = val
       this.queryParams.page = 1
       this.getList()
     },
+
     handleCurrentChange (val) {
       this.queryParams.page = val
       this.getList()
     },
+
     handleAdd () {
       this.dialogTitle = '新增店铺'
       this.isEdit = false
@@ -536,21 +561,27 @@ export default {
       this.resetForm()
       this.dialogVisible = true
     },
+
     async handleEdit (row) {
       if (!row || !row.id) {
         this.$message.error('数据错误，无法编辑')
         return
       }
+
       this.dialogTitle = '编辑店铺'
       this.isEdit = true
       this.refreshUploadHeaders()
+
       try {
         const res = await getShopById(row.id)
+
         const data = res && (res.code === 200 || res.code === '200') ? res.data : row
+
         if (!data) {
           this.$message.error('获取店铺详情失败')
           return
         }
+
         this.shopForm = {
           id: data.id,
           shopName: data.shopName || '',
@@ -565,6 +596,7 @@ export default {
           longitude: data.longitude || null,
           qualificationFiles: data.qualificationFiles || ''
         }
+
         if (data.shopAvatar) {
           this.avatarList = [{
             name: data.shopAvatar.split('/').pop(),
@@ -574,10 +606,13 @@ export default {
         } else {
           this.avatarList = []
         }
+
         this.qualificationImagesByType = { license: [], industry: [], property: [], other: [] }
+
         if (data.qualificationFiles) {
           try {
             const parsed = JSON.parse(data.qualificationFiles)
+
             if (Array.isArray(parsed)) {
               this.qualificationImagesByType.license = parsed.map((url, idx) => ({
                 uid: idx, name: url.split('/').pop(), url: this.getImageUrl(url), status: 'success'
@@ -600,16 +635,19 @@ export default {
             this.qualificationImagesByType.license = []
           }
         }
+
         this.dialogVisible = true
       } catch (e) {
         this.$message.error('获取店铺详情失败')
       }
     },
+
     handleDelete (row) {
       if (!row || !row.id) {
         this.$message.error('数据错误，无法删除')
         return
       }
+
       this.$confirm('确定删除店铺「' + row.shopName + '」吗？', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -617,10 +655,12 @@ export default {
       }).then(async () => {
         try {
           const res = await deleteShop(row.id)
+
           const success = Array.isArray(res) ||
             (res && (res.code === 200 || res.code === '200')) ||
             (res && res.data) ||
             (!res)
+
           if (success) {
             this.$message.success('删除成功')
             this.getList()
@@ -632,15 +672,19 @@ export default {
         }
       }).catch(() => {})
     },
+
     handleAvatarChange (file, fileList) {
       this.avatarList = fileList
     },
+
     handleAvatarRemove (file, fileList) {
       this.avatarList = fileList
     },
+
     beforeAvatarUpload (file) {
       const isImage = file.type && file.type.indexOf('image/') === 0
       const isLt2M = file.size / 1024 / 1024 < 2
+
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
@@ -651,12 +695,15 @@ export default {
       }
       return false
     },
+
     handleQualificationImageChange (file, fileList) {
       this.qualificationImagesByType[this.selectedQualificationType] = fileList
     },
+
     beforeQualificationImageUpload (file) {
       const isImage = file.type && file.type.indexOf('image/') === 0
       const isLt2M = file.size / 1024 / 1024 < 2
+
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
@@ -677,29 +724,36 @@ export default {
         }, 300)
       })
     },
+
     initMap () {
       if (typeof AMap === 'undefined') {
         this.$message.error('高德地图API未加载，请检查网络连接')
         return
       }
+
       const container = document.getElementById('shopMapContainer')
+
       if (!container) {
         this.$message.error('地图容器不存在')
         return
       }
+
       if (container.offsetWidth === 0 || container.offsetHeight === 0) {
         setTimeout(() => { this.initMap() }, 200)
         return
       }
+
       try {
         if (this.map) {
           this.map.destroy()
           this.map = null
         }
+
         this.map = new AMap.Map('shopMapContainer', {
           zoom: 15,
           viewMode: '3D'
         })
+
         if (this.shopForm.latitude && this.shopForm.longitude) {
           const position = [this.shopForm.longitude, this.shopForm.latitude]
           this.map.setCenter(position)
@@ -709,23 +763,29 @@ export default {
           this.map.setCenter([116.397428, 39.90923])
           this.map.setZoom(11)
         }
+
         AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], () => {
           this.map.addControl(new AMap.Scale({ position: 'LB' }))
           this.map.addControl(new AMap.ToolBar({ position: 'RT' }))
         })
+
         this.map.on('complete', () => {
           this.map.on('click', (e) => {
             const lng = e.lnglat.getLng()
             const lat = e.lnglat.getLat()
+
             this.selectedLatitude = lat
             this.selectedLongitude = lng
+
             if (this.marker) {
               this.map.remove(this.marker)
             }
+
             this.marker = new AMap.Marker({
               position: [lng, lat],
               map: this.map
             })
+
             this.getAddressByCoordinates(lat, lng)
           })
         })
@@ -734,15 +794,18 @@ export default {
         this.$message.error('地图初始化失败：' + e.message)
       }
     },
+
     getAddressByCoordinates (lat, lng) {
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
         this.$message.warning('坐标无效，无法获取地址')
         return
       }
+
       if (typeof AMap === 'undefined') {
         this.$message.error('高德地图API未加载，请检查网络连接')
         return
       }
+
       AMap.plugin('AMap.Geocoder', () => {
         try {
           const geocoder = new AMap.Geocoder({
@@ -750,20 +813,25 @@ export default {
             radius: 1000,
             extensions: 'all'
           })
+
           geocoder.getAddress([lng, lat], (status, result) => {
             if (status === 'complete' && result.info === 'OK') {
               let address = result.regeocode.formattedAddress
+
               if (!address) {
                 const comp = result.regeocode.addressComponent
                 const parts = []
+
                 if (comp.province) parts.push(comp.province)
                 if (comp.city) parts.push(comp.city)
                 if (comp.district) parts.push(comp.district)
                 if (comp.township) parts.push(comp.township)
                 if (comp.street) parts.push(comp.street)
                 if (comp.streetNumber) parts.push(comp.streetNumber)
+
                 address = parts.join('')
               }
+
               if (address) {
                 this.shopForm.shopAddress = address
               } else {
@@ -779,11 +847,13 @@ export default {
         }
       })
     },
+
     getCurrentLocation () {
       if (typeof AMap === 'undefined') {
         this.$message.error('高德地图API未加载，请检查网络连接')
         return
       }
+
       AMap.plugin('AMap.Geolocation', () => {
         try {
           const geolocation = new AMap.Geolocation({
@@ -797,12 +867,15 @@ export default {
             panToLocation: false,
             zoomToAccuracy: false
           })
+
           geolocation.getCurrentPosition((status, result) => {
             if (status === 'complete') {
               const lat = result.position.lat
               const lng = result.position.lng
+
               this.shopForm.latitude = lat
               this.shopForm.longitude = lng
+
               if (this.map) {
                 const position = [lng, lat]
                 this.map.setCenter(position)
@@ -810,6 +883,7 @@ export default {
                 if (this.marker) this.map.remove(this.marker)
                 this.marker = new AMap.Marker({ position, map: this.map })
               }
+
               this.getAddressByCoordinates(lat, lng)
               this.$message.success('获取当前位置成功')
             } else {
@@ -822,11 +896,13 @@ export default {
         }
       })
     },
+
     clearCoordinates () {
       this.shopForm.latitude = null
       this.shopForm.longitude = null
       this.$message.info('已清除坐标')
     },
+
     confirmLocation () {
       if (this.selectedLatitude && this.selectedLongitude) {
         this.shopForm.latitude = this.selectedLatitude
@@ -837,62 +913,80 @@ export default {
         this.$message.warning('请先在地图上选择位置')
       }
     },
+
     closeMapDialog () {
       this.mapDialogVisible = false
       this.selectedLatitude = null
       this.selectedLongitude = null
+
       if (this.marker && this.map) {
         this.map.remove(this.marker)
       }
       this.marker = null
+
       if (this.map) {
         this.map.destroy()
         this.map = null
       }
     },
 
+    // 提交表单 - 修改：保存时添加 /uploads/ 前缀
     async submitForm () {
       this.$refs.shopFormRef.validate(async (valid) => {
         if (!valid) return
+
         this.submitLoading = true
+
         try {
-          // 头像
+          // 头像 - 修改：添加 /uploads/ 前缀
           if (this.avatarList.length > 0) {
             const avatar = this.avatarList[0]
             if (avatar.raw) {
               const fileName = await this.uploadImage(avatar.raw)
-              this.shopForm.shopAvatar = fileName
+              this.shopForm.shopAvatar = '/uploads/' + fileName
             } else if (avatar.url) {
-              this.shopForm.shopAvatar = avatar.url.split('/').pop()
+              // 如果已有URL，提取 /uploads/ 路径部分
+              const match = /\/uploads\/[^/]+$/.exec(avatar.url)
+              this.shopForm.shopAvatar = match ? match[0] : avatar.url.split('/').pop()
             }
           } else {
             this.shopForm.shopAvatar = ''
           }
 
-          // 资质
+          // 资质 - 修改：添加 /uploads/ 前缀
           const filesObj = { license: [], industry: [], property: [], other: [] }
+
           for (const type in this.qualificationImagesByType) {
             if (!this.qualificationImagesByType.hasOwnProperty(type)) continue
+
             const fileList = this.qualificationImagesByType[type]
+
             for (let i = 0; i < fileList.length; i++) {
               const item = fileList[i]
+
               if (item.raw) {
                 const fileName = await this.uploadImage(item.raw)
-                filesObj[type].push(fileName)
+                filesObj[type].push('/uploads/' + fileName)
               } else if (item.url) {
-                filesObj[type].push(item.url.split('/').pop())
+                // 如果已有URL，提取 /uploads/ 路径部分
+                const match = /\/uploads\/[^/]+$/.exec(item.url)
+                filesObj[type].push(match ? match[0] : item.url.split('/').pop())
               }
             }
           }
+
           this.shopForm.qualificationFiles = JSON.stringify(filesObj)
 
           const api = this.isEdit ? updateShop : createShop
           const payload = this.isEdit ? { ...this.shopForm, id: this.shopForm.id } : this.shopForm
+
           const res = await api(payload)
+
           const success = Array.isArray(res) ||
             (res && (res.code === 200 || res.code === '200')) ||
             (res && res.data) ||
             (!res)
+
           if (success) {
             this.$message.success(this.isEdit ? '更新成功' : '新增成功')
             this.dialogVisible = false
@@ -908,10 +1002,12 @@ export default {
         }
       })
     },
+
     resetForm () {
       if (this.$refs.shopFormRef) {
         this.$refs.shopFormRef.resetFields()
       }
+
       this.shopForm = {
         id: null,
         shopName: '',
@@ -926,13 +1022,16 @@ export default {
         longitude: null,
         qualificationFiles: ''
       }
+
       this.avatarList = []
+
       this.qualificationImagesByType = {
         license: [],
         industry: [],
         property: [],
         other: []
       }
+
       this.selectedQualificationType = 'license'
       this.isEdit = false
     }
@@ -954,7 +1053,7 @@ export default {
   color: #999;
 }
 
-/* 有头像时隐藏“+”按钮 */
+/* 有头像时隐藏"+"按钮 */
 .avatar-upload-hidden /deep/ .el-upload--picture-card {
   display: none;
 }
@@ -963,14 +1062,244 @@ export default {
 .map-dialog-content {
   position: relative;
 }
+
 .map-info {
   margin-top: 10px;
   padding: 10px;
   background-color: #f5f7fa;
   border-radius: 4px;
 }
+
 .map-info p {
   margin: 5px 0;
   color: #606266;
 }
+
+/* 操作按钮样式 */
+.operation-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.operation-buttons .el-button {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.operation-buttons .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.operation-buttons .el-button i {
+  margin-right: 6px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* 资质上传样式 */
+.qualification-upload-container {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.special-notice {
+  background: #f0f9ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.special-notice i {
+  color: #409eff;
+  margin-right: 8px;
+  margin-top: 2px;
+  font-size: 16px;
+}
+
+.special-notice span {
+  color: #303133;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.qualification-types {
+  margin-bottom: 20px;
+}
+
+.type-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+}
+
+.type-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.type-buttons .el-radio-button {
+  flex: 1;
+}
+
+.type-buttons .el-radio-button__inner {
+  width: 100%;
+  text-align: center;
+  border-radius: 6px;
+  border: 1px solid #dcdfe6;
+  background: #f5f7fa;
+  color: #606266;
+  transition: all 0.3s;
+}
+
+.type-buttons .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+  background: #ffd700;
+  border-color: #ffd700;
+  color: #303133;
+  font-weight: 600;
+}
+
+.qualification-instructions {
+  margin-bottom: 16px;
+}
+
+.instructions {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.instruction-item:last-child {
+  margin-bottom: 0;
+}
+
+.instruction-item .number {
+  color: #409eff;
+  font-weight: 600;
+  margin-right: 8px;
+  min-width: 20px;
+  line-height: 1.5;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.instruction-item span:last-child {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.5;
+  display: inline-block;
+  vertical-align: top;
+  flex: 1;
+}
+
+.help-section {
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.help-section:hover {
+  background: #fff2d9;
+}
+
+.help-section i {
+  color: #fa8c16;
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.help-section span {
+  color: #d46b08;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.upload-section {
+  margin-bottom: 20px;
+}
+
+.upload-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.upload-instruction {
+  color: #909399;
+  font-size: 14px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.upload-area {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.qualification-upload {
+  flex: 1;
+}
+
+.qualification-upload .el-upload--picture-card {
+  width: 120px;
+  height: 120px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.qualification-upload .el-upload--picture-card:hover {
+  border-color: #409eff;
+  background: #f0f9ff;
+}
+
+.qualification-upload .el-upload--picture-card i {
+  font-size: 32px;
+  color: #c0c4cc;
+  margin-bottom: 8px;
+}
+
+.upload-text {
+  font-size: 12px;
+  color: #909399;
+}
 </style>
+

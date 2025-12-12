@@ -91,7 +91,7 @@
       border
       style="width: 100%"
     >
-      <el-table-column  v-if="false" prop="id" label="ID" width="80" />
+      <el-table-column v-if="false" prop="id" label="ID" width="80" />
       <el-table-column label="封面" width="100">
         <template slot-scope="scope">
           <el-image
@@ -489,6 +489,7 @@ import request from '@/utils/request'
 
 export default {
   name: 'VillageHomestayList',
+
   data() {
     return {
       loading: false,
@@ -558,14 +559,16 @@ export default {
       }
     }
   },
+
   created() {
     console.log('=== 组件创建，开始获取数据 ===')
     this.getBaseUrl()
     this.getVillageList()
     this.getList()
   },
+
   methods: {
-    // 获取基础URL
+    // 获取基础URL - 修改：与餐饮模块保持一致
     getBaseUrl() {
       this.baseUrl = process.env.VUE_APP_BASE_API || 'https://dzk.czt666.cn/api'
       console.log('基础URL:', this.baseUrl)
@@ -856,27 +859,28 @@ export default {
       })
     },
 
-    // 提交表单
+    // 提交表单 - 修改：保存时添加 /uploads/ 前缀
     async submitForm() {
       this.$refs.homestayForm.validate(async (valid) => {
         if (valid) {
           try {
-            // 处理封面图上传
+            // 处理封面图上传 - 修改：添加 /uploads/ 前缀
             if (this.coverImageList.length > 0) {
               const coverImage = this.coverImageList[0]
               if (coverImage.raw) {
                 console.log('上传封面图:', coverImage.name)
                 const fileName = await this.uploadImage(coverImage.raw)
-                this.homestayForm.coverImage = fileName
+                this.homestayForm.coverImage = '/uploads/' + fileName
               } else if (coverImage.url) {
-                const fileName = coverImage.url.split('/').pop()
-                this.homestayForm.coverImage = fileName
+                // 如果已有URL，提取 /uploads/ 路径部分
+                const match = /\/uploads\/[^/]+$/.exec(coverImage.url)
+                this.homestayForm.coverImage = match ? match[0] : coverImage.url
               }
             } else {
               this.homestayForm.coverImage = ''
             }
 
-            // 处理资质凭证图片上传
+            // 处理资质凭证图片上传 - 修改：添加 /uploads/ 前缀
             const qualificationImagesData = {}
             for (const type in this.qualificationImagesByType) {
               const images = []
@@ -884,10 +888,11 @@ export default {
                 if (item.raw) {
                   console.log(`上传${type}资质图片:`, item.name)
                   const fileName = await this.uploadImage(item.raw)
-                  images.push(fileName)
+                  images.push('/uploads/' + fileName)
                 } else if (item.url) {
-                  const fileName = item.url.split('/').pop()
-                  images.push(fileName)
+                  // 如果已有URL，提取 /uploads/ 路径部分
+                  const match = /\/uploads\/[^/]+$/.exec(item.url)
+                  images.push(match ? match[0] : item.url)
                 }
               }
               if (images.length > 0) {
@@ -963,6 +968,7 @@ export default {
         other: []
       }
       this.selectedQualificationType = 'property'
+
       this.$nextTick(() => {
         if (this.$refs.homestayForm) {
           this.$refs.homestayForm.clearValidate()
@@ -1000,8 +1006,6 @@ export default {
       }
       return typeMap[type] || '房产证'
     },
-
-
 
     // 地图相关方法
     openMapDialog() {
@@ -1284,7 +1288,6 @@ export default {
         this.map = null
       }
     },
-
 
     // 图片上传相关方法
     handleCoverImageChange(file, fileList) {
@@ -1650,3 +1653,4 @@ export default {
   color: #909399;
 }
 </style>
+
