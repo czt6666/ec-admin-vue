@@ -155,9 +155,16 @@ class DataAggregationUtil {
   static calculateNextSync(cronExpression) {
     const now = new Date();
     
-    // 如果是持续同步
-    if (cronExpression.includes('* * * *')) {
-      return '持续同步';
+    // 如果没有提供cron表达式，返回默认值
+    if (!cronExpression) {
+      now.setHours(now.getHours() + 1);
+      return now.toLocaleString('zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }).replace(/\//g, '-');
     }
     
     // 解析cron表达式
@@ -173,18 +180,27 @@ class DataAggregationUtil {
       }).replace(/\//g, '-');
     }
     
+    const second = parts[0];
     const minute = parts[1];
     const hour = parts[2];
     
-    // 每小时同步
-    if (minute === '0' && hour === '*') {
-      now.setHours(now.getHours() + 1);
+    // 每分钟同步: * * * * * ?
+    if (second === '*' && minute === '*' && hour === '*') {
+      now.setMinutes(now.getMinutes() + 1);
+      return '持续同步';
     }
-    // 每天同步
-    else if (minute === '0' && hour !== '*' && hour !== '?') {
-      now.setDate(now.getDate() + 1);
-      now.setHours(parseInt(hour));
+    // 每小时同步: 0 0 * * * ?
+    else if (second === '0' && minute === '0' && hour === '*') {
+      now.setHours(now.getHours() + 1);
       now.setMinutes(0);
+      now.setSeconds(0);
+    }
+    // 每天同步: 0 0 0 * * ?
+    else if (second === '0' && minute === '0' && hour === '0') {
+      now.setDate(now.getDate() + 1);
+      now.setHours(0);
+      now.setMinutes(0);
+      now.setSeconds(0);
     }
     // 其他情况，默认1小时后
     else {
