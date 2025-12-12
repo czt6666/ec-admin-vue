@@ -45,6 +45,20 @@ export const listRestaurantNamesByUser = userId =>
     method: 'get'
   })
 
+// 通过餐厅名称获取餐厅ID
+export const getRestaurantIdByName = restaurantName =>
+  request({
+    url: `/admin/ecadmin/restaurant/name/${restaurantName}/id`,
+    method: 'get'
+  })
+
+// 查询某用户的所有饭馆（包含ID和名称）
+export const listRestaurantsByUser = userId =>
+  request({
+    url: `/admin/ecadmin/restaurant/user/${userId}/list`,
+    method: 'get'
+  })
+
 /**
  * 获取菜品分类列表
  */

@@ -1,79 +1,59 @@
 <template>
   <div class="app-container">
-    <!-- 搜索栏 -->
-    <el-card class="filter-container" shadow="never">
-      <div>
-        <i class="el-icon-search"></i>
-        <span>筛选搜索</span>
-        <el-button
-          style="float: right"
-          type="primary"
-          size="small"
-          @click="handleSearchList"
-        >
-          查询
-        </el-button>
-        <el-button
-          style="float: right; margin-right: 15px"
-          size="small"
-          @click="handleResetSearch"
-        >
-          重置
-        </el-button>
-      </div>
-      <div style="margin-top: 15px">
-        <el-form :inline="true" :model="listQuery" size="small" label-width="140px">
-          <el-form-item label="方案名称：">
-            <el-input
-              v-model="listQuery.planName"
-              placeholder="方案名称"
-              clearable
-              style="width: 200px"
-            ></el-input>
-          </el-form-item>
-          <el-form-item label="所属基地：">
-            <el-select
-              v-model="listQuery.baseId"
-              placeholder="请选择基地"
-              clearable
-              style="width: 200px"
-            >
-              <el-option
-                v-for="item in baseOptions"
-                :key="item.id"
-                :label="item.baseName"
-                :value="item.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="方案状态：">
-            <el-select
-              v-model="listQuery.status"
-              placeholder="请选择状态"
-              clearable
-              style="width: 200px"
-            >
-              <el-option
-                v-for="item in statusOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value">
-              </el-option>
-            </el-select>
-          </el-form-item>
-        </el-form>
-      </div>
-    </el-card>
-    
-    <!-- 操作按钮区域 -->
-    <div class="operation-buttons">
-      <el-button
-        type="primary"
-        size="small"
-        @click="handleAdd"
-      >
-        新增方案
-      </el-button>
+    <!-- 搜索区域 -->
+    <div class="filter-container">
+      <el-form :inline="true" :model="listQuery" class="demo-form-inline">
+        <el-form-item label="方案名称：">
+          <el-input
+            v-model="listQuery.planName"
+            placeholder="方案名称"
+            clearable
+            style="width: 200px"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="所属基地：">
+          <el-select
+            v-model="listQuery.baseId"
+            placeholder="请选择基地"
+            clearable
+            style="width: 200px"
+          >
+            <el-option
+              v-for="item in baseOptions"
+              :key="item.id"
+              :label="item.baseName"
+              :value="item.id">
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="方案状态：">
+          <el-select
+            v-model="listQuery.status"
+            placeholder="请选择状态"
+            clearable
+            style="width: 200px"
+          >
+            <el-option
+              v-for="item in statusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value">
+            </el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button type="primary" @click="handleSearchList">
+            <i class="el-icon-search"></i> 搜索
+          </el-button>
+          <el-button @click="handleResetSearch">
+            <i class="el-icon-refresh"></i> 重置
+          </el-button>
+          <el-button type="primary" @click="handleAdd">
+            <i class="el-icon-plus"></i> 新增方案
+          </el-button>
+        </el-form-item>
+      </el-form>
     </div>
     
     <!-- 数据表格 -->
@@ -117,7 +97,6 @@
             <el-button
               size="mini"
               type="primary"
-              plain
               @click="handleUpdate(scope.$index, scope.row)"
             >
               编辑
@@ -125,7 +104,6 @@
             <el-button
               size="mini"
               type="danger"
-              plain
               @click="handleDelete(scope.$index, scope.row)"
             >
               删除
