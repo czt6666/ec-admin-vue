@@ -42,6 +42,7 @@
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="name" label="驿站名称" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="introduction" label="简介" min-width="200" show-overflow-tooltip />
         <el-table-column prop="unifiedSocialCreditCode" label="统一社会信用代码" width="180" />
         <el-table-column prop="legalRepresentative" label="法定代表人" width="120" />
         <el-table-column prop="serviceMode" label="服务模式" min-width="160" show-overflow-tooltip />
@@ -335,6 +336,18 @@
           </el-col>
         </el-row>
 
+
+        <el-form-item label="驿站简介">
+          <el-input
+            v-model="form.introduction"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入驿站简介"
+            maxlength="1024"
+            show-word-limit
+          />
+        </el-form-item>
+
         <el-form-item label="环境照片">
           <el-upload
             ref="photoUpload"
@@ -463,7 +476,8 @@ export default {
         roomConfig: [],
         careLevel: [],
         priceRange: '',
-        environmentPhotos: ''
+        environmentPhotos: '',
+        introduction: ''
       },
       rules: {
         name: [
@@ -812,7 +826,8 @@ export default {
         roomConfig: [],
         careLevel: [],
         priceRange: '',
-        environmentPhotos: ''
+        environmentPhotos: '',
+        introduction: ''
       }
       this.photoList = []
       this.selectedAddress = ''
