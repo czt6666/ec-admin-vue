@@ -64,14 +64,15 @@ export const asyncRouterMap = [
         path: 'list',
         name: '村庄列表',
         component: _import('village/list'),
-        meta: { title: '村庄列表', icon: 'table' }
+        meta: { title: '村庄列表', icon: 'table' },
+        menu: 'user'
       },
       {
         path: 'news',
         name: '主题管理',
         component: _import('village/news'),
         meta: { title: '主题管理', icon: 'password' },
-        menu: 'role'
+        menu: 'user'
       },
     ]
   },
@@ -86,14 +87,15 @@ export const asyncRouterMap = [
         path: 'list',
         name: '民宿列表',
         component: _import('homestay/index'),
-        meta: { title: '民宿列表', icon: 'table' }
+        meta: { title: '民宿列表', icon: 'table' },
+        menu: 'user'
       },
       {
         path: 'business',
         name: '商业经营管理',
         component: _import('homestay/business'),
         meta: { title: '商业经营管理', icon: 'password' },
-        menu: 'role'
+        menu: 'user'
       },
     ]
   },
@@ -214,14 +216,14 @@ export const asyncRouterMap = [
         name: '商品管理',
         component: _import('products/subject'),
         meta: { title: '商品管理', icon: 'user' },
-        menu: 'user'
+        menu: 'product'
       },
       {
         path: 'shop',
         name: '店铺管理',
         component: _import('products/shop'),
         meta: { title: '店铺管理', icon: 'password' },
-        menu: 'role'
+        menu: 'shop'
       },
     ]
   },
@@ -237,21 +239,21 @@ export const asyncRouterMap = [
         name: '门店管理',
         component: _import('restaurant/subject'),
         meta: { title: '门店管理', icon: 'user' },
-        menu: 'user'
+        menu: 'restaurant'
       },
       {
         path: 'business',
         name: '商业经营管理',
         component: _import('restaurant/business'),
         meta: { title: '商业经营管理', icon: 'password' },
-        menu: 'role'
+        menu: 'restaurant'
       },
       {
         path: 'dishCategory',
         name: '菜品分类管理',
         component: _import('restaurant/dishCategory'),
         meta: { title: '菜品分类管理', icon: 'table' },
-        menu: 'user'
+        menu: 'restaurant'
       }
     ]
   },
