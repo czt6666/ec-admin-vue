@@ -2,12 +2,11 @@
   <div class="app-container">
     <div style="height: 850px;overflow-y: auto">
       <el-input
-        placeholder="请输入姓名"
+        placeholder="请输入操作人"
         v-model="value"
         style="width:240px"
       ></el-input>
       <el-button type="primary" @click="searchLogList">搜索</el-button>
-      <el-button type="primary">展示数据</el-button>
       <el-button type="warning" @click="dialogVisible = true"
         >系统日志</el-button
       >
@@ -59,63 +58,70 @@
         </el-table-column>
         <el-table-column
           align="center"
-          prop="date"
+          prop="createTime"
           label="操作日期"
           width="180"
           sortable
         >
+          <template slot-scope="scope">
+            {{ scope.row.createTime | formatDate }}
+          </template>
         </el-table-column>
         <el-table-column
           align="center"
-          prop="creator"
+          prop="username"
           label="操作人"
           width="180"
         >
         </el-table-column>
         <el-table-column
           align="center"
-          prop="subtype"
+          prop="operation"
           label="操作类型"
           width="180"
         >
         </el-table-column>
-        <!-- <el-table-column
+        <el-table-column
           align="center"
-          prop="extra"
-          label="扩展信息"
-          width="180"
+          prop="method"
+          label="请求方法"
+          width="250"
         >
-        </el-table-column> -->
+        </el-table-column>
 
         <el-table-column
           align="center"
-          prop="res"
+          prop="success"
           label="执行结果"
           width="180"
           :filters="[
-            { text: '成功', value: 0 },
-            { text: '失败', value: 1 }
+            { text: '成功', value: 1 },
+            { text: '失败', value: 0 }
           ]"
           :filter-method="filterTag"
           filter-placement="bottom-end"
         >
           <template slot-scope="scope">
             <el-tag
-              :type="scope.row.res === 0 ? 'success' : 'danger'"
+              :type="scope.row.success === 1 ? 'success' : 'danger'"
               disable-transitions
-              >{{ formatResult(scope.row.res) }}</el-tag
+              >{{ formatResult(scope.row.success) }}</el-tag
             >
           </template>
         </el-table-column>
         <el-table-column
-          align="left"
-          header-align="center"
-          prop="action"
-          label="操作详情"
+          align="center"
+          prop="costTime"
+          label="耗时(ms)"
+          width="120"
         >
-          <template slot-scope="scope">
-            <div v-html="highlightText(scope.row.action)"></div>
-          </template>
+        </el-table-column>
+        <el-table-column
+          align="center"
+          prop="ipAddress"
+          label="IP地址"
+          width="150"
+        >
         </el-table-column>
         <el-table-column
           label="操作"
@@ -179,6 +185,19 @@
 // import API_CONFIG from "../../../config/index.js";
 
 export default {
+  filters: {
+    formatDate(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+  },
   data() {
     return {
       dialogVisible: false,
@@ -233,13 +252,26 @@ export default {
       // }
       this.listLoading = true;
       this.api({
-        url: "/log/listOperateLog",
+        url: "/operateLog/list",
         method: "get",
-        params: this.listQuery
-      }).then(data => {
+        params: {
+          page: this.listQuery.pageNum,
+          size: this.listQuery.pageRow,
+          username: this.listQuery.name
+        }
+      }).then(res => {
         this.listLoading = false;
-        this.list = data.list;
-        this.totalCount = data.totalCount;
+        // 处理后端返回的数据格式
+        if (res && res.records) {
+          this.list = res.records;
+          this.totalCount = res.total;
+        } else {
+          this.list = [];
+          this.totalCount = 0;
+        }
+      }).catch(error => {
+        this.listLoading = false;
+        this.$message.error('获取操作日志失败: ' + error.message);
       });
     },
     // getExtraData() {
@@ -256,31 +288,35 @@ export default {
       this.$refs.logContainer.scrollTop = this.$refs.logContainer.scrollHeight;
     },
     showDetailLog($index) {
-      this.gridDataDetail.id = this.list[$index].id;
-      const text = this.list[$index].extra;
-      const jsonString = `{${text
-        .replace(/FileDO|\(|\)/g, "")
-        .split(", ")
-        .map(pair => {
-          const [key, value] = pair.split("=");
-          return `"${key}": "${value}"`;
-        })
-        .join(", ")}}`;
-      // 转换为JSON对象
-      const jsonObject = JSON.parse(jsonString);
-      this.gridDataDetail.req = JSON.stringify(jsonObject, null, 2);
-      console.log(jsonObject);
-      this.form.name = this.list[$index].name;
+      const log = this.list[$index];
+      this.gridDataDetail.id = log.id;
+      
+      // 构建详细信息对象
+      const detailInfo = {
+        "操作用户ID": log.userId,
+        "操作用户名": log.username,
+        "操作类型": log.operation,
+        "请求方法": log.method,
+        "请求参数": log.requestParams,
+        "响应结果": log.responseResult,
+        "IP地址": log.ipAddress,
+        "操作时间": log.createTime,
+        "耗时(毫秒)": log.costTime,
+        "是否成功": log.success === 1 ? "成功" : "失败",
+        "错误信息": log.errorMessage
+      };
+      
+      this.gridDataDetail.req = JSON.stringify(detailInfo, null, 2);
       this.dialogFormVisible = true;
     },
     filterTag(value, row) {
-      return row.res === value;
+      return row.success === value;
     },
     formatResult(result) {
-      return result === 0 ? "成功" : "失败";
+      return result === 1 ? "成功" : "失败";
     },
     tableRowClassName({ row, rowIndex }) {
-      if (row.res === 1) {
+      if (row.success === 0) {
         return "error-row";
       }
       // else if (rowIndex === 3) {
@@ -410,17 +446,17 @@ export default {
       return (this.listQuery.pageNum - 1) * this.listQuery.pageRow + $index + 1;
     },
     searchLogList() {
-      //检索列表,前端
-      var _this = this;
-      var list = [];
-      this.list.map(function(item) {
-        if (item.name.search(_this.value.trim()) != -1) {
-          list.push(item);
-          //console.log(list);
-        }
+      //检索列表
+      this.listQuery.name = this.value.trim();
+      this.handleFilter();
+    },
+    
+    getOperateLogDetail(id) {
+      // 获取操作日志详情
+      return this.api({
+        url: `/operateLog/detail/${id}`,
+        method: "get"
       });
-      this.list = list;
-      //return list;
     }
   }
 };

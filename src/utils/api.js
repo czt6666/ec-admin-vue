@@ -28,6 +28,16 @@ service.interceptors.request.use(config => {
   if (token) {
     config.headers.token = token;
   }
+  
+  // 添加用户ID请求头（仅在能获取到时添加）
+  const userId = store.getters.userId;
+  if (userId) {
+    config.headers['X-User-Id'] = userId;
+    console.log('Added X-User-Id header to request:', userId);
+  } else {
+    console.log('Skipped adding X-User-Id header - userId not available');
+  }
+  
   //请求签名
   if (config.url.indexOf("/tags/getInfo") !== -1) {
     // 将签名信息及公钥放入请求头

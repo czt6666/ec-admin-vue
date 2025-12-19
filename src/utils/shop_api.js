@@ -36,6 +36,15 @@ service.interceptors.request.use(
       // 后端如果要求其他头名，可在此调整
       config.headers.token = token
     }
+    
+    // 添加用户ID请求头（仅在能获取到时添加）
+    const userId = store.getters.userId;
+    if (userId) {
+      config.headers['X-User-Id'] = userId;
+      console.log('Added X-User-Id header to request:', userId);
+    } else {
+      console.log('Skipped adding X-User-Id header - userId not available');
+    }
 
     // 按需对特定路径进行签名（示例：/tags/getInfo）
     if (config.url && config.url.indexOf('/tags/getInfo') !== -1) {
