@@ -1,69 +1,40 @@
 <template>
   <div class="app-container">
-    <!-- 搜索区域 -->
+    <!-- 搜索 -->
     <div class="filter-container">
       <el-form :inline="true" :model="listQuery" class="demo-form-inline">
         <el-form-item label="基地名称">
-          <el-input
-            v-model="listQuery.baseName"
-            placeholder="请输入基地名称"
-            clearable
-            style="width: 200px"
-          />
+          <el-input v-model="listQuery.baseName" placeholder="请输入基地名称" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item label="运行单位">
-          <el-input
-            v-model="listQuery.operationUnit"
-            placeholder="请输入运行单位"
-            clearable
-            style="width: 200px"
-          />
+          <el-input v-model="listQuery.operationUnit" placeholder="请输入运行单位" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item label="营业状态">
           <el-select v-model="listQuery.businessStatus" placeholder="全部" clearable style="width: 200px">
-            <el-option
-              v-for="item in businessStatusOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
+            <el-option v-for="item in businessStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-
         <el-form-item>
-          <el-button type="primary" @click="handleSearchList">
-            <i class="el-icon-search"></i> 搜索
-          </el-button>
-          <el-button @click="handleResetSearch">
-            <i class="el-icon-refresh"></i> 重置
-          </el-button>
-          <el-button type="primary" @click="handleAdd">
-            <i class="el-icon-plus"></i> 新增基地
-          </el-button>
+          <el-button type="primary" @click="handleSearchList"><i class="el-icon-search" /> 搜索</el-button>
+          <el-button @click="handleResetSearch"><i class="el-icon-refresh" /> 重置</el-button>
+          <el-button type="primary" @click="handleAdd"><i class="el-icon-plus" /> 新增基地</el-button>
         </el-form-item>
       </el-form>
     </div>
-    
-    <!-- 数据列表标题 -->
+
+    <!-- 标题 -->
     <div class="title-container">
-      <i class="el-icon-tickets" style="color: #409EFF;"></i>
+      <i class="el-icon-tickets" style="color:#409EFF;"></i>
       <span class="title-text">研学基地列表</span>
     </div>
-    
-    <!-- 数据表格 -->
+
+    <!-- 表格 -->
     <div class="table-container">
-      <el-table
-        ref="tourBaseTable"
-        :data="list"
-        style="width: 100%;"
-        v-loading="listLoading"
-        border
-        stripe
-      >
-        <el-table-column prop="id" label="编号" width="80" align="center"></el-table-column>
-        <el-table-column prop="baseName" label="基地名称" min-width="150" align="center"></el-table-column>
-        <el-table-column prop="operationUnit" label="运行单位" min-width="150" align="center"></el-table-column>
-        <el-table-column prop="address" label="基地地址" min-width="200" align="center"></el-table-column>
+      <el-table ref="tourBaseTable" :data="list" style="width: 100%;" v-loading="listLoading" border stripe>
+        <el-table-column prop="id" label="编号" width="80" align="center" />
+        <el-table-column prop="baseName" label="基地名称" min-width="150" align="center" />
+        <el-table-column prop="operationUnit" label="运行单位" min-width="150" align="center" />
+        <el-table-column prop="address" label="基地地址" min-width="200" align="center" />
         <el-table-column prop="businessStatus" label="营业状态" width="100" align="center">
           <template slot-scope="scope">
             <el-tag :type="scope.row.businessStatus === 1 ? 'success' : scope.row.businessStatus === 2 ? 'warning' : 'danger'">
@@ -71,32 +42,20 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="contactPerson" label="联系人" width="100" align="center"></el-table-column>
-        <el-table-column prop="contactPhone" label="联系电话" width="120" align="center"></el-table-column>
+        <el-table-column prop="contactPerson" label="联系人" width="100" align="center" />
+        <el-table-column prop="contactPhone" label="联系电话" width="120" align="center" />
         <el-table-column prop="createTime" label="创建时间" width="180" align="center">
           <template slot-scope="scope">{{ scope.row.createTime | formatDateTime }}</template>
         </el-table-column>
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template slot-scope="scope">
-            <el-button
-              size="mini"
-              type="primary"
-              @click="handleUpdate(scope.$index, scope.row)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              size="mini"
-              type="danger"
-              @click="handleDelete(scope.$index, scope.row)"
-            >
-              删除
-            </el-button>
+            <el-button size="mini" type="primary" @click="handleUpdate(scope.$index, scope.row)">编辑</el-button>
+            <el-button size="mini" type="danger" @click="handleDelete(scope.$index, scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </div>
-    
+
     <!-- 分页 -->
     <div class="pagination-container">
       <el-pagination
@@ -106,65 +65,53 @@
         :page-size="listQuery.pageSize"
         :page-sizes="[10, 20, 50, 100]"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="total">
-      </el-pagination>
+        :total="total"
+      />
     </div>
-    
-    <!-- 添加/编辑对话框 -->
-    <el-dialog
-      :title="isEdit?'编辑研学基地':'添加研学基地'"
-      :visible.sync="dialogVisible"
-      width="600px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        :model="tourBase"
-        :rules="rules"
-        ref="tourBaseForm"
-        label-width="120px"
-        size="small"
-      >
+
+    <!-- 新增/编辑 -->
+    <el-dialog :title="isEdit ? '编辑研学基地' : '添加研学基地'" :visible.sync="dialogVisible" width="650px" :close-on-click-modal="false">
+      <el-form :model="tourBase" :rules="rules" ref="tourBaseForm" label-width="120px" size="small">
         <el-form-item label="基地名称" prop="baseName">
-          <el-input v-model="tourBase.baseName" style="width: 350px"/>
+          <el-input v-model="tourBase.baseName" style="width: 350px" />
         </el-form-item>
         <el-form-item label="运行单位" prop="operationUnit">
-          <el-input v-model="tourBase.operationUnit" style="width: 350px"/>
+          <el-input v-model="tourBase.operationUnit" style="width: 350px" />
         </el-form-item>
+        <!-- 地址 + 地图选址 -->
         <el-form-item label="基地地址" prop="address">
-          <el-input v-model="tourBase.address" style="width: 350px"/>
+          <el-input v-model="tourBase.address" placeholder="请输入基地地址或使用地图选址" style="width: 320px" />
+          <el-button type="primary" plain size="mini" @click="openMapDialog" style="margin-left: 8px;">地图选址</el-button>
+          <el-button type="default" plain size="mini" @click="getCurrentLocation" style="margin-left: 4px;">获取当前位置</el-button>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="地址纬度" prop="latitude">
-              <el-input-number v-model="tourBase.latitude" :precision="6" :step="0.000001" style="width: 100%"/>
-            </el-form-item>
+
           </el-col>
           <el-col :span="12">
-            <el-form-item label="地址经度" prop="longitude">
-              <el-input-number v-model="tourBase.longitude" :precision="6" :step="0.000001" style="width: 100%"/>
-            </el-form-item>
+
           </el-col>
         </el-row>
         <el-form-item label="法定代表人" prop="legalRepresentative">
-          <el-input v-model="tourBase.legalRepresentative" style="width: 350px"/>
+          <el-input v-model="tourBase.legalRepresentative" style="width: 350px" />
         </el-form-item>
         <el-form-item label="统一社会信用代码" prop="unifiedSocialCreditCode">
-          <el-input v-model="tourBase.unifiedSocialCreditCode" style="width: 350px"/>
+          <el-input v-model="tourBase.unifiedSocialCreditCode" style="width: 350px" />
         </el-form-item>
         <el-form-item label="资质证明" prop="qualificationCert">
-          <el-input 
-            type="textarea" 
-            v-model="tourBase.qualificationCert" 
-            :rows="3" 
+          <el-input
+            type="textarea"
+            v-model="tourBase.qualificationCert"
+            :rows="3"
             placeholder="请输入资质证明URL，多个URL用逗号分隔"
             style="width: 350px"
           />
         </el-form-item>
         <el-form-item label="基地特色说明" prop="featureDesc">
-          <el-input 
-            type="textarea" 
-            v-model="tourBase.featureDesc" 
-            :rows="3" 
+          <el-input
+            type="textarea"
+            v-model="tourBase.featureDesc"
+            :rows="3"
             placeholder="请输入基地特色说明"
             style="width: 350px"
           />
@@ -177,24 +124,14 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="联系人" prop="contactPerson">
-          <el-input v-model="tourBase.contactPerson" style="width: 350px"/>
+          <el-input v-model="tourBase.contactPerson" style="width: 350px" />
         </el-form-item>
         <el-form-item label="联系电话" prop="contactPhone">
-          <el-input v-model="tourBase.contactPhone" style="width: 350px"/>
+          <el-input v-model="tourBase.contactPhone" style="width: 350px" />
         </el-form-item>
         <el-form-item label="研学类型" prop="selectedTypeIds">
-          <el-select 
-            v-model="tourBase.selectedTypeIds" 
-            multiple 
-            placeholder="请选择研学类型" 
-            style="width: 350px"
-          >
-            <el-option
-              v-for="item in tourTypeOptions"
-              :key="item.id"
-              :label="item.typeName"
-              :value="item.id">
-            </el-option>
+          <el-select v-model="tourBase.selectedTypeIds" multiple placeholder="请选择研学类型" style="width: 350px">
+            <el-option v-for="item in tourTypeOptions" :key="item.id" :label="item.typeName" :value="item.id" />
           </el-select>
           <div class="type-info">可多选研学类型</div>
         </el-form-item>
@@ -204,31 +141,29 @@
         <el-button type="primary" @click="handleDialogConfirm">确 定</el-button>
       </span>
     </el-dialog>
-    
 
+    <!-- 地图选择 -->
+    <el-dialog title="选择基地位置" :visible.sync="mapDialogVisible" width="80%" :before-close="closeMapDialog">
+      <div class="map-dialog-content">
+        <div id="tourBaseMapContainer" style="width: 100%; height: 500px;"></div>
+        <div class="map-info">
+          <p>请在地图上点击选择位置</p>
+          <p v-if="selectedLatitude && selectedLongitude">选中位置：纬度 {{ selectedLatitude }}，经度 {{ selectedLongitude }}</p>
+        </div>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="closeMapDialog">取消</el-button>
+        <el-button type="primary" @click="confirmLocation">确定选择</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { formatDate } from '@/utils/date'
-import { 
-  fetchList, 
-  createTourBase, 
-  updateTourBase, 
-  deleteTourBase,
-  fetchTourTypes,
-  getAssociatedTypes,
-  saveBaseTypes
-} from '@/api/study/tourBase'
+import { fetchList, createTourBase, updateTourBase, deleteTourBase, fetchTourTypes, getAssociatedTypes, saveBaseTypes } from '@/api/study/tourBase'
 
-const defaultListQuery = {
-  pageNum: 1,
-  pageSize: 10,
-  baseName: null,
-  operationUnit: null,
-  businessStatus: null
-}
-
+const defaultListQuery = { pageNum: 1, pageSize: 10, baseName: null, operationUnit: null, businessStatus: null }
 const defaultTourBase = {
   id: null,
   baseName: null,
@@ -250,31 +185,19 @@ export default {
   name: 'TourBase',
   data() {
     return {
-      listQuery: Object.assign({}, defaultListQuery),
-      list: null,
+      listQuery: { ...defaultListQuery },
+      list: [],
       total: 0,
       listLoading: false,
       dialogVisible: false,
       isEdit: false,
-      tourBase: Object.assign({}, defaultTourBase),
+      tourBase: { ...defaultTourBase },
       tourTypeOptions: [],
       businessStatusOptions: [
-        {
-          label: '全部',
-          value: null
-        },
-        {
-          label: '营业中',
-          value: 1
-        },
-        {
-          label: '暂停营业',
-          value: 2
-        },
-        {
-          label: '已注销',
-          value: 3
-        }
+        { label: '全部', value: null },
+        { label: '营业中', value: 1 },
+        { label: '暂停营业', value: 2 },
+        { label: '已注销', value: 3 }
       ],
       rules: {
         baseName: [
@@ -297,7 +220,13 @@ export default {
           { required: true, message: '请输入联系电话', trigger: 'blur' },
           { pattern: /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$/, message: '请输入正确的电话号码', trigger: 'blur' }
         ]
-      }
+      },
+      // 地图状态
+      mapDialogVisible: false,
+      map: null,
+      marker: null,
+      selectedLatitude: null,
+      selectedLongitude: null
     }
   },
   created() {
@@ -306,16 +235,14 @@ export default {
   },
   filters: {
     formatDateTime(time) {
-      if (time == null || time === '') {
-        return ''
-      }
+      if (!time) return ''
       const date = new Date(time)
       return formatDate(date, 'yyyy-MM-dd hh:mm:ss')
     }
   },
   methods: {
     handleResetSearch() {
-      this.listQuery = Object.assign({}, defaultListQuery)
+      this.listQuery = { ...defaultListQuery }
       this.handleSearchList()
     },
     handleSearchList() {
@@ -334,124 +261,83 @@ export default {
     handleAdd() {
       this.dialogVisible = true
       this.isEdit = false
-      this.tourBase = Object.assign({}, defaultTourBase)
+      this.tourBase = { ...defaultTourBase }
     },
     handleDelete(index, row) {
-      this.$confirm('是否要删除该研学基地？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        deleteTourBase(row.id).then(response => {
-          this.$message({
-            message: '删除成功！',
-            type: 'success'
-          })
-          this.getList()
-        })
-      })
+      this.$confirm('是否要删除该研学基地？', '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+        .then(() => deleteTourBase(row.id))
+        .then(() => { this.$message.success('删除成功！'); this.getList() })
+        .catch(() => {})
     },
     handleUpdate(index, row) {
       this.dialogVisible = true
       this.isEdit = true
-      // 先获取基地信息
-      getAssociatedTypes(row.id).then(response => {
-        const baseInfo = Object.assign({}, row)
-        baseInfo.selectedTypeIds = response.data.map(item => item.id)
+      getAssociatedTypes(row.id).then(res => {
+        const baseInfo = { ...row }
+        baseInfo.selectedTypeIds = (res.data || []).map(item => item.id)
         this.tourBase = baseInfo
       })
     },
-
     handleDialogConfirm() {
-      this.$refs['tourBaseForm'].validate((valid) => {
-        if (valid) {
-          const tourBase = Object.assign({}, this.tourBase)
-          // 移除selectedTypeIds属性，因为它不是数据库字段
-          const selectedTypeIds = tourBase.selectedTypeIds || []
-          delete tourBase.selectedTypeIds
-          
-          if (this.isEdit) {
-            updateTourBase(tourBase).then(response => {
-              // 保存类型关联关系
-              if (selectedTypeIds.length > 0) {
-                saveBaseTypes(tourBase.id, selectedTypeIds).then(() => {
-                  this.$message({
-                    message: '修改成功！',
-                    type: 'success'
-                  })
-                  this.dialogVisible = false
-                  this.getList()
-                })
-              } else {
-                this.$message({
-                  message: '修改成功！',
-                  type: 'success'
-                })
-                this.dialogVisible = false
-                this.getList()
-              }
-            })
-          } else {
-            createTourBase(tourBase).then(response => {
-              const baseId = response.data
-              // 保存类型关联关系
-              if (selectedTypeIds.length > 0 && baseId) {
-                saveBaseTypes(baseId, selectedTypeIds).then(() => {
-                  this.$message({
-                    message: '添加成功！',
-                    type: 'success'
-                  })
-                  this.dialogVisible = false
-                  this.getList()
-                })
-              } else {
-                this.$message({
-                  message: '添加成功！',
-                  type: 'success'
-                })
-                this.dialogVisible = false
-                this.getList()
-              }
-            })
+      this.$refs.tourBaseForm.validate(valid => {
+        if (!valid) {
+          this.$message.error('验证失败')
+          return
+        }
+        const payload = { ...this.tourBase }
+        const selectedTypeIds = payload.selectedTypeIds || []
+        delete payload.selectedTypeIds
+
+        const saveTypes = (baseId) => {
+          if (selectedTypeIds.length > 0 && baseId) {
+            return saveBaseTypes(baseId, selectedTypeIds)
           }
+          return Promise.resolve()
+        }
+
+        if (this.isEdit) {
+          updateTourBase(payload)
+            .then(() => saveTypes(payload.id))
+            .then(() => { this.$message.success('修改成功'); this.dialogVisible = false; this.getList() })
         } else {
-          this.$message({
-            message: '验证失败',
-            type: 'error'
-          })
-          return false
+          createTourBase(payload)
+            .then(res => {
+              const baseId = res.data
+              return saveTypes(baseId)
+            })
+            .then(() => { this.$message.success('添加成功'); this.dialogVisible = false; this.getList() })
         }
       })
     },
     getList() {
       this.listLoading = true
-      fetchList(this.listQuery).then(response => {
-        this.listLoading = false
-        if (response && response.data) {
-          if (response.data.records) {
-            this.list = response.data.records
-            this.total = response.data.total || 0
-          } else if (response.data.list) {
-            this.list = response.data.list
-            this.total = response.data.total || 0
+      fetchList(this.listQuery)
+        .then(res => {
+          this.listLoading = false
+          if (res && res.data) {
+            if (res.data.records) {
+              this.list = res.data.records
+              this.total = res.data.total || 0
+            } else if (res.data.list) {
+              this.list = res.data.list
+              this.total = res.data.total || 0
+            } else {
+              this.list = res.data
+              this.total = (res.data && res.data.length) || 0
+            }
           } else {
-            this.list = response.data
-            this.total = response.data.length || 0
+            this.list = []
+            this.total = 0
           }
-        } else {
+        })
+        .catch(() => {
+          this.listLoading = false
           this.list = []
           this.total = 0
-        }
-      }).catch(() => {
-        this.listLoading = false
-        this.list = []
-        this.total = 0
-      })
+        })
     },
     loadTourTypes() {
-      fetchTourTypes().then(response => {
-        this.tourTypeOptions = response.data
-      })
+      fetchTourTypes().then(res => { this.tourTypeOptions = res.data || [] })
     },
     getBusinessStatusText(status) {
       switch (status) {
@@ -460,47 +346,132 @@ export default {
         case 3: return '已注销'
         default: return '未知状态'
       }
+    },
+    /* 地图相关 */
+    openMapDialog() {
+      this.mapDialogVisible = true
+      this.$nextTick(() => { setTimeout(() => { this.initMap() }, 300) })
+    },
+    initMap() {
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
+      const container = document.getElementById('tourBaseMapContainer')
+      if (!container) { this.$message.error('地图容器不存在'); return }
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+        setTimeout(() => { this.initMap() }, 200)
+        return
+      }
+      if (this.map) { this.map.destroy(); this.map = null }
+      this.map = new AMap.Map('tourBaseMapContainer', { zoom: 15, viewMode: '3D' })
+      if (this.tourBase.latitude && this.tourBase.longitude) {
+        const position = [this.tourBase.longitude, this.tourBase.latitude]
+        this.map.setCenter(position); this.map.setZoom(15)
+        this.marker = new AMap.Marker({ position, map: this.map })
+      } else {
+        this.map.setCenter([116.397428, 39.90923]); this.map.setZoom(11)
+      }
+      AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], () => {
+        this.map.addControl(new AMap.Scale({ position: 'LB' }))
+        this.map.addControl(new AMap.ToolBar({ position: 'RT' }))
+      })
+      this.map.on('complete', () => {
+        this.map.on('click', (e) => {
+          const lng = e.lnglat.getLng()
+          const lat = e.lnglat.getLat()
+          this.selectedLatitude = lat
+          this.selectedLongitude = lng
+          if (this.marker) this.map.remove(this.marker)
+          this.marker = new AMap.Marker({ position: [lng, lat], map: this.map })
+          this.getAddressByCoordinates(lat, lng)
+        })
+      })
+    },
+    getAddressByCoordinates(lat, lng) {
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) { this.$message.warning('坐标无效，无法获取地址'); return }
+      if (typeof AMap === 'undefined') { this.$message.error('高德地图API未加载，请检查网络连接'); return }
+      AMap.plugin('AMap.Geocoder', () => {
+        const geocoder = new AMap.Geocoder({ city: '全国', radius: 1000, extensions: 'all' })
+        geocoder.getAddress([lng, lat], (status, result) => {
+          if (status === 'complete' && result.info === 'OK') {
+            let address = result.regeocode.formattedAddress
+            if (!address) {
+              const comp = result.regeocode.addressComponent
+              const parts = []
+              if (comp.province) parts.push(comp.province)
+              if (comp.city) parts.push(comp.city)
+              if (comp.district) parts.push(comp.district)
+              if (comp.township) parts.push(comp.township)
+              if (comp.street) parts.push(comp.street)
+              if (comp.streetNumber) parts.push(comp.streetNumber)
+              address = parts.join('')
+            }
+            if (address) this.tourBase.address = address
+          } else {
+            this.$message.warning('无法获取该位置的地址信息')
+          }
+        })
+      })
+    },
+    getCurrentLocation() {
+      if (typeof AMap === 'undefined') { this.$message.error('高德地图API未加载，请检查网络连接'); return }
+      AMap.plugin('AMap.Geolocation', () => {
+        const geolocation = new AMap.Geolocation({
+          enableHighAccuracy: true, timeout: 10000, maximumAge: 0, convert: true,
+          showButton: false, showMarker: false, showCircle: false, panToLocation: false, zoomToAccuracy: false
+        })
+        geolocation.getCurrentPosition((status, result) => {
+          if (status === 'complete') {
+            const lat = result.position.lat
+            const lng = result.position.lng
+            this.tourBase.latitude = lat
+            this.tourBase.longitude = lng
+            if (this.map) {
+              const position = [lng, lat]
+              this.map.setCenter(position); this.map.setZoom(15)
+              if (this.marker) this.map.remove(this.marker)
+              this.marker = new AMap.Marker({ position, map: this.map })
+            }
+            this.getAddressByCoordinates(lat, lng)
+            this.$message.success('获取当前位置成功')
+          } else {
+            this.$message.error('获取当前位置失败')
+          }
+        })
+      })
+    },
+    confirmLocation() {
+      if (this.selectedLatitude && this.selectedLongitude) {
+        this.tourBase.latitude = this.selectedLatitude
+        this.tourBase.longitude = this.selectedLongitude
+        this.$message.success('位置选择成功')
+        this.closeMapDialog()
+      } else {
+        this.$message.warning('请先在地图上选择位置')
+      }
+    },
+    closeMapDialog() {
+      this.mapDialogVisible = false
+      this.selectedLatitude = null
+      this.selectedLongitude = null
+      if (this.marker && this.map) this.map.remove(this.marker)
+      this.marker = null
+      if (this.map) { this.map.destroy(); this.map = null }
     }
   }
 }
 </script>
 
 <style scoped>
-.filter-container {
-  background-color: #f5f7fa;
-  padding: 20px;
-  border-radius: 4px;
-  margin-bottom: 20px;
-}
-
-.title-container {
-  display: flex;
-  align-items: center;
-  background-color: #f5f7fa;
-  padding: 15px 20px;
-  border-radius: 4px;
-  margin-bottom: 20px;
-}
-
-.title-text {
-  font-size: 18px;
-  font-weight: bold;
-  margin-left: 10px;
-}
-
-.table-container {
-  margin-bottom: 15px;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.type-info {
-  font-size: 12px;
-  color: #999;
-  margin-top: 5px;
-}
+.filter-container { background-color: #f5f7fa; padding: 20px; border-radius: 4px; margin-bottom: 20px; }
+.title-container { display: flex; align-items: center; background-color: #f5f7fa; padding: 15px 20px; border-radius: 4px; margin-bottom: 20px; }
+.title-text { font-size: 18px; font-weight: bold; margin-left: 10px; }
+.table-container { margin-bottom: 15px; }
+.pagination-container { display: flex; justify-content: center; margin-top: 20px; }
+.type-info { font-size: 12px; color: #999; margin-top: 5px; }
+/* 地图弹窗样式 */
+.map-dialog-content { position: relative; }
+.map-info { margin-top: 10px; padding: 10px; background-color: #f5f7fa; border-radius: 4px; }
+.map-info p { margin: 5px 0; color: #606266; }
 </style>
