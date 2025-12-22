@@ -246,14 +246,14 @@ export const asyncRouterMap = [
         name: '商业经营管理',
         component: _import('restaurant/business'),
         meta: { title: '商业经营管理', icon: 'business' },
-        menu: 'restaurant'
+        menu: 'dish'
       },
       {
         path: 'dishCategory',
         name: '菜品分类管理',
         component: _import('restaurant/dishCategory'),
         meta: { title: '菜品分类管理', icon: 'tag' },
-        menu: 'restaurant'
+        menu: 'dishCategory'
       }
     ]
   },
