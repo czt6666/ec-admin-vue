@@ -313,7 +313,7 @@ export const asyncRouterMap = [
         name: "操作日志",
         component: _import("operatelog/index"),
         meta: { title: "操作日志", icon: "document" },
-        menu: "log"
+        menu: "operateLog"
       },
       // {
       //   path: 'sysmonitor',   // hyjnew ofdviewer --> viewer
