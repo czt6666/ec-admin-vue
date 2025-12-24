@@ -8,6 +8,11 @@
       ></el-input>
       <el-button type="primary" @click="searchLogList">搜索</el-button>
       <el-button type="primary">展示数据</el-button>
+      <el-button
+        type="warning"
+        icon="el-icon-download"
+        @click="handleExport"
+      >导出Excel</el-button>
       <el-table
         :data="list"
         v-loading="listLoading"
@@ -144,6 +149,8 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
   data() {
     return {
@@ -253,7 +260,102 @@ export default {
       });
       this.list = list;
       //return list;
-    }
+    },
+    // 导出登录日志
+    handleExport() {
+      this.downloadLoading = true;
+      
+      // 创建一个独立的axios实例用于文件下载，避免拦截器的影响
+      const downloadApi = axios.create({
+        baseURL: window.webofdConfig.BASE_URL,
+        timeout: 180000,
+        responseType: 'blob'
+      });
+      
+      // 添加请求拦截器添加token
+      downloadApi.interceptors.request.use(config => {
+        const token = this.$store.getters.token;
+        if (token) {
+          config.headers['token'] = token;
+        }
+        return config;
+      }, error => {
+        return Promise.reject(error);
+      });
+      
+      // 添加响应拦截器处理错误
+      downloadApi.interceptors.response.use(
+        response => {
+          return response;
+        },
+        error => {
+          return Promise.reject(error);
+        }
+      );
+
+      // 发起导出请求
+      downloadApi({
+        url: '/log/exportLoginLogs',
+        method: 'post',
+        data: {
+          // 根据需要传递筛选参数
+          // username: this.listQuery.name || undefined,
+          // date: this.listQuery.date || undefined
+        }
+      }).then(response => {
+        // 检查是否有错误响应（当后端返回错误时，可能返回JSON而不是预期的文件）
+        if (response.data.type && response.data.type === 'application/json') {
+          // 如果是JSON响应，说明后端返回了错误信息
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const errorMsg = JSON.parse(reader.result).msg || '导出失败';
+              this.$message.error(errorMsg);
+            } catch (e) {
+              this.$message.error('导出失败');
+            }
+          };
+          reader.readAsText(response.data);
+          this.downloadLoading = false;
+          return;
+        }
+
+        // 创建Blob对象
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        // 获取文件名
+        const contentDisposition = response.headers['content-disposition'];
+        let fileName = '登录日志.xlsx';
+        if (contentDisposition) {
+          const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+          if (fileNameMatch && fileNameMatch[1]) {
+            fileName = decodeURIComponent(fileNameMatch[1]);
+          } else {
+            const fileNameMatch2 = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (fileNameMatch2 && fileNameMatch2[1]) {
+              fileName = fileNameMatch2[1];
+            }
+          }
+        }
+
+        // 创建下载链接
+        const downloadElement = document.createElement('a');
+        const href = window.URL.createObjectURL(blob);
+        downloadElement.href = href;
+        downloadElement.download = fileName;
+        document.body.appendChild(downloadElement);
+        downloadElement.click();
+        document.body.removeChild(downloadElement);
+        window.URL.revokeObjectURL(href);
+
+        this.downloadLoading = false;
+        this.$message.success('导出成功');
+      }).catch(error => {
+        console.error('导出登录日志失败:', error);
+        this.downloadLoading = false;
+        this.$message.error('导出失败: ' + (error.message || '未知错误'));
+      });
+    },
   }
 };
 </script>

@@ -117,54 +117,54 @@
           </el-select>
         </el-form-item>
         <el-form-item label="报名时间" required>
-          <el-col :span="11">
-            <el-form-item prop="applyStartDate">
+          <div class="date-range">
+            <el-col :span="11">
               <el-date-picker
                 v-model="temp.applyStartDate"
                 type="date"
                 placeholder="报名开始日期"
                 style="width: 100%"
                 value-format="yyyy-MM-dd"
+                :picker-options="pickerOptions"
               />
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="line">-</el-col>
-          <el-col :span="11">
-            <el-form-item prop="applyEndDate">
+            </el-col>
+            <el-col :span="2" class="line">-</el-col>
+            <el-col :span="11">
               <el-date-picker
                 v-model="temp.applyEndDate"
                 type="date"
                 placeholder="报名结束日期"
                 style="width: 100%"
                 value-format="yyyy-MM-dd"
+                :picker-options="pickerOptions"
               />
-            </el-form-item>
-          </el-col>
+            </el-col>
+          </div>
         </el-form-item>
         <el-form-item label="活动时间" required>
-          <el-col :span="11">
-            <el-form-item prop="activityStartDate">
+          <div class="date-range">
+            <el-col :span="11">
               <el-date-picker
                 v-model="temp.activityStartDate"
                 type="date"
                 placeholder="活动开始日期"
                 style="width: 100%"
                 value-format="yyyy-MM-dd"
+                :picker-options="pickerOptions"
               />
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="line">-</el-col>
-          <el-col :span="11">
-            <el-form-item prop="activityEndDate">
+            </el-col>
+            <el-col :span="2" class="line">-</el-col>
+            <el-col :span="11">
               <el-date-picker
                 v-model="temp.activityEndDate"
                 type="date"
                 placeholder="活动结束日期"
                 style="width: 100%"
                 value-format="yyyy-MM-dd"
+                :picker-options="pickerOptions"
               />
-            </el-form-item>
-          </el-col>
+            </el-col>
+          </div>
         </el-form-item>
         <el-form-item label="活动价格(元)" prop="price">
           <el-input-number
@@ -275,12 +275,29 @@ export default {
       rules: {
         activityName: [{ required: true, message: '活动名称不能为空', trigger: 'blur' }],
         planId: [{ required: true, message: '关联方案不能为空', trigger: 'change' }],
-        applyStartDate: [{ required: true, message: '报名开始日期不能为空', trigger: 'change' }],
-        applyEndDate: [{ required: true, message: '报名结束日期不能为空', trigger: 'change' }],
-        activityStartDate: [{ required: true, message: '活动开始日期不能为空', trigger: 'change' }],
-        activityEndDate: [{ required: true, message: '活动结束日期不能为空', trigger: 'change' }],
+        applyStartDate: [
+          { required: true, message: '报名开始日期不能为空', trigger: 'change' },
+          { validator: this.validateApplyDateRange, trigger: 'change' }
+        ],
+        applyEndDate: [
+          { required: true, message: '报名结束日期不能为空', trigger: 'change' },
+          { validator: this.validateApplyDateRange, trigger: 'change' }
+        ],
+        activityStartDate: [
+          { required: true, message: '活动开始日期不能为空', trigger: 'change' },
+          { validator: this.validateActivityDateRange, trigger: 'change' }
+        ],
+        activityEndDate: [
+          { required: true, message: '活动结束日期不能为空', trigger: 'change' },
+          { validator: this.validateActivityDateRange, trigger: 'change' }
+        ],
         price: [{ required: true, message: '活动价格不能为空', trigger: 'blur' }],
         recruitNum: [{ required: true, message: '招生人数不能为空', trigger: 'blur' }]
+      },
+      pickerOptions: {
+        disabledDate: (time) => {
+          return time.getTime() > Date.now()
+        }
       }
     }
   },
@@ -380,6 +397,28 @@ export default {
         })
       })
     },
+    validateApplyDateRange(rule, value, callback) {
+      if (this.temp.applyStartDate && this.temp.applyEndDate) {
+        if (new Date(this.temp.applyStartDate) > new Date(this.temp.applyEndDate)) {
+          callback(new Error('报名开始日期不能晚于报名结束日期'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
+    validateActivityDateRange(rule, value, callback) {
+      if (this.temp.activityStartDate && this.temp.activityEndDate) {
+        if (new Date(this.temp.activityStartDate) > new Date(this.temp.activityEndDate)) {
+          callback(new Error('活动开始日期不能晚于活动结束日期'))
+        } else {
+          callback()
+        }
+      } else {
+        callback()
+      }
+    },
     getStatusText(status) {
       const statusMap = {
         1: '报名中',
@@ -410,6 +449,11 @@ export default {
 }
 .line {
   text-align: center;
+}
+.date-range {
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
 .app-container {

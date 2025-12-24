@@ -7,9 +7,9 @@
         style="width:240px"
       ></el-input>
       <el-button type="primary" @click="searchLogList">搜索</el-button>
-      <el-button type="warning" @click="dialogVisible = true"
+      <!-- <el-button type="warning" @click="dialogVisible = true"
         >系统日志</el-button
-      >
+      > -->
 
       <el-dialog
         title="系统日志"
@@ -39,7 +39,17 @@
           >
         </span>
       </el-dialog>
-      <el-table
+      
+      <div class="filter-container">
+        <el-button class="filter-item" type="primary" icon="el-icon-search" @click="searchLogList">
+          搜索
+        </el-button>
+        <el-button :loading="downloadLoading" class="filter-item" type="primary" icon="el-icon-download" @click="handleDownload">
+          导出
+        </el-button>
+      </div>
+      
+        <el-table
         :data="list"
         v-loading="listLoading"
         border
@@ -180,6 +190,7 @@
 </template>
 
 <script>
+import axios from 'axios';
 // import SockJS from "sockjs-client";
 // import Stomp from "stompjs";
 // import API_CONFIG from "../../../config/index.js";
@@ -227,7 +238,8 @@ export default {
         pageRow: 50, //每页条数
         name: ""
       },
-      keyword: "打开"
+      keyword: "打开",
+      downloadLoading: false
     };
   },
   created() {
@@ -449,6 +461,143 @@ export default {
       //检索列表
       this.listQuery.name = this.value.trim();
       this.handleFilter();
+    },
+    
+    handleDownload() {
+      this.downloadLoading = true;
+      
+      // 创建一个独立的axios实例用于文件下载，避免拦截器的影响
+      const downloadApi = axios.create({
+        baseURL: window.webofdConfig.BASE_URL,
+        timeout: 180000,
+        responseType: 'blob'
+      });
+      
+      // 添加请求拦截器添加token
+      downloadApi.interceptors.request.use(config => {
+        const token = this.$store.getters.token;
+        if (token) {
+          config.headers['token'] = token;
+        }
+        return config;
+      }, error => {
+        return Promise.reject(error);
+      });
+      
+      // 添加响应拦截器处理错误
+      downloadApi.interceptors.response.use(
+        response => {
+          return response;
+        },
+        error => {
+          return Promise.reject(error);
+        }
+      );
+      
+      // 调用后端导出接口
+      downloadApi({
+        url: '/operateLog/export',
+        method: 'get',
+        params: {
+          username: this.listQuery.name || undefined,
+          operation: undefined, // 可以根据需要添加筛选条件
+          startTime: undefined,
+          endTime: undefined
+        }
+      }).then(response => {
+        // 检查是否有错误响应（当后端返回错误时，可能返回JSON而不是预期的文件）
+        if (response.data.type && response.data.type === 'application/json') {
+          // 如果是JSON响应，说明后端返回了错误信息
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const errorMsg = JSON.parse(reader.result).msg || '导出失败';
+              this.$message.error(errorMsg);
+            } catch (e) {
+              this.$message.error('导出失败');
+            }
+          };
+          reader.readAsText(response.data);
+          return;
+        }
+        
+        // 创建Blob对象
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        // 创建下载链接
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        // 从响应头获取文件名，如果无法获取则使用默认名称
+        const contentDisposition = response.headers['content-disposition'];
+        console.log('Content-Disposition:', contentDisposition); // 调试日志
+        let fileName = '操作日志.xlsx';
+        let fileNameMatch = null;
+        
+        if (contentDisposition) {
+          // 尝试匹配RFC 6266标准的filename*参数（包含编码信息）
+          fileNameMatch = contentDisposition.match(/filename\\*?=\\s*"[^"]*UTF-8''([^;\\r\\n"]*)"/i);
+          console.log('RFC 6266 match:', fileNameMatch); // 调试日志
+          if (fileNameMatch) {
+            fileName = decodeURIComponent(fileNameMatch[1]);
+          } else {
+            // 尝试匹配普通的filename参数
+            fileNameMatch = contentDisposition.match(/filename\\*?=\\s*"?([^;\\r\\n"]*)"?"?/);
+            console.log('Regular match:', fileNameMatch); // 调试日志
+            if (fileNameMatch) {
+              fileName = fileNameMatch[1].replace(/"/g, '');
+              // 如果fileName是URL编码的，尝试解码
+              try {
+                fileName = decodeURIComponent(fileName);
+              } catch (e) {
+                // 如果解码失败，使用原始值
+              }
+            }
+          }
+        }
+        
+        // 如果文件名中没有时间戳（即不包含下划线后的数字部分），则添加时间戳
+        if (!fileName.includes('_') || !/\d{14}/.test(fileName)) {
+          const now = new Date();
+          const timestamp = now.getFullYear() + 
+                           String(now.getMonth() + 1).padStart(2, '0') + 
+                           String(now.getDate()).padStart(2, '0') + 
+                           String(now.getHours()).padStart(2, '0') + 
+                           String(now.getMinutes()).padStart(2, '0') + 
+                           String(now.getSeconds()).padStart(2, '0');
+          fileName = `操作日志_${timestamp}.xlsx`;
+        }
+        
+        console.log('Final fileName:', fileName); // 调试日志
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }).catch(error => {
+        console.error('导出失败:', error);
+        // 检查错误是否包含响应数据
+        if (error.response && error.response.data) {
+          // 如果错误响应是blob类型，尝试读取错误信息
+          if (error.response.data instanceof Blob) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                const errorMsg = JSON.parse(reader.result).msg || '导出失败';
+                this.$message.error(errorMsg);
+              } catch (e) {
+                this.$message.error('导出失败');
+              }
+            };
+            reader.readAsText(error.response.data);
+          } else {
+            this.$message.error('导出失败: ' + (error.message || '未知错误'));
+          }
+        } else {
+          this.$message.error('导出失败: ' + (error.message || '未知错误'));
+        }
+      }).finally(() => {
+        this.downloadLoading = false;
+      });
     },
     
     getOperateLogDetail(id) {
