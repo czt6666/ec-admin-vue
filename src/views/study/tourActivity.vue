@@ -116,55 +116,45 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="报名时间" required>
-          <div class="date-range">
-            <el-col :span="11">
-              <el-date-picker
-                v-model="temp.applyStartDate"
-                type="date"
-                placeholder="报名开始日期"
-                style="width: 100%"
-                value-format="yyyy-MM-dd"
-                :picker-options="pickerOptions"
-              />
-            </el-col>
-            <el-col :span="2" class="line">-</el-col>
-            <el-col :span="11">
-              <el-date-picker
-                v-model="temp.applyEndDate"
-                type="date"
-                placeholder="报名结束日期"
-                style="width: 100%"
-                value-format="yyyy-MM-dd"
-                :picker-options="pickerOptions"
-              />
-            </el-col>
-          </div>
+        <el-form-item label="报名开始日期" prop="applyStartDate">
+          <el-date-picker
+            v-model="temp.applyStartDate"
+            type="date"
+            placeholder="选择报名开始日期"
+            value-format="yyyy-MM-dd"
+            :picker-options="pickerOptions"
+            style="width: 100%"
+          />
         </el-form-item>
-        <el-form-item label="活动时间" required>
-          <div class="date-range">
-            <el-col :span="11">
-              <el-date-picker
-                v-model="temp.activityStartDate"
-                type="date"
-                placeholder="活动开始日期"
-                style="width: 100%"
-                value-format="yyyy-MM-dd"
-                :picker-options="pickerOptions"
-              />
-            </el-col>
-            <el-col :span="2" class="line">-</el-col>
-            <el-col :span="11">
-              <el-date-picker
-                v-model="temp.activityEndDate"
-                type="date"
-                placeholder="活动结束日期"
-                style="width: 100%"
-                value-format="yyyy-MM-dd"
-                :picker-options="pickerOptions"
-              />
-            </el-col>
-          </div>
+        <el-form-item label="报名结束日期" prop="applyEndDate">
+          <el-date-picker
+            v-model="temp.applyEndDate"
+            type="date"
+            placeholder="选择报名结束日期"
+            value-format="yyyy-MM-dd"
+            :picker-options="pickerOptions"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="活动开始日期" prop="activityStartDate">
+          <el-date-picker
+            v-model="temp.activityStartDate"
+            type="date"
+            placeholder="选择活动开始日期"
+            value-format="yyyy-MM-dd"
+            :picker-options="pickerOptions"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="活动结束日期" prop="activityEndDate">
+          <el-date-picker
+            v-model="temp.activityEndDate"
+            type="date"
+            placeholder="选择活动结束日期"
+            value-format="yyyy-MM-dd"
+            :picker-options="pickerOptions"
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="活动价格(元)" prop="price">
           <el-input-number
@@ -270,30 +260,9 @@ export default {
         status: 1,
         remark: ''
       },
+
       dialogFormVisible: false,
       dialogStatus: '',
-      rules: {
-        activityName: [{ required: true, message: '活动名称不能为空', trigger: 'blur' }],
-        planId: [{ required: true, message: '关联方案不能为空', trigger: 'change' }],
-        applyStartDate: [
-          { required: true, message: '报名开始日期不能为空', trigger: 'change' },
-          { validator: this.validateApplyDateRange, trigger: 'change' }
-        ],
-        applyEndDate: [
-          { required: true, message: '报名结束日期不能为空', trigger: 'change' },
-          { validator: this.validateApplyDateRange, trigger: 'change' }
-        ],
-        activityStartDate: [
-          { required: true, message: '活动开始日期不能为空', trigger: 'change' },
-          { validator: this.validateActivityDateRange, trigger: 'change' }
-        ],
-        activityEndDate: [
-          { required: true, message: '活动结束日期不能为空', trigger: 'change' },
-          { validator: this.validateActivityDateRange, trigger: 'change' }
-        ],
-        price: [{ required: true, message: '活动价格不能为空', trigger: 'blur' }],
-        recruitNum: [{ required: true, message: '招生人数不能为空', trigger: 'blur' }]
-      },
       pickerOptions: {
         disabledDate: (time) => {
           return time.getTime() > Date.now()
@@ -304,6 +273,32 @@ export default {
   created() {
     this.getList()
     this.getPlanList()
+  },
+  computed: {
+    rules() {
+      return {
+        activityName: [{ required: true, message: '活动名称不能为空', trigger: 'blur' }],
+        planId: [{ required: true, message: '关联方案不能为空', trigger: 'change' }],
+        applyStartDate: [
+          { required: true, message: '报名开始日期不能为空', trigger: 'blur' },
+          { validator: this.validateApplyDateRange, trigger: 'blur' }
+        ],
+        applyEndDate: [
+          { required: true, message: '报名结束日期不能为空', trigger: 'blur' },
+          { validator: this.validateApplyDateRange, trigger: 'blur' }
+        ],
+        activityStartDate: [
+          { required: true, message: '活动开始日期不能为空', trigger: 'blur' },
+          { validator: this.validateActivityDateRange, trigger: 'blur' }
+        ],
+        activityEndDate: [
+          { required: true, message: '活动结束日期不能为空', trigger: 'blur' },
+          { validator: this.validateActivityDateRange, trigger: 'blur' }
+        ],
+        price: [{ required: true, message: '活动价格不能为空', trigger: 'blur' }],
+        recruitNum: [{ required: true, message: '招生人数不能为空', trigger: 'blur' }]
+      }
+    }
   },
   methods: {
     getList() {
@@ -397,6 +392,34 @@ export default {
         })
       })
     },
+    handleApplyDateChange(dateRange) {
+      if (dateRange && dateRange.length === 2) {
+        this.temp.applyStartDate = dateRange[0];
+        this.temp.applyEndDate = dateRange[1];
+        // 触发验证
+        if (this.$refs['dataForm']) {
+          this.$refs['dataForm'].validateField('applyStartDate');
+          this.$refs['dataForm'].validateField('applyEndDate');
+        }
+      } else {
+        this.temp.applyStartDate = '';
+        this.temp.applyEndDate = '';
+      }
+    },
+    handleActivityDateChange(dateRange) {
+      if (dateRange && dateRange.length === 2) {
+        this.temp.activityStartDate = dateRange[0];
+        this.temp.activityEndDate = dateRange[1];
+        // 触发验证
+        if (this.$refs['dataForm']) {
+          this.$refs['dataForm'].validateField('activityStartDate');
+          this.$refs['dataForm'].validateField('activityEndDate');
+        }
+      } else {
+        this.temp.activityStartDate = '';
+        this.temp.activityEndDate = '';
+      }
+    },
     validateApplyDateRange(rule, value, callback) {
       if (this.temp.applyStartDate && this.temp.applyEndDate) {
         if (new Date(this.temp.applyStartDate) > new Date(this.temp.applyEndDate)) {
@@ -411,9 +434,11 @@ export default {
     validateActivityDateRange(rule, value, callback) {
       if (this.temp.activityStartDate && this.temp.activityEndDate) {
         if (new Date(this.temp.activityStartDate) > new Date(this.temp.activityEndDate)) {
-          callback(new Error('活动开始日期不能晚于活动结束日期'))
-        } else {
-          callback()
+           callback(new Error('活动开始日期不能晚于活动结束日期'))
+         } else if (new Date(this.temp.activityEndDate) < new Date(this.temp.applyStartDate)) {
+           callback(new Error('活动结束日期不能早于报名开始日期'))
+          } else {
+            callback()
         }
       } else {
         callback()
