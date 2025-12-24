@@ -117,7 +117,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="报名开始日期" prop="applyStartDate">
-          <el-date-picker
+          <date-picker
             v-model="temp.applyStartDate"
             type="date"
             placeholder="选择报名开始日期"
@@ -126,7 +126,7 @@
           />
         </el-form-item>
         <el-form-item label="报名结束日期" prop="applyEndDate">
-          <el-date-picker
+          <date-picker
             v-model="temp.applyEndDate"
             type="date"
             placeholder="选择报名结束日期"
@@ -135,7 +135,7 @@
           />
         </el-form-item>
         <el-form-item label="活动开始日期" prop="activityStartDate">
-          <el-date-picker
+          <date-picker
             v-model="temp.activityStartDate"
             type="date"
             placeholder="选择活动开始日期"
@@ -144,7 +144,7 @@
           />
         </el-form-item>
         <el-form-item label="活动结束日期" prop="activityEndDate">
-          <el-date-picker
+          <date-picker
             v-model="temp.activityEndDate"
             type="date"
             placeholder="选择活动结束日期"
@@ -219,10 +219,12 @@ import {
 } from '@/api/study/tourActivity'
 import { fetchList as fetchPlanList } from '@/api/study/tourPlan'
 import Pagination from '@/components/Pagination'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
 
 export default {
   name: 'StudyTourActivity',
-  components: { Pagination },
+  components: { Pagination, DatePicker },
   data() {
     return {
       list: [],
