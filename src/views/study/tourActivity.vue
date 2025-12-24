@@ -47,7 +47,7 @@
     >
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="activityName" label="活动名称" min-width="150" />
-      <el-table-column prop="planId" label="关联方案ID" width="100" />
+      <el-table-column prop="planName" label="关联方案" width="150" />
       <el-table-column label="报名时间" width="200">
         <template slot-scope="scope">
           {{ scope.row.applyStartDate }} 至 {{ scope.row.applyEndDate }}
@@ -117,38 +117,30 @@
           </el-select>
         </el-form-item>
         <el-form-item label="报名开始日期" prop="applyStartDate">
-          <date-picker
+          <el-input
             v-model="temp.applyStartDate"
-            type="date"
-            placeholder="选择报名开始日期"
-            value-format="yyyy-MM-dd"
+            placeholder="格式：2025-01-01"
             style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="报名结束日期" prop="applyEndDate">
-          <date-picker
+          <el-input
             v-model="temp.applyEndDate"
-            type="date"
-            placeholder="选择报名结束日期"
-            value-format="yyyy-MM-dd"
+            placeholder="格式：2025-01-01"
             style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="活动开始日期" prop="activityStartDate">
-          <date-picker
+          <el-input
             v-model="temp.activityStartDate"
-            type="date"
-            placeholder="选择活动开始日期"
-            value-format="yyyy-MM-dd"
+            placeholder="格式：2025-01-01"
             style="width: 100%"
           />
         </el-form-item>
         <el-form-item label="活动结束日期" prop="activityEndDate">
-          <date-picker
+          <el-input
             v-model="temp.activityEndDate"
-            type="date"
-            placeholder="选择活动结束日期"
-            value-format="yyyy-MM-dd"
+            placeholder="格式：2025-01-01"
             style="width: 100%"
           />
         </el-form-item>
@@ -219,12 +211,10 @@ import {
 } from '@/api/study/tourActivity'
 import { fetchList as fetchPlanList } from '@/api/study/tourPlan'
 import Pagination from '@/components/Pagination'
-import DatePicker from 'vue2-datepicker'
-import 'vue2-datepicker/index.css'
 
 export default {
   name: 'StudyTourActivity',
-  components: { Pagination, DatePicker },
+  components: { Pagination },
   data() {
     return {
       list: [],
@@ -273,12 +263,79 @@ export default {
       return {
         activityName: [{ required: true, message: '活动名称不能为空', trigger: 'blur' }],
         planId: [{ required: true, message: '关联方案不能为空', trigger: 'change' }],
+        applyStartDate: [
+          { required: true, message: '报名开始日期不能为空', trigger: 'change' },
+          { validator: this.validateApplyDateRange, trigger: 'change' }
+        ],
+        applyEndDate: [
+          { required: true, message: '报名结束日期不能为空', trigger: 'change' },
+          { validator: this.validateApplyDateRange, trigger: 'change' }
+        ],
+        activityStartDate: [
+          { required: true, message: '活动开始日期不能为空', trigger: 'change' },
+          { validator: this.validateActivityDateRange, trigger: 'change' }
+        ],
+        activityEndDate: [
+          { required: true, message: '活动结束日期不能为空', trigger: 'change' },
+          { validator: this.validateActivityDateRange, trigger: 'change' }
+        ],
         price: [{ required: true, message: '活动价格不能为空', trigger: 'blur' }],
         recruitNum: [{ required: true, message: '招生人数不能为空', trigger: 'blur' }]
       }
     }
   },
   methods: {
+    // 将日期格式化为el-date-picker可识别的格式
+    formatDateForPicker(dateStr) {
+      if (!dateStr) return null;
+      // 如果是字符串格式，转换为Date对象
+      if (typeof dateStr === 'string') {
+        // 检查是否是标准日期格式 (yyyy-MM-dd)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          return new Date(dateStr);
+        } else {
+          // 如果是其他格式，尝试解析
+          const date = new Date(dateStr);
+          if (isNaN(date.getTime())) {
+            return null; // 无效日期
+          }
+          return date;
+        }
+      }
+      return dateStr;
+    },
+    handleApplyStartDateChange(date) {
+      this.temp.applyStartDate = date;
+      // 触发验证
+      if (this.$refs['dataForm']) {
+        this.$refs['dataForm'].validateField('applyStartDate');
+        this.$refs['dataForm'].validateField('applyEndDate');
+      }
+    },
+    handleApplyEndDateChange(date) {
+      this.temp.applyEndDate = date;
+      // 触发验证
+      if (this.$refs['dataForm']) {
+        this.$refs['dataForm'].validateField('applyStartDate');
+        this.$refs['dataForm'].validateField('applyEndDate');
+      }
+    },
+    handleActivityStartDateChange(date) {
+      this.temp.activityStartDate = date;
+      // 触发验证
+      if (this.$refs['dataForm']) {
+        this.$refs['dataForm'].validateField('activityStartDate');
+        this.$refs['dataForm'].validateField('activityEndDate');
+      }
+    },
+    handleActivityEndDateChange(date) {
+      this.temp.activityEndDate = date;
+      // 触发验证
+      if (this.$refs['dataForm']) {
+        this.$refs['dataForm'].validateField('activityStartDate');
+        this.$refs['dataForm'].validateField('activityEndDate');
+      }
+    },
     getList() {
       fetchList(this.listQuery).then(response => {
         this.list = response.data.list
@@ -338,7 +395,12 @@ export default {
       })
     },
     handleUpdate(row) {
+      // 复制行数据到临时对象
       this.temp = Object.assign({}, row)
+      // 确保planId字段被正确设置（后端返回的是tourPlanId，前端需要planId）
+      if (row.tourPlanId !== undefined) {
+        this.temp.planId = row.tourPlanId
+      }
       this.dialogStatus = 'update'
       this.dialogFormVisible = true
       this.$nextTick(() => {
@@ -379,34 +441,6 @@ export default {
           })
         })
       })
-    },
-    handleApplyDateChange(dateRange) {
-      if (dateRange && dateRange.length === 2) {
-        this.temp.applyStartDate = dateRange[0];
-        this.temp.applyEndDate = dateRange[1];
-        // 触发验证
-        if (this.$refs['dataForm']) {
-          this.$refs['dataForm'].validateField('applyStartDate');
-          this.$refs['dataForm'].validateField('applyEndDate');
-        }
-      } else {
-        this.temp.applyStartDate = '';
-        this.temp.applyEndDate = '';
-      }
-    },
-    handleActivityDateChange(dateRange) {
-      if (dateRange && dateRange.length === 2) {
-        this.temp.activityStartDate = dateRange[0];
-        this.temp.activityEndDate = dateRange[1];
-        // 触发验证
-        if (this.$refs['dataForm']) {
-          this.$refs['dataForm'].validateField('activityStartDate');
-          this.$refs['dataForm'].validateField('activityEndDate');
-        }
-      } else {
-        this.temp.activityStartDate = '';
-        this.temp.activityEndDate = '';
-      }
     },
     validateApplyDateRange(rule, value, callback) {
       if (this.temp.applyStartDate && this.temp.applyEndDate) {
