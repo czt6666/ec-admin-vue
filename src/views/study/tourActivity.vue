@@ -279,22 +279,6 @@ export default {
       return {
         activityName: [{ required: true, message: '活动名称不能为空', trigger: 'blur' }],
         planId: [{ required: true, message: '关联方案不能为空', trigger: 'change' }],
-        applyStartDate: [
-          { required: true, message: '报名开始日期不能为空', trigger: 'blur' },
-          { validator: this.validateApplyDateRange, trigger: 'blur' }
-        ],
-        applyEndDate: [
-          { required: true, message: '报名结束日期不能为空', trigger: 'blur' },
-          { validator: this.validateApplyDateRange, trigger: 'blur' }
-        ],
-        activityStartDate: [
-          { required: true, message: '活动开始日期不能为空', trigger: 'blur' },
-          { validator: this.validateActivityDateRange, trigger: 'blur' }
-        ],
-        activityEndDate: [
-          { required: true, message: '活动结束日期不能为空', trigger: 'blur' },
-          { validator: this.validateActivityDateRange, trigger: 'blur' }
-        ],
         price: [{ required: true, message: '活动价格不能为空', trigger: 'blur' }],
         recruitNum: [{ required: true, message: '招生人数不能为空', trigger: 'blur' }]
       }
@@ -341,8 +325,13 @@ export default {
       })
     },
     createData() {
-      this.$refs['dataForm'].validate(valid => {
+      // 首先执行基础表单验证
+      this.$refs['dataForm'].validate(async (valid) => {
         if (valid) {
+          // 然后进行日期逻辑验证
+          if (!(await this.validateDateLogic())) {
+            return
+          }
           createActivity(this.temp).then(() => {
             this.getList()
             this.dialogFormVisible = false
@@ -363,8 +352,13 @@ export default {
       })
     },
     updateData() {
-      this.$refs['dataForm'].validate(valid => {
+      // 首先执行基础表单验证
+      this.$refs['dataForm'].validate(async (valid) => {
         if (valid) {
+          // 然后进行日期逻辑验证
+          if (!(await this.validateDateLogic())) {
+            return
+          }
           const tempData = Object.assign({}, this.temp)
           updateActivity(tempData).then(() => {
             this.getList()
@@ -443,6 +437,48 @@ export default {
       } else {
         callback()
       }
+    },
+    // 在提交时验证日期逻辑
+    validateDateLogic() {
+      return new Promise((resolve) => {
+        // 验证报名日期范围
+        if (this.temp.applyStartDate && this.temp.applyEndDate) {
+          if (new Date(this.temp.applyStartDate) > new Date(this.temp.applyEndDate)) {
+            this.$message({
+              message: '报名开始日期不能晚于报名结束日期',
+              type: 'error'
+            });
+            resolve(false);
+            return;
+          }
+        }
+        
+        // 验证活动日期范围
+        if (this.temp.activityStartDate && this.temp.activityEndDate) {
+          if (new Date(this.temp.activityStartDate) > new Date(this.temp.activityEndDate)) {
+            this.$message({
+              message: '活动开始日期不能晚于活动结束日期',
+              type: 'error'
+            });
+            resolve(false);
+            return;
+          }
+        }
+        
+        // 验证活动结束日期不能早于报名开始日期
+        if (this.temp.applyStartDate && this.temp.activityEndDate) {
+          if (new Date(this.temp.activityEndDate) < new Date(this.temp.applyStartDate)) {
+            this.$message({
+              message: '活动结束日期不能早于报名开始日期',
+              type: 'error'
+            });
+            resolve(false);
+            return;
+          }
+        }
+        
+        resolve(true);
+      });
     },
     getStatusText(status) {
       const statusMap = {
