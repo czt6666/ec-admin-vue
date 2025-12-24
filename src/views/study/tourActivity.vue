@@ -122,7 +122,6 @@
             type="date"
             placeholder="选择报名开始日期"
             value-format="yyyy-MM-dd"
-            :picker-options="pickerOptions"
             style="width: 100%"
           />
         </el-form-item>
@@ -132,7 +131,6 @@
             type="date"
             placeholder="选择报名结束日期"
             value-format="yyyy-MM-dd"
-            :picker-options="pickerOptions"
             style="width: 100%"
           />
         </el-form-item>
@@ -142,7 +140,6 @@
             type="date"
             placeholder="选择活动开始日期"
             value-format="yyyy-MM-dd"
-            :picker-options="pickerOptions"
             style="width: 100%"
           />
         </el-form-item>
@@ -152,7 +149,6 @@
             type="date"
             placeholder="选择活动结束日期"
             value-format="yyyy-MM-dd"
-            :picker-options="pickerOptions"
             style="width: 100%"
           />
         </el-form-item>
@@ -263,11 +259,7 @@ export default {
 
       dialogFormVisible: false,
       dialogStatus: '',
-      pickerOptions: {
-        disabledDate: (time) => {
-          return time.getTime() > Date.now()
-        }
-      }
+
     }
   },
   created() {
