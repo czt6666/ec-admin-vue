@@ -58,6 +58,9 @@
           <el-button type="success" @click="handleAdd">
             <i class="el-icon-plus"></i> 新增
           </el-button>
+          <el-tooltip content="非管理员暂不允许新增店铺" placement="top" effect="dark">
+            <i class="el-icon-info" style="margin-left: 8px; color: #909399; cursor: help; font-size: 16px;"></i>
+          </el-tooltip>
         </el-form-item>
       </el-form>
     </div>
@@ -338,6 +341,7 @@
 <script>
 import { getShopList, getShopById, createShop, updateShop, deleteShop } from '@/api/shop'
 import { getVillageList } from '@/api/village'
+import { getCurrentUser } from '@/api/user'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
 
@@ -399,7 +403,8 @@ export default {
         productType: [{ required: true, message: '请输入产品类型', trigger: 'blur' }],
         businessStatus: [{ required: true, message: '请选择经营状态', trigger: 'change' }],
         village: [{ required: true, message: '请选择所属村', trigger: 'change' }]
-      }
+      },
+      isAdmin: false // 是否为管理员
     }
   },
 
@@ -407,6 +412,7 @@ export default {
     this.getBaseUrl()
     this.getVillageList()
     this.getList()
+    this.checkUserPermission()
   },
 
   methods: {
