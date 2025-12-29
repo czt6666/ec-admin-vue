@@ -6,7 +6,13 @@
         v-model="value"
         style="width:240px"
       ></el-input>
-      <el-button type="primary" @click="searchLogList">搜索</el-button>
+        <el-button class="filter-item" type="primary" icon="el-icon-search" @click="searchLogList">
+          搜索
+        </el-button>
+        <el-button :loading="downloadLoading" class="filter-item" type="primary" icon="el-icon-download" @click="handleDownload">
+          导出
+        </el-button>
+      <!-- <el-button type="primary" @click="searchLogList">搜索</el-button> -->
       <!-- <el-button type="warning" @click="dialogVisible = true"
         >系统日志</el-button
       > -->
@@ -39,7 +45,7 @@
           >
         </span>
       </el-dialog>
-      
+<!--       
       <div class="filter-container">
         <el-button class="filter-item" type="primary" icon="el-icon-search" @click="searchLogList">
           搜索
@@ -47,7 +53,7 @@
         <el-button :loading="downloadLoading" class="filter-item" type="primary" icon="el-icon-download" @click="handleDownload">
           导出
         </el-button>
-      </div>
+      </div> -->
       
         <el-table
         :data="list"
