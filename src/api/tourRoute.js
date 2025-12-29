@@ -1,41 +1,54 @@
 import request from '@/utils/request'
 
-const baseUrl = '/admin/ecadmin/tour/route'
-
+/**
+ * 分页查询旅游线路列表
+ */
 export function listTourRoute(params) {
   return request({
-    url: baseUrl + '/list',
+    url: '/admin/ecadmin/tour/route/list',
     method: 'get',
     params
   })
 }
 
+/**
+ * 根据ID查询旅游线路详情
+ */
 export function getTourRoute(id) {
   return request({
-    url: baseUrl + '/' + id,
+    url: `/admin/ecadmin/tour/route/${id}`,
     method: 'get'
   })
 }
 
+/**
+ * 创建旅游线路
+ */
 export function createTourRoute(data) {
   return request({
-    url: baseUrl + '/create',
+    url: '/admin/ecadmin/tour/route/create',
     method: 'post',
     data
   })
 }
 
+/**
+ * 更新旅游线路
+ */
 export function updateTourRoute(data) {
   return request({
-    url: baseUrl + '/update',
+    url: '/admin/ecadmin/tour/route/update',
     method: 'post',
     data
   })
 }
 
+/**
+ * 删除旅游线路
+ */
 export function deleteTourRoute(id) {
   return request({
-    url: baseUrl + '/delete/' + id,
+    url: `/admin/ecadmin/tour/route/delete/${id}`,
     method: 'delete'
   })
 }

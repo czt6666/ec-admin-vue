@@ -9,6 +9,9 @@
             clearable
             style="width: 200px; margin-right: 10px"
           />
+          <el-select v-model="query.companyId" placeholder="选择公司" clearable style="width: 200px; margin-right: 10px">
+            <el-option v-for="company in companyOptions" :key="company.id" :label="company.name" :value="company.id" />
+          </el-select>
           <el-select v-model="query.bizStatus" placeholder="经营状态" clearable style="width: 150px; margin-right: 10px">
             <el-option label="发布" :value="1" />
             <el-option label="进行中" :value="2" />
@@ -23,6 +26,11 @@
       <el-table :data="tableData" border stripe>
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="name" label="路线名称" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="companyName" label="所属公司" min-width="180" show-overflow-tooltip>
+          <template slot-scope="scope">
+            <span>{{ scope.row.companyName || '—' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="routeType" label="类型" min-width="140" />
         <el-table-column prop="themeTags" label="主题标签" min-width="200" show-overflow-tooltip />
         <el-table-column prop="days" label="行程天数" width="100" align="center" />
@@ -67,15 +75,22 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="类型">
-              <el-select v-model="form.routeType" placeholder="选择或输入" filterable allow-create clearable style="width: 100%">
-                <el-option v-for="opt in routeTypeOptions" :key="opt.id" :label="opt.typeName || opt.name" :value="opt.typeName || opt.name" />
+            <el-form-item label="所属公司">
+              <el-select v-model="form.companyId" placeholder="请选择公司" filterable clearable style="width: 100%">
+                <el-option v-for="company in companyOptions" :key="company.id" :label="company.name" :value="company.id" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="类型">
+              <el-select v-model="form.routeType" placeholder="选择或输入" filterable allow-create clearable style="width: 100%">
+                <el-option v-for="opt in routeTypeOptions" :key="opt.id" :label="opt.typeName || opt.name" :value="opt.typeName || opt.name" />
+              </el-select>
+            </el-form-item>
+          </el-col>
           <el-col :span="12">
             <el-form-item label="主题标签">
               <el-select
@@ -92,22 +107,34 @@
               </el-select>
             </el-form-item>
           </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="行程天数">
               <el-input-number v-model="form.days" :min="0" :max="365" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="行程难度">
+              <el-input v-model="form.difficulty" maxlength="50" />
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="行程难度">
-              <el-input v-model="form.difficulty" maxlength="50" />
+            <el-form-item label="价格区间">
+              <el-input v-model="form.priceRange" maxlength="100" placeholder="如：2000-5000元/人" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="价格区间">
-              <el-input v-model="form.priceRange" maxlength="100" placeholder="如：2000-5000元/人" />
+            <el-form-item label="经营状态" prop="bizStatus">
+              <el-select v-model="form.bizStatus" placeholder="请选择" style="width: 100%">
+                <el-option label="发布" :value="1" />
+                <el-option label="进行中" :value="2" />
+                <el-option label="暂停" :value="3" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -134,15 +161,6 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="经营状态" prop="bizStatus">
-              <el-select v-model="form.bizStatus" placeholder="请选择" style="width: 100%">
-                <el-option label="发布" :value="1" />
-                <el-option label="进行中" :value="2" />
-                <el-option label="暂停" :value="3" />
-              </el-select>
-            </el-form-item>
-          </el-col>
           <el-col :span="12">
             <el-form-item label="目标人群">
               <el-input v-model="form.targetCrowd" maxlength="200" />
@@ -190,6 +208,7 @@
         <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
       </div>
     </el-dialog>
+
     <!-- 地图选址对话框 -->
     <el-dialog
       title="地图选址"
@@ -214,6 +233,7 @@
 
 <script>
 import { listTourRoute, getTourRoute, createTourRoute, updateTourRoute, deleteTourRoute } from '@/api/tourRoute'
+import { listTourCompany } from '@/api/tourCompany'
 import { listRouteType } from '@/api/routeType'
 import { listRouteTheme } from '@/api/routeTheme'
 
@@ -223,6 +243,7 @@ export default {
     return {
       query: {
         name: '',
+        companyId: null,
         bizStatus: null
       },
       tableData: [],
@@ -238,6 +259,7 @@ export default {
       form: {
         id: null,
         name: '',
+        companyId: null,
         routeType: '',
         themeTags: '',
         originAddress: '',
@@ -263,6 +285,7 @@ export default {
         destAddress: [{ required: true, message: '请输入终点地址', trigger: 'blur' }],
         bizStatus: [{ required: true, message: '请选择经营状态', trigger: 'change' }]
       },
+      companyOptions: [],
       routeTypeOptions: [],
       routeThemeOptions: [],
       themeTagsArray: [],
@@ -277,6 +300,7 @@ export default {
   },
   mounted() {
     this.loadData()
+    this.loadCompanies()
     this.loadRouteTypes()
     this.loadRouteThemes()
     this.loadAMapScript()
@@ -291,8 +315,24 @@ export default {
       const res = await listTourRoute(params)
       if (res && res.code === 200) {
         const data = res.data || {}
-        this.tableData = data.records || data.list || []
+        const list = data.records || data.list || []
+        // 处理公司名称显示
+        this.tableData = list.map(item => {
+          const company = this.companyOptions.find(c => c.id === item.companyId)
+          return {
+            ...item,
+            companyName: company ? company.name : null
+          }
+        })
         this.pagination.total = data.total || 0
+      }
+    },
+    async loadCompanies() {
+      const res = await listTourCompany({ page: 1, limit: 999, status: 1 })
+      if (res && res.code === 200) {
+        const raw = res.data || {}
+        const list = raw.records || raw.list || []
+        this.companyOptions = Array.isArray(list) ? list : []
       }
     },
     handleSearch() {
@@ -300,7 +340,7 @@ export default {
       this.loadData()
     },
     handleReset() {
-      this.query = { name: '', bizStatus: null }
+      this.query = { name: '', companyId: null, bizStatus: null }
       this.handleSearch()
     },
     handleSizeChange(val) {
@@ -349,6 +389,7 @@ export default {
       this.form = {
         id: null,
         name: '',
+        companyId: null,
         routeType: '',
         themeTags: '',
         originAddress: '',
@@ -376,15 +417,18 @@ export default {
     handleSubmit() {
       this.$refs.form.validate(async(valid) => {
         if (!valid) return
+
         // 主题标签数组转为逗号分隔
         const payload = { ...this.form }
         if (Array.isArray(this.themeTagsArray)) {
           payload.themeTags = this.themeTagsArray.join(',')
         }
+
         this.submitLoading = true
         const api = this.form.id ? updateTourRoute : createTourRoute
         const res = await api(payload)
         this.submitLoading = false
+
         if (res && res.code === 200) {
           this.$message.success(this.form.id ? '更新成功' : '创建成功')
           this.dialogVisible = false
@@ -431,26 +475,33 @@ export default {
         }, 500)
         return
       }
+
       const container = document.getElementById('routeMapContainer')
       if (!container) return
+
       const targetLat = this.mapTarget === 'dest' ? this.form.destLat : this.form.originLat
       const targetLng = this.mapTarget === 'dest' ? this.form.destLng : this.form.originLng
       this.selectedLatitude = targetLat
       this.selectedLongitude = targetLng
+
       const center = targetLat && targetLng ? [targetLng, targetLat] : [116.397428, 39.90923]
+
       this.map = new window.AMap.Map('routeMapContainer', {
         zoom: 13,
         center
       })
+
       if (targetLat && targetLng) {
         this.marker = new window.AMap.Marker({
           position: [targetLng, targetLat],
           map: this.map
         })
       }
+
       this.map.on('click', (e) => {
         const lng = e.lnglat.getLng()
         const lat = e.lnglat.getLat()
+
         if (this.marker) {
           this.marker.setPosition([lng, lat])
         } else {
@@ -459,9 +510,11 @@ export default {
             map: this.map
           })
         }
+
         this.selectedLongitude = lng
         this.selectedLatitude = lat
         this.getAddressByCoordinates(lat, lng)
+
         if (this.mapTarget === 'dest') {
           this.form.destLat = lat
           this.form.destLng = lng
@@ -473,6 +526,7 @@ export default {
     },
     getAddressByCoordinates(lat, lng) {
       if (!window.AMap) return
+
       window.AMap.plugin('AMap.Geocoder', () => {
         const geocoder = new window.AMap.Geocoder()
         geocoder.getAddress([lng, lat], (status, result) => {
@@ -496,6 +550,7 @@ export default {
         this.$message.warning('请先在地图上选择位置')
         return
       }
+
       if (this.mapTarget === 'dest') {
         this.form.destLat = this.selectedLatitude
         this.form.destLng = this.selectedLongitude
@@ -505,6 +560,7 @@ export default {
         this.form.originLng = this.selectedLongitude
         if (this.selectedAddress) this.form.originAddress = this.selectedAddress
       }
+
       this.mapDialogVisible = false
       this.$message.success('位置已选择')
     },
@@ -520,10 +576,12 @@ export default {
     },
     getCurrentLocation(target = 'origin') {
       this.mapTarget = target
+
       if (!window.AMap) {
         this.$message.error('高德地图API未加载，请检查网络')
         return
       }
+
       window.AMap.plugin('AMap.Geolocation', () => {
         try {
           const geolocation = new window.AMap.Geolocation({
@@ -537,13 +595,16 @@ export default {
             panToLocation: false,
             zoomToAccuracy: false
           })
+
           geolocation.getCurrentPosition((status, result) => {
             if (status === 'complete' && result.position) {
               const lat = result.position.lat
               const lng = result.position.lng
+
               this.selectedLatitude = lat
               this.selectedLongitude = lng
               this.getAddressByCoordinates(lat, lng)
+
               if (this.map) {
                 const pos = [lng, lat]
                 this.map.setCenter(pos)
@@ -551,6 +612,7 @@ export default {
                 if (this.marker) this.map.remove(this.marker)
                 this.marker = new window.AMap.Marker({ position: pos, map: this.map })
               }
+
               if (this.mapTarget === 'dest') {
                 this.form.destLat = lat
                 this.form.destLng = lng
@@ -558,6 +620,7 @@ export default {
                 this.form.originLat = lat
                 this.form.originLng = lng
               }
+
               this.$message.success('获取当前位置成功')
             } else {
               this.$message.error('获取当前位置失败')
@@ -578,28 +641,34 @@ export default {
   justify-content: space-between;
   align-items: center;
 }
+
 .filters {
   display: flex;
   align-items: center;
 }
+
 .pager {
   margin-top: 16px;
   text-align: right;
 }
+
 .address-actions {
   margin-top: 6px;
   display: flex;
   gap: 6px;
 }
+
 .map-dialog-content {
   position: relative;
 }
+
 .map-info {
   margin-top: 10px;
   padding: 10px;
   background-color: #f5f7fa;
   border-radius: 4px;
 }
+
 .map-info p {
   margin: 5px 0;
   color: #606266;
