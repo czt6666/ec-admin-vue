@@ -108,13 +108,16 @@
           />
         </el-form-item>
         <el-form-item label="基地特色说明" prop="featureDesc">
+          <!-- 修改后 -->
           <el-input
             type="textarea"
             v-model="tourBase.featureDesc"
             :rows="3"
+            :maxlength="300"
             placeholder="请输入基地特色说明"
             style="width: 350px"
           />
+          <div class="word-count">{{ (tourBase.featureDesc || '').length }}/300</div>
         </el-form-item>
         <el-form-item label="营业状态" prop="businessStatus">
           <el-radio-group v-model="tourBase.businessStatus">
@@ -474,4 +477,11 @@ export default {
 .map-dialog-content { position: relative; }
 .map-info { margin-top: 10px; padding: 10px; background-color: #f5f7fa; border-radius: 4px; }
 .map-info p { margin: 5px 0; color: #606266; }
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
+}
 </style>

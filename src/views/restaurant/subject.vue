@@ -99,7 +99,8 @@
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
         <el-form-item label="门店名称" prop="name">
-          <el-input v-model="form.name" maxlength="100" show-word-limit />
+          <el-input v-model="form.name" maxlength="100"  />
+          <div class="word-count">{{ (form.name || '').length }}/100</div>
         </el-form-item>
 
         <el-form-item label="关联用户" prop="userId">
@@ -203,10 +204,10 @@
           <el-input
             type="textarea"
             v-model="form.notice"
-            maxlength="500"
-            show-word-limit
+            maxlength="300"
             :rows="3"
           />
+          <div class="word-count">{{ (form.notice || '').length }}/300</div>
         </el-form-item>
 
         <el-form-item label="营业执照">
@@ -908,5 +909,12 @@ export default {
 .map-info p {
   margin: 5px 0;
   color: #606266;
+}
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
 }
 </style>

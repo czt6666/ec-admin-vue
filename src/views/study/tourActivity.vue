@@ -185,8 +185,10 @@
             v-model="temp.remark"
             type="textarea"
             :autosize="{ minRows: 2, maxRows: 4 }"
+            :maxlength="200"
             placeholder="请输入活动备注"
           />
+          <div class="word-count">{{ (temp.remark || '').length }}/300</div>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -480,7 +482,7 @@ export default {
             return;
           }
         }
-        
+
         // 验证活动日期范围
         if (this.temp.activityStartDate && this.temp.activityEndDate) {
           if (new Date(this.temp.activityStartDate) > new Date(this.temp.activityEndDate)) {
@@ -492,7 +494,7 @@ export default {
             return;
           }
         }
-        
+
         // 验证活动结束日期不能早于报名开始日期
         if (this.temp.applyStartDate && this.temp.activityEndDate) {
           if (new Date(this.temp.activityEndDate) < new Date(this.temp.applyStartDate)) {
@@ -504,7 +506,7 @@ export default {
             return;
           }
         }
-        
+
         resolve(true);
       });
     },
@@ -560,5 +562,12 @@ export default {
 
 .fixed-width .el-button {
   margin: 2px;
+}
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
 }
 </style>

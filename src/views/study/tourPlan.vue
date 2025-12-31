@@ -55,7 +55,7 @@
         </el-form-item>
       </el-form>
     </div>
-    
+
     <!-- 数据表格 -->
     <div class="table-container">
       <el-table
@@ -112,7 +112,7 @@
         </el-table-column>
       </el-table>
     </div>
-    
+
     <!-- 分页 -->
     <div class="pagination-container">
       <el-pagination
@@ -125,7 +125,7 @@
         :total="total">
       </el-pagination>
     </div>
-    
+
     <!-- 添加/编辑对话框 -->
     <el-dialog
       :title="isEdit?'编辑研学方案':'添加研学方案'"
@@ -159,7 +159,7 @@
             </el-form-item>
           </el-col>
         </el-row>
-        
+
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="研学时长" prop="duration">
@@ -172,37 +172,43 @@
             </el-form-item>
           </el-col>
         </el-row>
-        
+
         <el-form-item label="研学路线" prop="route">
-          <el-input 
-            type="textarea" 
-            v-model="tourPlan.route" 
-            :rows="3" 
+          <el-input
+            type="textarea"
+            v-model="tourPlan.route"
+            :rows="3"
+            :maxlength="200"
+            show-word-limit
             placeholder="如：展厅参观→实践区→分享总结"
             style="width: 100%"
           />
         </el-form-item>
-        
+
         <el-form-item label="方案简介" prop="briefIntro">
-          <el-input 
-            type="textarea" 
-            v-model="tourPlan.briefIntro" 
-            :rows="3" 
+          <el-input
+            type="textarea"
+            v-model="tourPlan.briefIntro"
+            :rows="3"
+            :maxlength="200"
+            show-word-limit
             placeholder="请输入方案简介"
             style="width: 100%"
           />
         </el-form-item>
-        
+
         <el-form-item label="方案内容" prop="details">
-          <el-input 
-            type="textarea" 
-            v-model="tourPlan.details" 
-            :rows="5" 
+          <el-input
+            type="textarea"
+            v-model="tourPlan.details"
+            :rows="5"
+            :maxlength="300"
+            show-word-limit
             placeholder="请输入方案具体内容"
             style="width: 100%"
           />
         </el-form-item>
-        
+
         <el-form-item label="方案状态" prop="status">
           <el-radio-group v-model="tourPlan.status">
             <el-radio :label="1">启用</el-radio>
@@ -220,10 +226,10 @@
 
 <script>
 import { formatDate } from '@/utils/date'
-import { 
-  fetchList, 
-  createTourPlan, 
-  updateTourPlan, 
+import {
+  fetchList,
+  createTourPlan,
+  updateTourPlan,
   deleteTourPlan
 } from '@/api/study/tourPlan'
 import { list as fetchBases } from '@/api/study/tourBase'
@@ -365,7 +371,7 @@ export default {
       this.$refs['tourPlanForm'].validate((valid) => {
         if (valid) {
           const tourPlan = Object.assign({}, this.tourPlan)
-          
+
           if (this.isEdit) {
             updateTourPlan(tourPlan).then(response => {
               this.$message({

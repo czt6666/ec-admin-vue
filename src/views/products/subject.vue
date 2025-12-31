@@ -36,7 +36,7 @@
         </el-form-item>
       </el-form>
     </div>
-    
+
     <!-- 商品列表表格 -->
     <el-table
       v-loading="listLoading"
@@ -50,7 +50,7 @@
         width="80"
         align="center"
       ></el-table-column>
-      
+
       <!-- 预览图列暂时注释掉 -->
       <!-- <el-table-column
         label="预览图"
@@ -67,7 +67,7 @@
           <span v-else>无图片</span>
         </template>
       </el-table-column> -->
-      
+
       <!-- 商品详情图列暂时注释掉 -->
       <!-- <el-table-column
         label="商品详情图"
@@ -84,25 +84,25 @@
           <span v-else>无图片</span>
         </template>
       </el-table-column> -->
-      
+
       <el-table-column
         prop="title"
         label="商品名称"
         min-width="200"
       ></el-table-column>
-      
+
       <el-table-column
         prop="shopName"
         label="店铺名称"
         min-width="150"
       ></el-table-column>
-      
+
       <el-table-column
         prop="description"
         label="商品简介"
         min-width="200"
       ></el-table-column>
-      
+
       <el-table-column
         prop="productUrl"
         label="商品链接"
@@ -113,7 +113,7 @@
           <span v-else>无链接</span>
         </template>
       </el-table-column>
-      
+
       <el-table-column
         prop="status"
         label="上架状态"
@@ -126,33 +126,33 @@
           </el-tag>
         </template>
       </el-table-column>
-      
+
       <el-table-column
         prop="createTime"
         label="创建时间"
         width="180"
       ></el-table-column>
-      
+
       <el-table-column
         prop="updateTime"
         label="更新时间"
         width="180"
       ></el-table-column>
-      
+
       <el-table-column
         prop="viewCount"
         label="浏览量"
         width="100"
         align="center"
       ></el-table-column>
-      
+
       <el-table-column
         prop="cartCount"
         label="加购物车次数"
         width="120"
         align="center"
       ></el-table-column>
-      
+
       <el-table-column
         label="操作"
         width="100"
@@ -179,7 +179,7 @@
         </template>
       </el-table-column>
     </el-table>
-    
+
     <!-- 分页 -->
     <div class="pagination-container">
       <el-pagination
@@ -192,7 +192,7 @@
         @size-change="handleSizeChange"
       ></el-pagination>
     </div>
-    
+
     <!-- 添加/编辑对话框 -->
     <el-dialog
       :title="dialogTitle"
@@ -220,7 +220,7 @@
             <div slot="tip" class="el-upload__tip">支持多图上传（上传图片大小应小于10m）</div>
           </el-upload>
         </el-form-item>
-        
+
         <el-form-item label="商品名称" prop="title">
           <el-input v-model="tempProduct.title" placeholder="请输入商品名称"></el-input>
         </el-form-item>
@@ -229,14 +229,16 @@
             v-model="tempProduct.description"
             type="textarea"
             :rows="3"
+            :maxlength="200"
             placeholder="请输入商品简介"
           ></el-input>
+          <div class="word-count">{{ (tempProduct.description || '').length }}/200</div>
         </el-form-item>
-        
+
         <el-form-item label="商品链接" prop="productUrl">
           <el-input v-model="tempProduct.productUrl" placeholder="请输入商品链接"></el-input>
         </el-form-item>
-        
+
         <el-form-item label="商品详情图" prop="detailImages">
           <el-upload
             action="#"
@@ -252,7 +254,7 @@
             <div slot="tip" class="el-upload__tip">支持多图上传（上传图片大小应小于10m）</div>
           </el-upload>
         </el-form-item>
-        
+
         <el-form-item label="上架状态" prop="status">
           <el-switch
             v-model="tempProduct.status"
@@ -262,7 +264,7 @@
             inactive-text="已下架"
           ></el-switch>
         </el-form-item>
-        
+
         <!-- 规格管理 -->
         <el-form-item label="商品规格" prop="specifications">
           <el-table
@@ -276,8 +278,8 @@
                   :prop="`specifications.${scope.$index}.specName`"
                   style="min-height: 60px;"
                 >
-                  <el-input 
-                    v-model="scope.row.specName" 
+                  <el-input
+                    v-model="scope.row.specName"
                     placeholder="如：红色/L"
                     clearable
                   ></el-input>
@@ -294,8 +296,8 @@
                   ]"
                   style="min-height: 60px;"
                 >
-                  <el-input 
-                    v-model.number="scope.row.price" 
+                  <el-input
+                    v-model.number="scope.row.price"
                     placeholder="请输入价格"
                     type="number"
                     clearable
@@ -313,8 +315,8 @@
                   ]"
                   style="min-height: 60px;"
                 >
-                  <el-input 
-                    v-model.number="scope.row.stock" 
+                  <el-input
+                    v-model.number="scope.row.stock"
                     placeholder="请输入库存"
                     type="number"
                     clearable
@@ -346,7 +348,7 @@
             </div>
         </el-form-item>
       </el-form>
-      
+
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitForm">确定</el-button>
@@ -420,7 +422,7 @@ export default {
       }
     }
   },
-  
+
   methods: {
     // 获取商品列表
     getProductList() {
@@ -436,7 +438,7 @@ export default {
         ...(this.searchForm.startTime && { startTime: this.searchForm.startTime }),
         ...(this.searchForm.endTime && { endTime: this.searchForm.endTime })
       }
-      
+
       // 遍历当前用户的roleIds，如果有1，就不传userId参数，如果没有1，就传userId参数
       // 注意：不传递roleIds参数本身
       const roleIds = this.$store.getters.roleIds || [];
@@ -445,10 +447,10 @@ export default {
         // 将userId转换为Long类型
         params.userId = parseInt(this.$store.getters.userId, 10)
       }
-      
+
       // 打印请求参数到控制台，便于调试
       console.log('商品列表请求参数:', params)
-      
+
       this.api({
         url: '/products/subject/list',
         method: 'get',
@@ -471,7 +473,7 @@ export default {
         }
       })
     },
-    
+
     // 显示添加对话框
     showCreate() {
       this.dialogTitle = '添加商品'
@@ -497,17 +499,17 @@ export default {
       }
       this.dialogVisible = true
     },
-    
+
     // 处理详情图文件变化（仅验证，不上传）
     handleDetailFileChange(file, fileList) {
       // 检查是否有无效文件并显示错误提示
       const invalidFiles = fileList.filter(item => {
         // 只检查新添加的原始文件
         if (!item.raw) return false
-        
+
         const isImage = item.raw.type && item.raw.type.startsWith('image/')
         const isLt10M = item.raw.size && item.raw.size / 1024 / 1024 < 10
-        
+
         // 如果文件不是图片或大于10MB，显示错误提示
         if (!isImage) {
           this.$message.error(`详情图 ${item.name} 只能是图片文件!`)
@@ -517,10 +519,10 @@ export default {
           this.$message.error(`详情图 ${item.name} 大小不能超过10MB!`)
           return true
         }
-        
+
         return false
       })
-      
+
       // 过滤掉验证失败的文件
       const validFileList = fileList.filter(item => {
         // 检查文件是否有效
@@ -528,9 +530,9 @@ export default {
         const isLt10M = item.raw ? (item.raw.size && item.raw.size / 1024 / 1024 < 10) : true
         return isImage && isLt10M
       })
-      
+
       this.tempProduct.detailFileList = validFileList
-      
+
       // 对于已经上传成功的文件（编辑模式下的已有图片）和新选择的文件，保存其URL
       // 格式化为后端期望的字符串数组格式
       this.tempProduct.detailImages = validFileList
@@ -543,7 +545,7 @@ export default {
           return item.url;
         })
     },
-    
+
     // 批量上传详情图
     async uploadDetailImages() {
       const uploadPromises = this.tempProduct.detailFileList
@@ -561,13 +563,13 @@ export default {
             throw error
           }
         })
-      
+
       const uploadedImages = await Promise.all(uploadPromises)
-      
+
       // 直接合并字符串数组
       this.tempProduct.detailImages = [...this.tempProduct.detailImages, ...uploadedImages]
     },
-    
+
     // 显示编辑对话框
     showUpdate(row, index) {
       this.dialogTitle = '编辑商品'
@@ -580,34 +582,34 @@ export default {
         // 否则假设是文件名，需要通过formatImageUrl处理
         return this.formatImageUrl(imageUrl);
       }
-      
+
       this.tempProduct = {
         ...row,
         shopName: row.shopName || '',
         // 将图片URL数组转换为文件列表格式
-        fileList: row.previewImages && row.previewImages.length > 0 
-          ? row.previewImages.map((url, index) => ({ 
-              name: `预览图${index + 1}`, 
+        fileList: row.previewImages && row.previewImages.length > 0
+          ? row.previewImages.map((url, index) => ({
+              name: `预览图${index + 1}`,
               url: processImageUrl(url),
               // 标记为已上传成功
               status: 'success'
-            })) 
+            }))
           : [],
-        detailFileList: row.detailImages && row.detailImages.length > 0 
-          ? row.detailImages.map((url, index) => ({ 
-              name: `详情图${index + 1}`, 
+        detailFileList: row.detailImages && row.detailImages.length > 0
+          ? row.detailImages.map((url, index) => ({
+              name: `详情图${index + 1}`,
               url: processImageUrl(url),
               // 标记为已上传成功
               status: 'success'
-            })) 
+            }))
           : []
       }
       // 确保多图数组存在
       this.tempProduct.previewImages = row.previewImages || []
       this.tempProduct.detailImages = row.detailImages || []
       // 处理规格数据
-      this.tempProduct.specifications = row.specifications && row.specifications.length > 0 
-        ? row.specifications 
+      this.tempProduct.specifications = row.specifications && row.specifications.length > 0
+        ? row.specifications
         : [
             {
               id: '',
@@ -618,7 +620,7 @@ export default {
           ]
       this.dialogVisible = true
     },
-    
+
     // 预览图上传前校验
     beforePreviewImageUpload(file) {
       const isImage = file.type.startsWith('image/')
@@ -634,7 +636,7 @@ export default {
       }
       return true
     },
-    
+
     // 详情图上传前校验
     beforeDetailImageUpload(file) {
       const isImage = file.type.startsWith('image/')
@@ -650,49 +652,49 @@ export default {
       }
       return true
     },
-    
+
     // 预览图移除前处理
     beforePreviewImageRemove(file, fileList) {
       // 当before-upload返回false时，会自动触发此方法
       // 我们需要确保文件从fileList中移除
       const isImage = file.type && file.type.startsWith('image/')
       const isLt10M = file.size && file.size / 1024 / 1024 < 10
-      
+
       // 如果文件不满足条件，允许移除
       if (!isImage || !isLt10M) {
         return true
       }
-      
+
       // 其他情况也允许移除
       return true
     },
-    
+
     // 详情图移除前处理
     beforeDetailImageRemove(file, fileList) {
       // 当before-upload返回false时，会自动触发此方法
       // 我们需要确保文件从fileList中移除
       const isImage = file.type && file.type.startsWith('image/')
       const isLt10M = file.size && file.size / 1024 / 1024 < 10
-      
+
       // 如果文件不满足条件，允许移除
       if (!isImage || !isLt10M) {
         return true
       }
-      
+
       // 其他情况也允许移除
       return true
     },
-    
+
     // 处理文件变化（仅验证，不上传）
     handleFileChange(file, fileList) {
       // 检查是否有无效文件并显示错误提示
       const invalidFiles = fileList.filter(item => {
         // 只检查新添加的原始文件
         if (!item.raw) return false
-        
+
         const isImage = item.raw.type && item.raw.type.startsWith('image/')
         const isLt10M = item.raw.size && item.raw.size / 1024 / 1024 < 10
-        
+
         // 如果文件不是图片或大于10MB，显示错误提示
         if (!isImage) {
           this.$message.error(`预览图 ${item.name} 只能是图片文件!`)
@@ -702,10 +704,10 @@ export default {
           this.$message.error(`预览图 ${item.name} 大小不能超过10MB!`)
           return true
         }
-        
+
         return false
       })
-      
+
       // 过滤掉验证失败的文件
       const validFileList = fileList.filter(item => {
         // 检查文件是否有效
@@ -713,9 +715,9 @@ export default {
         const isLt10M = item.raw ? (item.raw.size && item.raw.size / 1024 / 1024 < 10) : true
         return isImage && isLt10M
       })
-      
+
       this.tempProduct.fileList = validFileList
-      
+
       // 对于已经上传成功的文件（编辑模式下的已有图片）和新选择的文件，保存其URL
       // 格式化为后端期望的字符串数组格式
       this.tempProduct.previewImages = validFileList
@@ -728,7 +730,7 @@ export default {
           return item.url;
         })
     },
-    
+
     // 批量上传预览图
     async uploadPreviewImages() {
       const uploadPromises = this.tempProduct.fileList
@@ -746,13 +748,13 @@ export default {
             throw error
           }
         })
-      
+
       const uploadedImages = await Promise.all(uploadPromises)
-      
+
       // 直接合并字符串数组
       this.tempProduct.previewImages = [...this.tempProduct.previewImages, ...uploadedImages]
     },
-    
+
     // 提交表单
     async submitForm() {
       this.$refs.productForm.validate(async (valid) => {
@@ -761,12 +763,12 @@ export default {
             // 检查销售规格是否重复
             const specNames = this.tempProduct.specifications.map(spec => spec.specName.trim())
             const uniqueSpecNames = new Set(specNames)
-            
+
             if (specNames.length !== uniqueSpecNames.size) {
               this.$message.error('销售规格不能重复')
               return
             }
-            
+
             // 显示加载状态
             this.$loading({
               lock: true,
@@ -774,13 +776,13 @@ export default {
               spinner: 'el-icon-loading',
               background: 'rgba(0, 0, 0, 0.7)'
             })
-            
+
             // 在提交表单前统一上传所有图片
             await Promise.all([
               this.uploadPreviewImages(),
               this.uploadDetailImages()
             ])
-            
+
             const formData = {
               title: this.tempProduct.title,
               description: this.tempProduct.description,
@@ -791,7 +793,7 @@ export default {
               status: this.tempProduct.status,
               specifications: this.tempProduct.specifications
             }
-            
+
             if (this.dialogTitle === '添加商品') {
               await this.createProduct(formData)
             } else {
@@ -807,7 +809,7 @@ export default {
         }
       })
     },
-    
+
     // 创建商品
     async createProduct(data) {
       // 添加当前用户ID到请求数据中
@@ -815,7 +817,7 @@ export default {
         ...data,
         userId: this.$store.getters.userId
       };
-      
+
       try {
         await this.api({
           url: '/products/subject/add',
@@ -830,7 +832,7 @@ export default {
         throw error // 向上抛出错误以便submitForm捕获
       }
     },
-    
+
     // 更新商品
     async updateProduct(data) {
       try {
@@ -847,7 +849,7 @@ export default {
         throw error // 向上抛出错误以便submitForm捕获
       }
     },
-    
+
     // 删除商品
     handleDelete(index) {
       const product = this.productList[index]
@@ -868,25 +870,25 @@ export default {
         })
       })
     },
-    
+
     // 分页事件处理
     handleCurrentChange(val) {
       this.currentPage = val
       this.getProductList()
     },
-    
+
     handleSizeChange(val) {
       this.pageSize = val
       this.currentPage = 1
       this.getProductList()
     },
-    
+
     // 搜索功能
     handleSearch() {
       this.currentPage = 1 // 搜索时重置到第一页
       this.getProductList()
     },
-    
+
     // 重置搜索条件
     resetSearch() {
       this.searchForm = {
@@ -900,7 +902,7 @@ export default {
       this.currentPage = 1
       this.getProductList()
     },
-    
+
     // 日期范围变化处理
     handleDateRangeChange(value) {
       if (value && value.length === 2) {
@@ -911,7 +913,7 @@ export default {
         this.searchForm.endTime = ''
       }
     },
-    
+
     // 添加规格
     addSpecification() {
       this.tempProduct.specifications.push({
@@ -921,12 +923,12 @@ export default {
         stock: ''
       })
     },
-    
+
     // 删除规格
     removeSpecification(index) {
       this.tempProduct.specifications.splice(index, 1)
     },
-    
+
     // 上传图片到服务器
     async uploadImage(file) {
       const formData = new FormData()
@@ -956,25 +958,25 @@ export default {
         throw error
       }
     },
-    
+
     // 将相对图片路径转为可访问的完整URL（用于显示）
     formatImageUrl(url) {
       if (!url) return ''
       if (url.startsWith('http') || url.startsWith('data:')) return url
-      
+
       const baseUrl = (window.webofdConfig && window.webofdConfig.BASE_URL) || ''
-      
+
       // 如果URL已经是完整路径格式（包含/），则直接与BASE_URL拼接
       if (url.includes('/')) {
         return baseUrl + url
       }
-      
+
       // 如果只是纯文件名，则添加默认的uploads路径前缀
       // 这样纯文件名格式的图片也能正确显示
       return baseUrl + '/uploads/' + url
     }
   },
-  
+
   mounted() {
     // 组件挂载时获取商品列表
     this.getProductList()
@@ -995,5 +997,12 @@ export default {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
 }
 </style>

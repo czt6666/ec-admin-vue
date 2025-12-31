@@ -108,7 +108,8 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="驿站名称" prop="name">
-              <el-input v-model="form.name" placeholder="请输入驿站名称" maxlength="200" show-word-limit />
+              <el-input v-model="form.name" placeholder="请输入驿站名称" maxlength="200" />
+              <div class="word-count">{{ (form.name || '').length }}/200</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -127,15 +128,17 @@
                 :rows="2"
                 placeholder="请输入注册地址"
                 maxlength="500"
-                show-word-limit
               />
-              <div class="address-actions">
-                <el-button type="primary" plain size="mini" @click="openMapDialog('registered')" style="margin-right: 6px;">
-                  地图选址
-                </el-button>
-                <el-button type="default" plain size="mini" @click="getCurrentLocation('registered')">
-                  获取当前位置
-                </el-button>
+              <div class="input-footer">
+                <div class="word-count">{{ (form.registeredAddress || '').length }}/500</div>
+                <div class="address-actions">
+                  <el-button type="primary" plain size="mini" @click="openMapDialog('registered')" style="margin-right: 6px;">
+                    地图选址
+                  </el-button>
+                  <el-button type="default" plain size="mini" @click="getCurrentLocation('registered')">
+                    获取当前位置
+                  </el-button>
+                </div>
               </div>
             </el-form-item>
           </el-col>
@@ -147,15 +150,17 @@
                 :rows="2"
                 placeholder="请输入经营地址"
                 maxlength="500"
-                show-word-limit
               />
-              <div class="address-actions">
-                <el-button type="primary" plain size="mini" @click="openMapDialog('business')" style="margin-right: 6px;">
-                  地图选址
-                </el-button>
-                <el-button type="default" plain size="mini" @click="getCurrentLocation('business')">
-                  获取当前位置
-                </el-button>
+              <div class="input-footer">
+                <div class="word-count">{{ (form.businessAddress || '').length }}/500</div>
+                <div class="address-actions">
+                  <el-button type="primary" plain size="mini" @click="openMapDialog('business')" style="margin-right: 6px;">
+                    地图选址
+                  </el-button>
+                  <el-button type="default" plain size="mini" @click="getCurrentLocation('business')">
+                    获取当前位置
+                  </el-button>
+                </div>
               </div>
             </el-form-item>
           </el-col>
@@ -198,11 +203,10 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="成立日期">
-              <el-date-picker
+              <el-input
                 v-model="form.establishmentDate"
-                type="date"
-                placeholder="选择成立日期"
-                value-format="yyyy-MM-dd"
+                placeholder="请输入成立日期，如：2020-01-01"
+                maxlength="50"
                 style="width: 100%"
               />
             </el-form-item>
@@ -336,16 +340,15 @@
           </el-col>
         </el-row>
 
-
-        <el-form-item label="驿站简介">
+        <el-form-item label="机构简介">
           <el-input
             v-model="form.introduction"
             type="textarea"
             :rows="3"
-            placeholder="请输入驿站简介"
+            placeholder="请输入机构简介"
             maxlength="1024"
-            show-word-limit
           />
+          <div class="word-count">{{ (form.introduction || '').length }}/1024</div>
         </el-form-item>
 
         <el-form-item label="环境照片">
@@ -1245,6 +1248,25 @@ export default {
 .map-info p {
   margin: 5px 0;
   color: #606266;
+}
+
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
+}
+
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.input-footer .word-count {
+  margin-top: 0;
 }
 </style>
 

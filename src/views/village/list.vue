@@ -86,12 +86,15 @@
         </el-row>
 
         <el-form-item label="村庄描述" prop="villageDescription">
+          <!-- 修改后 -->
           <el-input
             v-model="villageForm.villageDescription"
             type="textarea"
             :rows="3"
-            placeholder="请输入村庄描述"
+            :maxlength="300"
+            placeholder="请输入村庄描述（最多300字）"
           />
+          <div class="word-count">{{ (villageForm.villageDescription || '').length }}/300</div>
         </el-form-item>
 
         <el-row :gutter="20">
@@ -665,5 +668,12 @@ export default {
 
 .import-content {
   padding: 10px 0;
+}
+.word-count {
+  text-align: right;      /* 右对齐 */
+  color: #909399;        /* 灰色文字 */
+  font-size: 12px;       /* 小字体 */
+  margin-top: 4px;       /* 上边距 */
+  line-height: 1;
 }
 </style>

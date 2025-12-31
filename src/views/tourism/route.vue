@@ -71,7 +71,8 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="路线名称" prop="name">
-              <el-input v-model="form.name" maxlength="200" show-word-limit />
+              <el-input v-model="form.name" maxlength="200" />
+              <div class="word-count">{{ (form.name || '').length }}/200</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -171,12 +172,14 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="行程安排">
-              <el-input type="textarea" :rows="2" v-model="form.itinerary" maxlength="1000" show-word-limit />
+              <el-input type="textarea" :rows="2" v-model="form.itinerary" maxlength="1000" />
+              <div class="word-count">{{ (form.itinerary || '').length }}/1000</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="安全措施">
-              <el-input type="textarea" :rows="2" v-model="form.safetyMeasures" maxlength="1000" show-word-limit />
+              <el-input type="textarea" :rows="2" v-model="form.safetyMeasures" maxlength="1000" />
+              <div class="word-count">{{ (form.safetyMeasures || '').length }}/1000</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -184,12 +187,14 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="服务保障">
-              <el-input type="textarea" :rows="2" v-model="form.serviceGuarantee" maxlength="1000" show-word-limit />
+              <el-input type="textarea" :rows="2" v-model="form.serviceGuarantee" maxlength="1000" />
+              <div class="word-count">{{ (form.serviceGuarantee || '').length }}/1000</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="费用包含">
-              <el-input type="textarea" :rows="2" v-model="form.costIncluded" maxlength="1000" show-word-limit />
+              <el-input type="textarea" :rows="2" v-model="form.costIncluded" maxlength="1000" />
+              <div class="word-count">{{ (form.costIncluded || '').length }}/1000</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -197,7 +202,8 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="费用不包含">
-              <el-input type="textarea" :rows="2" v-model="form.costExcluded" maxlength="1000" show-word-limit />
+              <el-input type="textarea" :rows="2" v-model="form.costExcluded" maxlength="1000" />
+              <div class="word-count">{{ (form.costExcluded || '').length }}/1000</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -672,6 +678,14 @@ export default {
 .map-info p {
   margin: 5px 0;
   color: #606266;
+}
+
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
 }
 </style>
 

@@ -129,7 +129,8 @@
         </el-form-item>
 
         <el-form-item label="菜品名称" prop="dishName">
-          <el-input v-model="dishForm.dishName" placeholder="请输入菜品名称" maxlength="100" show-word-limit />
+          <el-input v-model="dishForm.dishName" placeholder="请输入菜品名称" maxlength="100"  />
+          <div class="word-count">{{ (dishForm.dishName || '').length }}/100</div>
         </el-form-item>
 
         <el-form-item label="售价" prop="price">
@@ -183,14 +184,14 @@
 
 <script>
 import { mapGetters } from 'vuex'
-import { 
+import {
   listRestaurantNamesByUser,
   getRestaurantIdByName,
   listRestaurantsByUser,
-  getDishList, 
-  getDishDetail, 
-  createDish, 
-  updateDish, 
+  getDishList,
+  getDishDetail,
+  createDish,
+  updateDish,
   deleteDish,
   updateDishSort
 } from '@/api/restaurant'
@@ -300,7 +301,7 @@ export default {
     handleRestaurantChange(restaurantId) {
       // 清空之前选择的分类
       this.dishForm.categoryId = null
-      
+
       // 根据选择的餐厅名称过滤分类列表
       if (restaurantId) {
         // 找到选中的餐厅名称
@@ -392,7 +393,7 @@ export default {
             // 否则假设是文件名，需要通过formatImageUrl处理
             return this.formatImageUrl(imageUrl);
           }
-          
+
           this.dishForm = {
             id: res.data.id,
             restaurantId: res.data.restaurantId,
@@ -447,26 +448,26 @@ export default {
     async moveUp(index) {
       if (index > 0) {
         // 交换位置
-        [this.dishList[index], this.dishList[index - 1]] = 
+        [this.dishList[index], this.dishList[index - 1]] =
         [this.dishList[index - 1], this.dishList[index]]
-        
+
         // 更新排序
         await this.updateSort()
       }
     },
-    
+
     // 向下移动
     async moveDown(index) {
       if (index < this.dishList.length - 1) {
         // 交换位置
-        [this.dishList[index], this.dishList[index + 1]] = 
+        [this.dishList[index], this.dishList[index + 1]] =
         [this.dishList[index + 1], this.dishList[index]]
-        
+
         // 更新排序
         await this.updateSort()
       }
     },
-    
+
     // 更新排序
     async updateSort() {
       try {
@@ -475,10 +476,10 @@ export default {
           id: item.id,
           sortNum: index + 1
         }))
-        
+
         // 调用API更新排序
         const response = await updateDishSort(sortData)
-        
+
         if (response && (response.code === 200 || response.code === '200')) {
           this.$message.success('排序更新成功')
           // 成功后重新获取列表以确保数据一致性
@@ -514,11 +515,11 @@ export default {
               return
             }
           }
-          
+
           // 构造发送到后端的数据，使用coverImgUrl字段
           // 确保restaurantId是正确的
           let restaurantId = this.dishForm.restaurantId;
-          
+
           // 验证restaurantId是否正确，如果不正确则重新获取
           if (this.dishForm.restaurantId && this.restaurantList.length > 0) {
             const selectedRestaurant = this.restaurantList.find(item => item.id === this.dishForm.restaurantId);
@@ -526,9 +527,9 @@ export default {
               restaurantId = selectedRestaurant.id;
             }
           }
-          
-          const payload = { 
-            ...this.dishForm, 
+
+          const payload = {
+            ...this.dishForm,
             restaurantId: restaurantId,
             userId: this.userId,
             previewImage: undefined, // 移除旧字段
@@ -568,10 +569,10 @@ export default {
         coverImgUrl: '',
         fileList: []
       }
-      
+
       this.isEdit = false
     },
-    
+
     // 图片上传前校验
     beforeImageUpload(file) {
       const isImage = file.type.startsWith('image/')
@@ -587,23 +588,23 @@ export default {
       }
       return true
     },
-    
+
     // 图片移除前处理
     beforeImageRemove(file, fileList) {
       return true
     },
-    
+
     // 处理文件变化（仅验证，不上传）
     handleFileChange(file, fileList) {
       // 只保留最后一张图片（最新的）
       const latestFileList = fileList.slice(-1)
-      
+
       // 检查文件是否有效
       if (latestFileList.length > 0 && latestFileList[0].raw) {
         const item = latestFileList[0]
         const isImage = item.raw.type && item.raw.type.startsWith('image/')
         const isLt2M = item.raw.size && item.raw.size / 1024 / 1024 < 2
-        
+
         // 如果文件不是图片或大于2MB，显示错误提示并清空文件列表
         if (!isImage) {
           this.$message.error(`菜品预览图 ${item.name} 只能是图片文件!`)
@@ -618,9 +619,9 @@ export default {
           return
         }
       }
-      
+
       this.dishForm.fileList = latestFileList
-      
+
       // 保存图片URL
       if (latestFileList.length > 0 && latestFileList[0].raw) {
         this.dishForm.coverImgUrl = latestFileList[0].raw.name
@@ -631,7 +632,7 @@ export default {
         this.dishForm.coverImgUrl = ''
       }
     },
-    
+
     // 上传图片到服务器
     async uploadImage(file) {
       const formData = new FormData()
@@ -662,19 +663,19 @@ export default {
         throw error
       }
     },
-    
+
     // 将相对图片路径转为可访问的完整URL（用于显示）
     formatImageUrl(url) {
       if (!url) return ''
       if (url.startsWith('http') || url.startsWith('data:')) return url
-      
+
       const baseUrl = (window.webofdConfig && window.webofdConfig.BASE_URL) || ''
-      
+
       // 如果URL已经是完整路径格式（包含/），则直接与BASE_URL拼接
       if (url.includes('/')) {
         return baseUrl + url
       }
-      
+
       // 如果只是纯文件名，则添加默认的uploads路径前缀
       // 这样纯文件名格式的图片也能正确显示
       return baseUrl + '/uploads/' + url
@@ -725,5 +726,12 @@ export default {
   margin-top: 10px;
   color: #606266;
   font-size: 12px;
+}
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
 }
 </style>

@@ -19,7 +19,6 @@
         </div>
         <el-button type="primary" icon="el-icon-plus" @click="openDialog()">新增公司</el-button>
       </div>
-
       <el-table :data="tableData" border stripe>
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="name" label="公司名称" min-width="200" show-overflow-tooltip />
@@ -59,7 +58,6 @@
           </template>
         </el-table-column>
       </el-table>
-
       <div class="pager">
         <el-pagination
           :current-page="pagination.page"
@@ -72,13 +70,13 @@
         />
       </div>
     </el-card>
-
     <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="900px" :close-on-click-modal="false">
       <el-form ref="form" :model="form" :rules="rules" label-width="140px" label-position="right">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="公司名称" prop="name">
-              <el-input v-model="form.name" maxlength="200" show-word-limit />
+              <el-input v-model="form.name" maxlength="200" />
+              <div class="word-count">{{ (form.name || '').length }}/200</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -87,40 +85,45 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="注册地址" prop="registeredAddress">
-              <el-input type="textarea" :rows="2" v-model="form.registeredAddress" maxlength="500" show-word-limit />
-              <div class="address-actions">
-                <el-button type="primary" plain size="mini" @click="openMapDialog('registered')" style="margin-right: 6px;">
-                  地图选址
-                </el-button>
-                <el-button type="default" plain size="mini" @click="getCurrentLocation('registered')">
-                  获取当前位置
-                </el-button>
+              <el-input type="textarea" :rows="2" v-model="form.registeredAddress" maxlength="500" />
+              <div class="input-footer">
+                <div class="word-count">{{ (form.registeredAddress || '').length }}/500</div>
+                <div class="address-actions">
+                  <el-button type="primary" plain size="mini" @click="openMapDialog('registered')" style="margin-right: 6px;">
+                    地图选址
+                  </el-button>
+                  <el-button type="default" plain size="mini" @click="getCurrentLocation('registered')">
+                    获取当前位置
+                  </el-button>
+                </div>
               </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="经营地址">
-              <el-input type="textarea" :rows="2" v-model="form.businessAddress" maxlength="500" show-word-limit />
-              <div class="address-actions">
-                <el-button type="primary" plain size="mini" @click="openMapDialog('business')" style="margin-right: 6px;">
-                  地图选址
-                </el-button>
-                <el-button type="default" plain size="mini" @click="getCurrentLocation('business')">
-                  获取当前位置
-                </el-button>
+              <el-input type="textarea" :rows="2" v-model="form.businessAddress" maxlength="500" />
+              <div class="input-footer">
+                <div class="word-count">{{ (form.businessAddress || '').length }}/500</div>
+                <div class="address-actions">
+                  <el-button type="primary" plain size="mini" @click="openMapDialog('business')" style="margin-right: 6px;">
+                    地图选址
+                  </el-button>
+                  <el-button type="default" plain size="mini" @click="getCurrentLocation('business')">
+                    获取当前位置
+                  </el-button>
+                </div>
               </div>
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="经营范围">
-              <el-input type="textarea" :rows="2" v-model="form.businessScope" maxlength="500" show-word-limit />
+              <el-input type="textarea" :rows="2" v-model="form.businessScope" maxlength="500" />
+              <div class="word-count">{{ (form.businessScope || '').length }}/500</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -133,7 +136,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="统一社会信用代码">
@@ -146,7 +148,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="注册资本（万元）">
@@ -165,7 +166,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="营业期限">
@@ -178,7 +178,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="紧急联系人">
@@ -191,7 +190,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="官方邮箱">
@@ -204,7 +202,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="Logo 图">
@@ -228,12 +225,12 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="简介 / 特色亮点">
-              <el-input type="textarea" :rows="2" v-model="form.intro" maxlength="500" show-word-limit />
+              <el-input type="textarea" :rows="2" v-model="form.intro" maxlength="500" />
+              <div class="word-count">{{ (form.intro || '').length }}/500</div>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
-
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
@@ -440,6 +437,7 @@ export default {
     handleSubmit() {
       this.$refs.form.validate(async(valid) => {
         if (!valid) return
+
         this.submitLoading = true
         try {
           // 处理 Logo 上传（与民宿逻辑一致：手动上传，取返回的文件名/路径）
@@ -457,6 +455,7 @@ export default {
 
           const api = this.form.id ? updateTourCompany : createTourCompany
           const res = await api(this.form)
+
           if (res && res.code === 200) {
             this.$message.success(this.form.id ? '更新成功' : '创建成功')
             this.dialogVisible = false
@@ -577,22 +576,27 @@ export default {
       }
       const container = document.getElementById('mapContainer')
       if (!container) return
+
       const targetLat = this.mapTarget === 'business' ? this.form.businessLatitude : this.form.registeredLatitude
       const targetLng = this.mapTarget === 'business' ? this.form.businessLongitude : this.form.registeredLongitude
       const center = targetLat && targetLng ? [targetLng, targetLat] : [116.397428, 39.90923]
+
       this.map = new window.AMap.Map('mapContainer', {
         zoom: 13,
         center
       })
+
       if (targetLat && targetLng) {
         this.marker = new window.AMap.Marker({
           position: [targetLng, targetLat],
           map: this.map
         })
       }
+
       this.map.on('click', (e) => {
         const lng = e.lnglat.getLng()
         const lat = e.lnglat.getLat()
+
         if (this.marker) {
           this.marker.setPosition([lng, lat])
         } else {
@@ -601,6 +605,7 @@ export default {
             map: this.map
           })
         }
+
         this.selectedLongitude = lng
         this.selectedLatitude = lat
         this.getAddressByCoordinates(lat, lng)
@@ -608,6 +613,7 @@ export default {
     },
     getAddressByCoordinates(lat, lng) {
       if (!window.AMap) return
+
       window.AMap.plugin('AMap.Geocoder', () => {
         const geocoder = new window.AMap.Geocoder()
         geocoder.getAddress([lng, lat], (status, result) => {
@@ -724,34 +730,59 @@ export default {
   justify-content: space-between;
   align-items: center;
 }
+
 .filters {
   display: flex;
   align-items: center;
 }
+
 .pager {
   margin-top: 16px;
   text-align: right;
 }
+
 .address-actions {
-  margin-top: 6px;
   display: flex;
   gap: 6px;
 }
+
 .map-dialog-content {
   position: relative;
 }
+
 .map-info {
   margin-top: 10px;
   padding: 10px;
   background-color: #f5f7fa;
   border-radius: 4px;
 }
+
 .map-info p {
   margin: 5px 0;
   color: #606266;
 }
+
 .avatar-upload-hidden /deep/ .el-upload--picture-card {
   display: none;
+}
+
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
+}
+
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.input-footer .word-count {
+  margin-top: 0;
 }
 </style>
 

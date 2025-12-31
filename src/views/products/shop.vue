@@ -129,8 +129,8 @@
                 v-model="shopForm.shopName"
                 placeholder="请输入店铺名称"
                 :maxlength="100"
-                show-word-limit
               />
+              <div class="word-count">{{ (shopForm.shopName || '').length }}/100</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -174,10 +174,9 @@
             type="textarea"
             :rows="3"
             placeholder="请输入店铺简介"
-            :maxlength="500"
-            show-word-limit
+            :maxlength="300"
           />
-          <div class="gray-tip">{{ (shopForm.shopIntro && shopForm.shopIntro.length) || 0 }}/500</div>
+          <div class="word-count">{{ (shopForm.shopIntro || '').length }}/300</div>
         </el-form-item>
 
         <!-- 店铺头像 -->
@@ -1306,6 +1305,13 @@ export default {
 .upload-text {
   font-size: 12px;
   color: #909399;
+}
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
 }
 </style>
 
