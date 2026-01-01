@@ -129,8 +129,8 @@
                 v-model="shopForm.shopName"
                 placeholder="请输入店铺名称"
                 :maxlength="100"
+                show-word-limit
               />
-              <div class="word-count">{{ (shopForm.shopName || '').length }}/100</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -174,9 +174,10 @@
             type="textarea"
             :rows="3"
             placeholder="请输入店铺简介"
-            :maxlength="300"
+            :maxlength="500"
+            show-word-limit
           />
-          <div class="word-count">{{ (shopForm.shopIntro || '').length }}/300</div>
+          <div class="gray-tip">{{ (shopForm.shopIntro && shopForm.shopIntro.length) || 0 }}/500</div>
         </el-form-item>
 
         <!-- 店铺头像 -->
@@ -321,11 +322,53 @@
       :before-close="closeMapDialog"
     >
       <div class="map-dialog-content">
+        <!-- 地址搜索区域 -->
+        <div class="map-search-container">
+          <div class="search-input-wrapper">
+            <el-input
+              v-model="searchAddress"
+              placeholder="请输入地址进行搜索定位"
+              clearable
+              @input="handleSearchInput"
+              @focus="showSuggestions = true"
+              @blur="handleSearchBlur"
+              class="map-search-input"
+            >
+              <el-button
+                slot="append"
+                type="primary"
+                icon="el-icon-search"
+                @click="searchLocationByAddress"
+                :loading="searchLoading"
+              >
+                搜索
+              </el-button>
+            </el-input>
+            <!-- 地址建议下拉列表 -->
+            <div v-if="showSuggestions && addressSuggestions.length > 0" class="address-suggestions">
+              <div
+                v-for="(item, index) in addressSuggestions"
+                :key="index"
+                class="suggestion-item"
+                @mousedown="selectAddress(item)"
+              >
+                <i class="el-icon-location"></i>
+                <div class="suggestion-content">
+                  <div class="suggestion-name">{{ item.name }}</div>
+                  <div class="suggestion-address">{{ item.address }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div id="shopMapContainer" style="width: 100%; height: 500px;"></div>
         <div class="map-info">
-          <p>请在地图上点击选择位置</p>
+          <p>请在地图上点击选择位置，或使用上方搜索框输入地址进行定位</p>
           <p v-if="selectedLatitude && selectedLongitude">
-            选中位置：纬度 {{ selectedLatitude }}，经度 {{ selectedLongitude }}
+            <strong>坐标：</strong>{{ selectedLatitude }}, {{ selectedLongitude }}
+          </p>
+          <p v-if="selectedAddress">
+            <strong>地址：</strong>{{ selectedAddress }}
           </p>
         </div>
       </div>
@@ -374,6 +417,12 @@ export default {
       marker: null,
       selectedLatitude: null,
       selectedLongitude: null,
+      selectedAddress: '',
+      searchAddress: '',
+      searchLoading: false,
+      addressSuggestions: [],
+      showSuggestions: false,
+      autoComplete: null,
       queryParams: {
         page: 1,
         pageSize: 10,
@@ -726,7 +775,175 @@ export default {
       this.$nextTick(() => {
         setTimeout(() => {
           this.initMap()
+          this.initAutoComplete()
         }, 300)
+      })
+    },
+
+    // 初始化自动完成功能
+    initAutoComplete () {
+      if (typeof AMap === 'undefined') {
+        return
+      }
+      // 预留自动完成初始化
+    },
+
+    // 处理搜索输入
+    handleSearchInput (value) {
+      if (!value || !value.trim()) {
+        this.addressSuggestions = []
+        this.showSuggestions = false
+        return
+      }
+
+      if (typeof AMap === 'undefined') {
+        return
+      }
+
+      // 使用高德地图的PlaceSearch进行搜索建议
+      AMap.plugin('AMap.PlaceSearch', () => {
+        try {
+          const placeSearch = new AMap.PlaceSearch({
+            city: '全国',
+            type: '',
+            pageSize: 5,
+            pageIndex: 1
+          })
+
+          placeSearch.search(value.trim(), (status, result) => {
+            if (status === 'complete' && result.poiList && result.poiList.pois) {
+              this.addressSuggestions = result.poiList.pois.map(poi => ({
+                name: poi.name,
+                address: poi.address || poi.district + poi.adname,
+                location: poi.location,
+                lng: poi.location.lng,
+                lat: poi.location.lat
+              }))
+              this.showSuggestions = true
+            } else {
+              this.addressSuggestions = []
+            }
+          })
+        } catch (error) {
+          console.error('搜索建议获取失败:', error)
+        }
+      })
+    },
+
+    // 处理搜索框失焦
+    handleSearchBlur () {
+      setTimeout(() => {
+        this.showSuggestions = false
+      }, 200)
+    },
+
+    // 选择地址
+    selectAddress (item) {
+      this.searchAddress = item.name
+      this.showSuggestions = false
+
+      const lng = item.lng
+      const lat = item.lat
+      const address = item.address ? `${item.name} - ${item.address}` : item.name
+
+      this.selectedLatitude = lat
+      this.selectedLongitude = lng
+      this.selectedAddress = address
+
+      if (this.map) {
+        const position = [lng, lat]
+        this.map.setCenter(position)
+        this.map.setZoom(16)
+
+        if (this.marker) {
+          this.map.remove(this.marker)
+        }
+
+        this.marker = new AMap.Marker({
+          position: position,
+          map: this.map,
+          title: address
+        })
+      }
+
+      this.$message.success('地址定位成功')
+    },
+
+    // 通过地址搜索位置
+    searchLocationByAddress () {
+      if (!this.searchAddress || !this.searchAddress.trim()) {
+        this.$message.warning('请输入要搜索的地址')
+        return
+      }
+
+      if (typeof AMap === 'undefined') {
+        this.$message.error('高德地图API未加载，请检查网络连接')
+        return
+      }
+
+      if (!this.map) {
+        this.$message.warning('地图未初始化，请稍候再试')
+        return
+      }
+
+      this.searchLoading = true
+
+      AMap.plugin('AMap.Geocoder', () => {
+        try {
+          const geocoder = new AMap.Geocoder({
+            city: '全国',
+            radius: 1000
+          })
+
+          geocoder.getLocation(this.searchAddress.trim(), (status, result) => {
+            this.searchLoading = false
+
+            if (status === 'complete' && result.info === 'OK') {
+              const geocode = result.geocodes[0]
+              if (geocode) {
+                const lng = geocode.location.lng
+                const lat = geocode.location.lat
+                const address = geocode.formattedAddress || this.searchAddress
+
+                this.selectedLatitude = lat
+                this.selectedLongitude = lng
+                this.selectedAddress = address
+
+                const position = [lng, lat]
+                this.map.setCenter(position)
+                this.map.setZoom(16)
+
+                if (this.marker) {
+                  this.map.remove(this.marker)
+                }
+
+                this.marker = new AMap.Marker({
+                  position: position,
+                  map: this.map,
+                  title: address
+                })
+
+                this.$message.success('地址定位成功')
+              } else {
+                this.$message.warning('未找到该地址，请尝试更详细的地址信息')
+              }
+            } else {
+              let errorMsg = '地址搜索失败'
+              if (result && result.info) {
+                if (result.info === 'INVALID_USER_SCODE') {
+                  errorMsg = '安全密钥错误，请检查高德开放平台配置'
+                } else {
+                  errorMsg += '：' + result.info
+                }
+              }
+              this.$message.error(errorMsg)
+            }
+          })
+        } catch (error) {
+          this.searchLoading = false
+          console.error('地址搜索异常:', error)
+          this.$message.error('地址搜索服务异常：' + error.message)
+        }
       })
     },
 
@@ -781,6 +998,7 @@ export default {
 
             this.selectedLatitude = lat
             this.selectedLongitude = lng
+            this.selectedAddress = ''
 
             if (this.marker) {
               this.map.remove(this.marker)
@@ -839,8 +1057,10 @@ export default {
 
               if (address) {
                 this.shopForm.shopAddress = address
+                this.selectedAddress = address
               } else {
                 this.$message.warning('无法获取该位置的地址信息，请手动输入')
+                this.selectedAddress = ''
               }
             } else {
               this.$message.warning('无法获取该位置的地址信息')
@@ -912,6 +1132,9 @@ export default {
       if (this.selectedLatitude && this.selectedLongitude) {
         this.shopForm.latitude = this.selectedLatitude
         this.shopForm.longitude = this.selectedLongitude
+        if (this.selectedAddress) {
+          this.shopForm.shopAddress = this.selectedAddress
+        }
         this.$message.success('位置选择成功')
         this.closeMapDialog()
       } else {
@@ -923,6 +1146,15 @@ export default {
       this.mapDialogVisible = false
       this.selectedLatitude = null
       this.selectedLongitude = null
+      this.selectedAddress = ''
+      this.searchAddress = ''
+      this.searchLoading = false
+      this.addressSuggestions = []
+      this.showSuggestions = false
+
+      if (this.autoComplete) {
+        this.autoComplete = null
+      }
 
       if (this.marker && this.map) {
         this.map.remove(this.marker)
@@ -1066,6 +1298,82 @@ export default {
 /* 地图弹窗样式 */
 .map-dialog-content {
   position: relative;
+}
+
+.map-search-container {
+  margin-bottom: 15px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.map-search-input {
+  width: 100%;
+}
+
+.address-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  z-index: 2000;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 5px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f5f7fa;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background-color: #f5f7fa;
+}
+
+.suggestion-item i {
+  color: #409eff;
+  font-size: 18px;
+  margin-right: 10px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.suggestion-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-name {
+  font-size: 14px;
+  color: #303133;
+  font-weight: 500;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-address {
+  font-size: 12px;
+  color: #909399;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .map-info {
@@ -1305,13 +1613,6 @@ export default {
 .upload-text {
   font-size: 12px;
   color: #909399;
-}
-.word-count {
-  text-align: right;
-  color: #909399;
-  font-size: 12px;
-  margin-top: 4px;
-  line-height: 1;
 }
 </style>
 
