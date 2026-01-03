@@ -39,6 +39,7 @@
         <el-table-column prop="shortName" label="简称" min-width="120" show-overflow-tooltip />
         <el-table-column prop="unifiedSocialCreditCode" label="统一社会信用代码" min-width="180" />
         <el-table-column prop="legalRepresentative" label="法定代表人" min-width="140" />
+        <el-table-column prop="establishmentDate" label="成立日期" min-width="120" />
         <el-table-column prop="businessStatus" label="营业状态" width="100">
           <template slot-scope="scope">
             <el-tag v-if="scope.row.businessStatus === 1" type="success">营业中</el-tag>
@@ -156,13 +157,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="成立日期">
-              <el-date-picker
-                v-model="form.establishmentDate"
-                type="date"
-                placeholder="选择日期"
-                value-format="yyyy-MM-dd"
-                style="width: 100%"
-              />
+              <el-input v-model="form.establishmentDate" maxlength="20" placeholder="请输入成立日期，如：2020-01-01" />
             </el-form-item>
           </el-col>
         </el-row>
