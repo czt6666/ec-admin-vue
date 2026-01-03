@@ -353,12 +353,12 @@ export default {
       autoComplete: null
     }
   },
-  mounted() {
-    this.loadData()
-    this.loadCompanies()
+  async mounted() {
+    await this.loadCompanies()
     this.loadRouteTypes()
     this.loadRouteThemes()
     this.loadAMapScript()
+    this.loadData()
   },
   methods: {
     async loadData() {
@@ -380,6 +380,10 @@ export default {
           }
         })
         this.pagination.total = data.total || 0
+      } else {
+        // 如果数据加载失败，清空表格
+        this.tableData = []
+        this.pagination.total = 0
       }
     },
     async loadCompanies() {
@@ -388,6 +392,21 @@ export default {
         const raw = res.data || {}
         const list = raw.records || raw.list || []
         this.companyOptions = Array.isArray(list) ? list : []
+        // 公司数据加载完成后，刷新表格中的公司名称显示
+        this.refreshCompanyNames()
+      }
+    },
+
+    // 刷新表格中的公司名称显示
+    refreshCompanyNames() {
+      if (this.tableData.length > 0 && this.companyOptions.length > 0) {
+        this.tableData = this.tableData.map(item => {
+          const company = this.companyOptions.find(c => c.id === item.companyId)
+          return {
+            ...item,
+            companyName: company ? company.name : null
+          }
+        })
       }
     },
     handleSearch() {
