@@ -643,12 +643,15 @@ export default {
       if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
         return imagePath
       }
-      // 后端返回的 /uploads/ 相对路径
+      // 后端返回的 /uploads/ 相对路径（已经去掉了/api前缀），直接拼接基础URL
       if (imagePath.startsWith('/uploads/')) {
-        return `${this.baseUrl}${imagePath}`
+        // 去掉baseUrl中的/api后缀，然后拼接
+        const baseUrlWithoutApi = this.baseUrl.replace(/\/api$/, '')
+        return `${baseUrlWithoutApi}${imagePath}`
       }
-      // 仅文件名的场景
-      return `${this.baseUrl}/uploads/${imagePath}`
+      // 仅文件名的场景（兼容旧格式）
+      const baseUrlWithoutApi = this.baseUrl.replace(/\/api$/, '')
+      return `${baseUrlWithoutApi}/uploads/${imagePath}`
     },
     // 加载数据
     async loadData() {
@@ -730,10 +733,9 @@ export default {
           if (this.form.subjectTypeId && !this.subjectTypeOptions.find(o => o.id === this.form.subjectTypeId)) {
 
           }
-          // 处理环境照片
-          if (this.form.environmentPhotos) {
-            const photos = this.form.environmentPhotos.split(',').filter(p => p)
-            this.photoList = photos.map(url => {
+          // 处理环境照片（现在后端返回数组格式）
+          if (this.form.environmentPhotos && Array.isArray(this.form.environmentPhotos)) {
+            this.photoList = this.form.environmentPhotos.map(url => {
               const clean = url.trim()
               return {
                 url: this.getImageUrl(clean),
