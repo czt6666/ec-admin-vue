@@ -89,11 +89,13 @@ const webpackConfig = merge(baseWebpackConfig, {
     // see https://github.com/ampedandwired/html-webpack-plugin
     new HtmlWebpackPlugin({
       filename: config.build.index,
-      template: "index.html",
+      template: 'index.html',
       inject: true,
-      favicon: resolve("logored.webp"),
-      // favicon: resolve('xlogo.ico'),
-      title: "vue-element-admin",
+      // 替换 favicon 配置
+      favicon: resolve('mountain-icon.svg'),
+      // favicon: resolve('logored.png'),
+      // favicon: resolve('logored.webp'),
+      title: 'vue-element-admin',
       minify: {
         removeComments: true,
         collapseWhitespace: true,
@@ -102,7 +104,7 @@ const webpackConfig = merge(baseWebpackConfig, {
         // https://github.com/kangax/html-minifier#options-quick-reference
       },
       // necessary to consistently work with multiple chunks via CommonsChunkPlugin
-      chunksSortMode: "dependency"
+      chunksSortMode: 'dependency'
     }),
     // keep module.id stable when vender modules does not change
     new webpack.HashedModuleIdsPlugin(),

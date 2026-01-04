@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 简单的山景图标 -->
+  <path d="M0 32L16 12L32 32H0Z" fill="#4A9D5E"/>
+  <path d="M8 32L16 18L24 32H8Z" fill="#6BC27C"/>
+  <path d="M4 32L12 22L20 32H4Z" fill="#80D691"/>
+  <path d="M20 32L26 24L32 32H20Z" fill="#5AB870"/>
+  <!-- 太阳 -->
+  <circle cx="26" cy="6" r="3" fill="#FDB74D"/>
+</svg>
