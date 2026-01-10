@@ -51,3 +51,19 @@ export function getHomestayByVillageId(villageId) {
     method: 'get'
   })
 }
+
+// 上架民宿（仅管理员）
+export function publishHomestay(id) {
+  return request({
+    url: `/admin/ecadmin/village-homestay/${id}/publish`,
+    method: 'post'
+  })
+}
+
+// 下架民宿（仅管理员）
+export function unpublishHomestay(id) {
+  return request({
+    url: `/admin/ecadmin/village-homestay/${id}/unpublish`,
+    method: 'post'
+  })
+}

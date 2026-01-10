@@ -88,7 +88,7 @@ export const asyncRouterMap = [
         name: '民宿经营',
         component: _import('homestay/index'),
         meta: { title: '民宿经营', icon: 'list' },
-        menu: 'user'
+        menu: 'villageHomestay'
       },
 
     ]

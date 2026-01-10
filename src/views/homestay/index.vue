@@ -42,6 +42,7 @@
             clearable
             style="width: 150px"
           >
+            <el-option label="待审核" :value="0" />
             <el-option label="营业" :value="1" />
             <el-option label="暂停营业" :value="2" />
             <el-option label="已下架" :value="3" />
@@ -106,6 +107,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="homestayName" label="民宿名称" width="150" />
+      <el-table-column prop="userName" label="商户" width="120" />
       <el-table-column prop="address" label="地址" show-overflow-tooltip />
       <el-table-column label="营业状态" width="100">
         <template slot-scope="scope">
@@ -130,7 +132,7 @@
       <el-table-column prop="contactName" label="负责人" width="100" />
       <el-table-column prop="contactPhone" label="联系电话" width="120" />
       <el-table-column prop="createTime" label="创建时间" width="160" />
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="250" fixed="right">
         <template slot-scope="scope">
           <div class="operation-buttons">
             <el-button size="mini" type="primary" @click="handleEdit(scope.row)">
@@ -143,6 +145,22 @@
               @click="viewOrders(scope.row)"
             >
               <i class="el-icon-view"></i> 查看订单
+            </el-button>
+            <el-button
+              v-if="isAdmin && scope.row.status === 0"
+              size="mini"
+              type="success"
+              @click="handlePublish(scope.row)"
+            >
+              <i class="el-icon-check"></i> 上架
+            </el-button>
+            <el-button
+              v-if="isAdmin && scope.row.status === 1"
+              size="mini"
+              type="warning"
+              @click="handleUnpublish(scope.row)"
+            >
+              <i class="el-icon-close"></i> 下架
             </el-button>
             <el-button size="mini" type="danger" @click="handleDelete(scope.row)">
               <i class="el-icon-delete"></i> 删除
@@ -197,6 +215,28 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <el-form-item label="关联用户" prop="userId">
+          <el-select
+            v-model="homestayForm.userId"
+            filterable
+            placeholder="选择用户"
+            :loading="userLoading"
+            style="width: 100%"
+            :disabled="!isAdmin"
+          >
+            <el-option
+              v-for="item in userOptions"
+              :key="item.id"
+              :label="item.username"
+              :value="item.id"
+            />
+          </el-select>
+          <div v-if="!isAdmin" class="status-tip">
+            <i class="el-icon-info"></i>
+            商家用户不能修改关联用户
+          </div>
+        </el-form-item>
 
         <!-- 地址输入 -->
         <el-form-item label="地址" prop="address">
@@ -259,11 +299,21 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="营业状态" prop="status">
-              <el-select v-model="homestayForm.status" placeholder="请选择状态" style="width: 100%">
+              <el-select
+                v-model="homestayForm.status"
+                placeholder="请选择状态"
+                style="width: 100%"
+                :disabled="!isAdmin"
+              >
+                <el-option label="待审核" :value="0" />
                 <el-option label="营业" :value="1" />
                 <el-option label="暂停营业" :value="2" />
                 <el-option label="已下架" :value="3" />
               </el-select>
+              <div v-if="!isAdmin" class="status-tip">
+                <i class="el-icon-info"></i>
+                商家用户不能修改状态，请联系管理员审核
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -525,9 +575,11 @@
 </template>
 
 <script>
-import { getHomestayList, addHomestay, updateHomestay, deleteHomestay } from '@/api/homestay'
+import { getHomestayList, addHomestay, updateHomestay, deleteHomestay, publishHomestay, unpublishHomestay } from '@/api/homestay'
 import { getVillageList } from '@/api/village'
+import { listUserOptions, getCurrentUser } from '@/api/user'
 import request from '@/utils/request'
+import { getToken } from '@/utils/auth'
 
 export default {
   name: 'VillageHomestayList',
@@ -536,9 +588,11 @@ export default {
     return {
       loading: false,
       villageLoading: false,
+      userLoading: false,
       mapDialogVisible: false,
       homestayList: [],
       villageList: [],
+      userOptions: [],
       total: 0,
       map: null,
       marker: null,
@@ -560,6 +614,8 @@ export default {
       },
       selectedQualificationType: 'property',
       baseUrl: '',
+      isAdmin: false, // 是否为管理员（通过后端接口判断）
+      isEdit: false,  // 是否为编辑模式
       queryParams: {
         page: 1,
         pageSize: 10,
@@ -574,10 +630,11 @@ export default {
       dialogTitle: '',
       homestayForm: {
         id: null,
+        userId: null,
         villageId: null,
         homestayName: '',
         address: '',
-        status: 1,
+        status: 0, // 默认状态为待审核（0），管理员可以手动改为营业（1）
         starLevel: 0,
         roomCount: 0,
         bedCount: 0,
@@ -596,6 +653,7 @@ export default {
         homestayName: [{ required: true, message: '请输入民宿名称', trigger: 'blur' }],
         address: [{ required: true, message: '请输入地址', trigger: 'blur' }],
         status: [{ required: true, message: '请选择营业状态', trigger: 'change' }],
+        userId: [{ required: false, message: '请选择关联用户', trigger: 'change' }],
         roomCount: [{ required: true, message: '请输入客房数量', trigger: 'blur' }],
         bedCount: [{ required: true, message: '请输入床位总数', trigger: 'blur' }],
         maxCapacity: [{ required: true, message: '请输入最大接待人数', trigger: 'blur' }],
@@ -612,7 +670,9 @@ export default {
     console.log('=== 组件创建，开始获取数据 ===')
     this.getBaseUrl()
     this.getVillageList()
+    this.loadUserOptions()
     this.getList()
+    this.checkUserPermission()
   },
 
   methods: {
@@ -681,6 +741,27 @@ export default {
         console.error('图片上传失败:', error)
         this.$message.error('图片上传失败')
         throw error
+      }
+    },
+
+    // 加载用户选项列表
+    async loadUserOptions() {
+      this.userLoading = true
+      try {
+        const res = await listUserOptions()
+        if (res && res.data) {
+          this.userOptions = res.data || []
+        } else if (Array.isArray(res)) {
+          this.userOptions = res
+        } else {
+          this.userOptions = []
+        }
+      } catch (e) {
+        console.error('获取用户列表失败:', e)
+        this.$message.error('获取用户列表失败，请检查网络连接')
+        this.userOptions = []
+      } finally {
+        this.userLoading = false
       }
     },
 
@@ -778,11 +859,12 @@ export default {
     handleAdd() {
       this.dialogTitle = '新增民宿'
       this.dialogVisible = true
+      this.isEdit = false
       this.resetForm()
     },
 
     // 编辑
-    handleEdit(row) {
+    async handleEdit(row) {
       console.log('=== handleEdit 被调用 ===', row)
 
       if (!row || !row.id) {
@@ -790,8 +872,14 @@ export default {
         return
       }
 
+      // 确保权限检查完成
+      if (this.isAdmin === false) {
+        await this.checkUserPermission()
+      }
+
       this.dialogTitle = '编辑民宿'
       this.dialogVisible = true
+      this.isEdit = true
       this.homestayForm = { ...row }
 
       // 处理封面图
@@ -989,12 +1077,14 @@ export default {
 
     // 重置表单
     resetForm() {
+      this.isEdit = false
       this.homestayForm = {
         id: null,
+        userId: null,
         villageId: null,
         homestayName: '',
         address: '',
-        status: 1,
+        status: 0, // 默认状态为待审核（0），管理员可以手动改为营业（1）
         starLevel: 0,
         roomCount: 0,
         bedCount: 0,
@@ -1027,9 +1117,10 @@ export default {
     // 获取状态类型
     getStatusType(status) {
       const statusMap = {
-        1: 'success',
-        2: 'warning',
-        3: 'danger'
+        0: 'info',      // 待审核
+        1: 'success',   // 营业
+        2: 'warning',   // 暂停营业
+        3: 'danger'     // 已下架
       }
       return statusMap[status] || 'info'
     },
@@ -1037,6 +1128,7 @@ export default {
     // 获取状态文本
     getStatusText(status) {
       const statusMap = {
+        0: '待审核',
         1: '营业',
         2: '暂停营业',
         3: '已下架'
@@ -1580,6 +1672,54 @@ export default {
         return false
       }
       return false
+    },
+
+    // 检查用户权限（判断是否为管理员）
+    async checkUserPermission() {
+      try {
+        const userInfo = await getCurrentUser()
+        const data = userInfo && userInfo.data ? userInfo.data : userInfo
+        const userId = (data && data.userId) || (data && data.id)
+        // 判断是否为管理员：userId === 10011 或 roleIds 包含 1
+        const roleIds = data && data.roleIds ? data.roleIds : []
+        this.isAdmin = userId === 10011 || (roleIds && roleIds.includes(1))
+        console.log('用户权限检查:', { userId, isAdmin: this.isAdmin })
+      } catch (error) {
+        console.error('获取用户权限失败:', error)
+        this.isAdmin = false
+      }
+    },
+
+    // 上架民宿
+    handlePublish(row) {
+      this.$confirm('确定要上架该民宿吗？上架后将在小程序端显示', '上架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        publishHomestay(row.id).then(response => {
+          this.$message.success('上架成功')
+          this.getList()
+        }).catch(error => {
+          this.$message.error(error.message || '上架失败')
+        })
+      }).catch(() => {})
+    },
+
+    // 下架民宿
+    handleUnpublish(row) {
+      this.$confirm('确定要下架该民宿吗？下架后将不在小程序端显示', '下架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        unpublishHomestay(row.id).then(response => {
+          this.$message.success('下架成功')
+          this.getList()
+        }).catch(error => {
+          this.$message.error(error.message || '下架失败')
+        })
+      }).catch(() => {})
     }
   }
 }
@@ -1980,6 +2120,19 @@ export default {
 .upload-text {
   font-size: 12px;
   color: #909399;
+}
+
+.status-tip {
+  margin-top: 5px;
+  color: #909399;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.status-tip i {
+  margin-right: 4px;
+  color: #409eff;
 }
 </style>
 
