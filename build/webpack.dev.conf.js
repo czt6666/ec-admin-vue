@@ -54,7 +54,10 @@ const devWebpackConfig = merge(baseWebpackConfig, {
       filename: 'index.html',
       template: 'index.html',
       inject: true,
-      favicon: resolve('logored.webp'),
+      // 替换 favicon 配置
+      favicon: resolve('mountain-icon.svg'),
+      // favicon: resolve('logored.png'),
+      // favicon: resolve('logored.webp'),
       // favicon: resolve('xlogo.svg'),
       title: 'vue-element-admin'
     }),
