@@ -105,14 +105,14 @@ export const asyncRouterMap = [
         name: '旅游公司管理',
         component: _import('tourism/company'), // 新路径
         meta: { title: '旅游公司管理', icon: 'business' },
-        menu: 'user'
+        menu: 'tourCompany'
       },
       {
         path: 'route',
         name: '线路管理',
         component: _import('tourism/route'), // 新路径
         meta: { title: '线路管理', icon: 'map' },
-        menu: 'role'
+        menu: 'tourRoute'
       },
       // 可选：线路类型、线路主题的字典页
       {
@@ -120,14 +120,14 @@ export const asyncRouterMap = [
         name: '线路类型管理',
         component: _import('tourism/type'),
         meta: { title: '线路类型管理', icon: 'tag' },
-        menu: 'user'
+        menu: 'tourCompany'
       },
       {
         path: 'route-theme',
         name: '线路主题管理',
         component: _import('tourism/theme'),
         meta: { title: '线路主题管理', icon: 'tag' },
-        menu: 'user'
+        menu: 'tourCompany'
       }
     ]
   },

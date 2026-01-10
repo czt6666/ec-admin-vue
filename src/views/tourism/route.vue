@@ -15,7 +15,7 @@
           <el-select v-model="query.bizStatus" placeholder="经营状态" clearable style="width: 150px; margin-right: 10px">
             <el-option label="发布" :value="1" />
             <el-option label="进行中" :value="2" />
-            <el-option label="暂停" :value="3" />
+            <el-option label="待审核" :value="3" />
           </el-select>
           <el-button type="primary" icon="el-icon-search" @click="handleSearch">搜索</el-button>
           <el-button icon="el-icon-refresh" @click="handleReset">重置</el-button>
@@ -40,14 +40,30 @@
           <template slot-scope="scope">
             <el-tag v-if="scope.row.bizStatus === 1" type="success">发布</el-tag>
             <el-tag v-else-if="scope.row.bizStatus === 2" type="warning">进行中</el-tag>
-            <el-tag v-else-if="scope.row.bizStatus === 3" type="info">暂停</el-tag>
+            <el-tag v-else-if="scope.row.bizStatus === 3" type="info">待审核</el-tag>
             <span v-else>—</span>
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" min-width="170" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template slot-scope="scope">
             <el-button type="primary" size="mini" @click="openDialog(scope.row)">编辑</el-button>
+            <el-button
+              v-if="isAdmin && scope.row.bizStatus === 3"
+              size="mini"
+              type="success"
+              @click="handlePublish(scope.row)"
+            >
+              <i class="el-icon-check"></i> 上架
+            </el-button>
+            <el-button
+              v-if="isAdmin && scope.row.bizStatus === 1"
+              size="mini"
+              type="warning"
+              @click="handleUnpublish(scope.row)"
+            >
+              <i class="el-icon-close"></i> 下架
+            </el-button>
             <el-button type="danger" size="mini" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
@@ -131,11 +147,15 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="经营状态" prop="bizStatus">
-              <el-select v-model="form.bizStatus" placeholder="请选择" style="width: 100%">
+              <el-select v-model="form.bizStatus" placeholder="请选择" style="width: 100%" :disabled="!isAdmin">
                 <el-option label="发布" :value="1" />
                 <el-option label="进行中" :value="2" />
-                <el-option label="暂停" :value="3" />
+                <el-option label="待审核" :value="3" />
               </el-select>
+              <div v-if="!isAdmin" class="status-tip" style="margin-top: 5px; color: #909399; font-size: 12px;">
+                <i class="el-icon-info"></i>
+                商家用户不能修改经营状态，请联系管理员审核
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -286,6 +306,7 @@ import { listTourRoute, getTourRoute, createTourRoute, updateTourRoute, deleteTo
 import { listTourCompany } from '@/api/tourCompany'
 import { listRouteType } from '@/api/routeType'
 import { listRouteTheme } from '@/api/routeTheme'
+import { getCurrentUser } from '@/api/user'
 
 export default {
   name: 'TourRoute',
@@ -306,6 +327,7 @@ export default {
       dialogVisible: false,
       dialogTitle: '新增路线',
       submitLoading: false,
+      isAdmin: false, // 是否为管理员
       form: {
         id: null,
         name: '',
@@ -354,6 +376,7 @@ export default {
     }
   },
   async mounted() {
+    await this.checkUserPermission()
     await this.loadCompanies()
     this.loadRouteTypes()
     this.loadRouteThemes()
@@ -443,6 +466,11 @@ export default {
       }
     },
     async openDialog(row) {
+      // 确保权限检查已完成
+      if (this.isAdmin === false) {
+        await this.checkUserPermission()
+      }
+
       if (row) {
         this.dialogTitle = '编辑路线'
         const res = await getTourRoute(row.id)
@@ -475,7 +503,7 @@ export default {
         days: null,
         difficulty: '',
         itinerary: '',
-        bizStatus: 1,
+        bizStatus: 3, // 默认待审核
         targetCrowd: '',
         priceRange: '',
         safetyMeasures: '',
@@ -488,6 +516,50 @@ export default {
       this.selectedLongitude = null
       this.selectedAddress = ''
     },
+    async checkUserPermission() {
+      try {
+        const userInfo = await getCurrentUser()
+        const data = userInfo && userInfo.data ? userInfo.data : userInfo
+        const userId = (data && data.userId) || (data && data.id)
+        // 判断是否为管理员：userId === 10011 或 roleIds 包含 1
+        const roleIds = data && data.roleIds ? data.roleIds : []
+        this.isAdmin = userId === 10011 || (roleIds && roleIds.includes(1))
+        console.log('用户权限检查:', { userId, isAdmin: this.isAdmin })
+      } catch (error) {
+        console.error('获取用户权限失败:', error)
+        this.isAdmin = false
+      }
+    },
+    // 上架线路（将状态改为1-发布）
+    handlePublish(row) {
+      this.$confirm('确定要上架该线路吗？上架后将在小程序端显示', '上架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        updateTourRoute({ ...row, bizStatus: 1 }).then(response => {
+          this.$message.success('上架成功')
+          this.loadData()
+        }).catch(error => {
+          this.$message.error(error.message || '上架失败')
+        })
+      }).catch(() => {})
+    },
+    // 下架线路（将状态改为3-待审核）
+    handleUnpublish(row) {
+      this.$confirm('确定要下架该线路吗？下架后将不在小程序端显示', '下架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        updateTourRoute({ ...row, bizStatus: 3 }).then(response => {
+          this.$message.success('下架成功')
+          this.loadData()
+        }).catch(error => {
+          this.$message.error(error.message || '下架失败')
+        })
+      }).catch(() => {})
+    },
     handleSubmit() {
       this.$refs.form.validate(async(valid) => {
         if (!valid) return
@@ -496,6 +568,11 @@ export default {
         const payload = { ...this.form }
         if (Array.isArray(this.themeTagsArray)) {
           payload.themeTags = this.themeTagsArray.join(',')
+        }
+
+        // 普通商户新增线路时，强制设置为待审核状态（3）
+        if (!this.form.id && !this.isAdmin) {
+          payload.bizStatus = 3
         }
 
         this.submitLoading = true
@@ -1009,6 +1086,19 @@ export default {
   font-size: 12px;
   margin-top: 4px;
   line-height: 1;
+}
+
+.status-tip {
+  margin-top: 5px;
+  color: #909399;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.status-tip i {
+  margin-right: 4px;
+  color: #409eff;
 }
 </style>
 

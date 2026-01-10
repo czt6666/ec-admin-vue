@@ -22,6 +22,7 @@
       <el-table :data="tableData" border stripe>
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="name" label="公司名称" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="userName" label="商户" width="120" />
         <el-table-column label="Logo" width="110" align="center">
           <template slot-scope="scope">
             <el-image
@@ -43,8 +44,8 @@
         <el-table-column prop="businessStatus" label="营业状态" width="100">
           <template slot-scope="scope">
             <el-tag v-if="scope.row.businessStatus === 1" type="success">营业中</el-tag>
-            <el-tag v-else-if="scope.row.businessStatus === 2" type="warning">暂停</el-tag>
-            <el-tag v-else-if="scope.row.businessStatus === 3" type="info">已注销</el-tag>
+            <el-tag v-else-if="scope.row.businessStatus === 2" type="info">待审核</el-tag>
+            <el-tag v-else-if="scope.row.businessStatus === 3" type="danger">已注销</el-tag>
             <span v-else>—</span>
           </template>
         </el-table-column>
@@ -52,9 +53,25 @@
         <el-table-column prop="emergencyPhone" label="紧急联系电话" min-width="140" />
         <el-table-column prop="website" label="官网" min-width="160" show-overflow-tooltip />
         <el-table-column prop="createTime" label="创建时间" min-width="170" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template slot-scope="scope">
             <el-button type="primary" size="mini" @click="openDialog(scope.row)">编辑</el-button>
+            <el-button
+              v-if="isAdmin && scope.row.businessStatus === 2"
+              size="mini"
+              type="success"
+              @click="handlePublish(scope.row)"
+            >
+              <i class="el-icon-check"></i> 上架
+            </el-button>
+            <el-button
+              v-if="isAdmin && scope.row.businessStatus === 1"
+              size="mini"
+              type="warning"
+              @click="handleUnpublish(scope.row)"
+            >
+              <i class="el-icon-close"></i> 下架
+            </el-button>
             <el-button type="danger" size="mini" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
@@ -86,6 +103,28 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <el-form-item label="关联用户" prop="userId">
+          <el-select
+            v-model="form.userId"
+            filterable
+            placeholder="选择用户"
+            :loading="userLoading"
+            style="width: 100%"
+            :disabled="!isAdmin"
+          >
+            <el-option
+              v-for="item in userOptions"
+              :key="item.id"
+              :label="item.username"
+              :value="item.id"
+            />
+          </el-select>
+          <div v-if="!isAdmin" class="status-tip">
+            <i class="el-icon-info"></i>
+            商家用户不能修改关联用户
+          </div>
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="注册地址" prop="registeredAddress">
@@ -129,11 +168,20 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="营业状态" prop="businessStatus">
-              <el-select v-model="form.businessStatus" placeholder="请选择" style="width: 100%">
+              <el-select
+                v-model="form.businessStatus"
+                placeholder="请选择"
+                style="width: 100%"
+                :disabled="!isAdmin"
+              >
                 <el-option label="营业中" :value="1" />
-                <el-option label="暂停" :value="2" />
+                <el-option label="暂停（待审核）" :value="2" />
                 <el-option label="已注销" :value="3" />
               </el-select>
+              <div v-if="!isAdmin" class="status-tip">
+                <i class="el-icon-info"></i>
+                商家用户不能修改状态，请联系管理员审核
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -298,7 +346,8 @@
 </template>
 
 <script>
-import { listTourCompany, getTourCompany, createTourCompany, updateTourCompany, deleteTourCompany } from '@/api/tourCompany'
+import { listTourCompany, getTourCompany, createTourCompany, updateTourCompany, deleteTourCompany, publishTourCompany, unpublishTourCompany } from '@/api/tourCompany'
+import { listUserOptions, getCurrentUser } from '@/api/user'
 import request from '@/utils/request'
 
 export default {
@@ -321,12 +370,13 @@ export default {
       submitLoading: false,
       form: {
         id: null,
+        userId: null,
         name: '',
         shortName: '',
         registeredAddress: '',
         businessAddress: '',
         businessScope: '',
-        businessStatus: 1,
+        businessStatus: 2, // 默认状态为暂停（待审核），管理员可以手动改为营业中（1）
         unifiedSocialCreditCode: '',
         legalRepresentative: '',
         registeredCapital: null,
@@ -344,6 +394,9 @@ export default {
         businessLatitude: null,
         businessLongitude: null
       },
+      userOptions: [],
+      userLoading: false,
+      isAdmin: false, // 是否为管理员
       rules: {
         name: [{ required: true, message: '请输入公司名称', trigger: 'blur' }],
         registeredAddress: [{ required: true, message: '请输入注册地址', trigger: 'blur' }],
@@ -373,6 +426,8 @@ export default {
   },
   mounted() {
     this.getBaseUrl()
+    this.loadUserOptions()
+    this.checkUserPermission()
     this.loadData()
     this.loadAMapScript()
   },
@@ -412,6 +467,11 @@ export default {
       this.loadData()
     },
     async openDialog(row) {
+      // 确保权限检查完成
+      if (this.isAdmin === false) {
+        await this.checkUserPermission()
+      }
+
       if (row) {
         this.dialogTitle = '编辑公司'
         const res = await getTourCompany(row.id)
@@ -450,12 +510,13 @@ export default {
     resetForm() {
       this.form = {
         id: null,
+        userId: null,
         name: '',
         shortName: '',
         registeredAddress: '',
         businessAddress: '',
         businessScope: '',
-        businessStatus: 1,
+        businessStatus: 2, // 默认状态为暂停（待审核），管理员可以手动改为营业中（1）
         unifiedSocialCreditCode: '',
         legalRepresentative: '',
         registeredCapital: null,
@@ -477,6 +538,41 @@ export default {
       this.selectedAddress = ''
       this.selectedLatitude = null
       this.selectedLongitude = null
+    },
+    // 加载用户选项列表
+    async loadUserOptions() {
+      this.userLoading = true
+      try {
+        const res = await listUserOptions()
+        if (res && res.data) {
+          this.userOptions = res.data || []
+        } else if (Array.isArray(res)) {
+          this.userOptions = res
+        } else {
+          this.userOptions = []
+        }
+      } catch (e) {
+        console.error('获取用户列表失败:', e)
+        this.$message.error('获取用户列表失败，请检查网络连接')
+        this.userOptions = []
+      } finally {
+        this.userLoading = false
+      }
+    },
+    // 检查用户权限（判断是否为管理员）
+    async checkUserPermission() {
+      try {
+        const userInfo = await getCurrentUser()
+        const data = userInfo && userInfo.data ? userInfo.data : userInfo
+        const userId = (data && data.userId) || (data && data.id)
+        // 判断是否为管理员：userId === 10011 或 roleIds 包含 1
+        const roleIds = data && data.roleIds ? data.roleIds : []
+        this.isAdmin = userId === 10011 || (roleIds && roleIds.includes(1))
+        console.log('用户权限检查:', { userId, isAdmin: this.isAdmin })
+      } catch (error) {
+        console.error('获取用户权限失败:', error)
+        this.isAdmin = false
+      }
     },
     handleSubmit() {
       this.$refs.form.validate(async(valid) => {
@@ -526,6 +622,36 @@ export default {
           }
         })
         .catch(() => {})
+    },
+    // 上架旅游公司
+    handlePublish(row) {
+      this.$confirm('确定要上架该旅游公司吗？上架后将在小程序端显示', '上架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        publishTourCompany(row.id).then(response => {
+          this.$message.success('上架成功')
+          this.loadData()
+        }).catch(error => {
+          this.$message.error(error.message || '上架失败')
+        })
+      }).catch(() => {})
+    },
+    // 下架旅游公司
+    handleUnpublish(row) {
+      this.$confirm('确定要下架该旅游公司吗？下架后将不在小程序端显示', '下架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        unpublishTourCompany(row.id).then(response => {
+          this.$message.success('下架成功')
+          this.loadData()
+        }).catch(error => {
+          this.$message.error(error.message || '下架失败')
+        })
+      }).catch(() => {})
     },
     getImageUrl(imagePath) {
       if (!imagePath) return ''
