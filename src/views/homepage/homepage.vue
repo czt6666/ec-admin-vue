@@ -1,84 +1,90 @@
 <template>
   <div class="app-container dashboard">
-    <div class="dashboard-header">
-      <h1>数据聚合系统仪表板</h1>
-      <p>实时监控和管理系统中的所有数据源</p>
-    </div>
+    <!-- 背景图片容器 -->
+    <div class="dashboard-background"></div>
+    
+    <!-- 内容容器 -->
+    <div class="dashboard-content">
+      <div class="dashboard-header">
+        <h1>数据聚合系统仪表板</h1>
+        <p>实时监控和管理系统中的所有数据源</p>
+      </div>
 
-    <!-- 关键指标概览 -->
-    <el-row :gutter="20" class="stats-cards">
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon bg-primary">
-              <i class="el-icon-files"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">数据源总数</div>
-              <div class="stat-number">{{ stats.totalSources }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-     
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon bg-success">
-              <i class="el-icon-check"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">活跃数据源</div>
-              <div class="stat-number">{{ stats.activeSources }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon bg-warning">
-              <i class="el-icon-tickets"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">总记录数</div>
-              <div class="stat-number">{{ formatNumber(stats.totalRecords) }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon bg-info">
-              <i class="el-icon-monitor"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">系统状态</div>
-              <div class="stat-number">
-                <el-tag :type="stats.status === 'normal' ? 'success' : 'danger'">
-                  {{ stats.status === 'normal' ? '正常' : '异常' }}
-                </el-tag>
+      <!-- 关键指标概览 -->
+      <el-row :gutter="20" class="stats-cards">
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon bg-primary">
+                <i class="el-icon-files"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-title">数据源总数</div>
+                <div class="stat-number">{{ stats.totalSources }}</div>
               </div>
             </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          </el-card>
+        </el-col>
+       
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon bg-success">
+                <i class="el-icon-check"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-title">活跃数据源</div>
+                <div class="stat-number">{{ stats.activeSources }}</div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+        
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon bg-warning">
+                <i class="el-icon-tickets"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-title">总记录数</div>
+                <div class="stat-number">{{ formatNumber(stats.totalRecords) }}</div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+        
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon bg-info">
+                <i class="el-icon-monitor"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-title">系统状态</div>
+                <div class="stat-number">
+                  <el-tag :type="stats.status === 'normal' ? 'success' : 'danger'">
+                    {{ stats.status === 'normal' ? '正常' : '异常' }}
+                  </el-tag>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
 
-    <!-- 数据源记录数柱状图 -->
-    <el-row :gutter="20" class="main-content">
-      <el-col :span="24">
-        <el-card class="chart-card">
-          <div slot="header" class="clearfix">
-            <span>数据源记录数统计</span>
-          </div>
-          <div id="records-chart" class="chart-container"></div>
-        </el-card>
-      </el-col>
-    </el-row>
+      <!-- 数据源记录数柱状图 -->
+      <el-row :gutter="20" class="main-content">
+        <el-col :span="24">
+          <el-card class="chart-card">
+            <div slot="header" class="clearfix">
+              <span>数据源记录数统计</span>
+            </div>
+            <div id="records-chart" class="chart-container"></div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
   </div>
 </template>
 
@@ -146,7 +152,9 @@ export default {
       // 数据源记录数柱状图
       const recordsChartDom = document.getElementById('records-chart')
       if (recordsChartDom) {
-        this.charts.recordsChart = echarts.init(recordsChartDom)
+        this.charts.recordsChart = echarts.init(recordsChartDom, null, {
+          renderer: 'canvas'
+        })
       }
       
       // 设置初始图表配置
@@ -162,31 +170,62 @@ export default {
         const recordCounts = this.sources.map(source => source.records)
         
         const recordsOption = {
+          backgroundColor: 'transparent', // 设置图表背景透明
           title: {
             text: '各数据源记录数统计',
-            left: 'center'
+            left: 'center',
+            textStyle: {
+              color: '#333' // 设置标题文字颜色
+            }
           },
           tooltip: {
             trigger: 'axis',
             axisPointer: {
               type: 'shadow'
+            },
+            backgroundColor: 'rgba(255,255,255,0.9)', // 提示框背景色
+            textStyle: {
+              color: '#333' // 提示框文字颜色
             }
           },
           grid: {
             left: '3%',
             right: '4%',
             bottom: '3%',
-            containLabel: true
+            containLabel: true,
+            backgroundColor: 'transparent' // 设置网格区域背景透明
           },
           xAxis: {
             type: 'category',
             data: sourceNames,
             axisTick: {
               alignWithLabel: true
+            },
+            axisLine: {
+              lineStyle: {
+                color: '#666' // X轴线颜色
+              }
+            },
+            axisLabel: {
+              color: '#333' // X轴标签颜色
             }
           },
           yAxis: {
-            type: 'value'
+            type: 'value',
+            axisLine: {
+              lineStyle: {
+                color: '#666' // Y轴线颜色
+              }
+            },
+            axisLabel: {
+              color: '#333' // Y轴标签颜色
+            },
+            splitLine: {
+              lineStyle: {
+                color: '#ccc', // 分割线颜色
+                opacity: 0.5 // 分割线透明度
+              }
+            }
           },
           series: [{
             name: '记录数',
@@ -232,6 +271,36 @@ export default {
 <style scoped>
 .dashboard {
   padding: 20px;
+  position: relative;
+  min-height: 100%;
+}
+
+.dashboard {
+  position: relative;
+  min-height: 100%;
+}
+
+.dashboard-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('~@/assets/web/loginadmin.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.4; /* 背景透明度 */
+  z-index: 0; /* 放置在内容后面 */
+}
+
+.dashboard-content {
+  position: relative;
+  z-index: 1; /* 确保内容在背景之上 */
+}
+
+.dashboard-content {
+  position: relative;
 }
 
 .dashboard-header {
@@ -257,12 +326,16 @@ export default {
   height: 120px;
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.7); /* 半透明白色背景 */
 }
 
 .stat-content {
   display: flex;
   align-items: center;
   height: 100%;
+  background-color: rgba(255, 255, 255, 0.7); /* 半透明白色背景，提高透明度以增强可读性 */
+  border-radius: 8px;
+  padding: 10px;
 }
 
 .stat-icon {
@@ -316,6 +389,7 @@ export default {
 .chart-card {
   border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.7); /* 半透明白色背景 */
 }
 
 .chart-container {
