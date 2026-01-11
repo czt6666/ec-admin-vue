@@ -6,6 +6,9 @@ import Layout from '../views/layout/Layout'
 
 const _import = require('./_import_' + process.env.NODE_ENV)
 Vue.use(Router)
+
+// 导入图标
+import viewpageicon from '@/assets/icons/png/viewpageicon.png'
 export const constantRouterMap = [
   // 设置默认首页
   { path: '/', redirect: '/admin/home/homepage', hidden: true },
@@ -40,7 +43,7 @@ export const asyncRouterMap = [
         component: () => import("@/views/homepage/homepage.vue"),
         meta: {
           title: "首页",
-          icon: 'home'
+          icon: viewpageicon
         },
         // menu: "config"
       }
@@ -55,9 +58,16 @@ export const asyncRouterMap = [
     children: [
       {
         path: 'subject',
-        name: '新闻主体管理',
+        name: '实时资讯',
+        component: _import('village/ActualTimeSubject'),
+        meta: { title: '实时资讯', icon: 'document' },
+        menu: 'user'
+      },
+       {
+        path: 'subject2',
+        name: '常态新闻',
         component: _import('village/subject'),
-        meta: { title: '新闻主体管理', icon: 'document' },
+        meta: { title: '常态新闻', icon: 'document' },
         menu: 'user'
       },
       {
