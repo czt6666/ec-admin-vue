@@ -6,6 +6,9 @@ import Layout from '../views/layout/Layout'
 
 const _import = require('./_import_' + process.env.NODE_ENV)
 Vue.use(Router)
+
+// 导入图标
+import viewpageicon from '@/assets/icons/png/viewpageicon.png'
 export const constantRouterMap = [
   // 设置默认首页
   { path: '/', redirect: '/admin/home/homepage', hidden: true },
@@ -40,7 +43,7 @@ export const asyncRouterMap = [
         component: () => import("@/views/homepage/homepage.vue"),
         meta: {
           title: "首页",
-          icon: '/static/icons/png/viewpageicon.png'
+          icon: viewpageicon
         },
         // menu: "config"
       }
