@@ -29,8 +29,19 @@
     <el-card class="table-card">
       <div slot="header" class="card-header">
         <el-button type="primary" icon="el-icon-plus" @click="handleAdd">新增驿站</el-button>
-        <el-button type="success" icon="el-icon-upload2" @click="handleImport">导入</el-button>
-        <el-button type="warning" icon="el-icon-download" @click="handleExport">导出</el-button>
+        <!-- 导入/导出仅管理员可见 -->
+        <el-button
+          v-if="isAdmin"
+          type="success"
+          icon="el-icon-upload2"
+          @click="handleImport"
+        >导入</el-button>
+        <el-button
+          v-if="isAdmin"
+          type="warning"
+          icon="el-icon-download"
+          @click="handleExport"
+        >导出</el-button>
       </div>
 
       <!-- 表格 -->
@@ -1463,6 +1474,10 @@ export default {
     },
     // 导入
     handleImport() {
+      if (!this.isAdmin) {
+        this.$message.warning('仅管理员可以导入驿站信息')
+        return
+      }
       this.importDialogVisible = true
       this.fileList = []
     },
@@ -1544,6 +1559,10 @@ export default {
     },
     // 导出
     async handleExport() {
+      if (!this.isAdmin) {
+        this.$message.warning('仅管理员可以导出驿站信息')
+        return
+      }
       try {
         this.$message.info('正在导出，请稍候...')
         // 直接使用 axios 或 request 的底层实现来处理 blob
