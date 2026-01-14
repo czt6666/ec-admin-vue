@@ -49,25 +49,19 @@ export default {
     },
     getImageSrc(icon) {
       // 获取图片路径
-      // 如果传入的是已导入的图片对象，则直接返回；否则按路径处理
-      if (typeof icon === 'string') {
-        let imagePath;
-        if (icon.startsWith('@/')) {
-          // 将 @/ 替换为 /
-          imagePath = icon.replace('@/', '/');
-        } else if (icon.startsWith('/')) {
-          // 直接使用绝对路径
-          imagePath = icon;
-        } else {
-          // 相对路径或普通字符串
-          imagePath = icon;
-        }
-        
-        return imagePath;
+      let imagePath;
+      if (icon.startsWith('@/')) {
+        // 将 @/ 替换为 /
+        imagePath = icon.replace('@/', '/');
+      } else if (icon.startsWith('/')) {
+        // 直接使用绝对路径
+        imagePath = icon;
       } else {
-        // 如果是导入的图片对象（如通过require或import引入），直接返回
-        return icon;
+        // 相对路径或普通字符串
+        imagePath = icon;
       }
+      
+      return imagePath;
     }
   }
 }

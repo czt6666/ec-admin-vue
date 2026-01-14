@@ -7,12 +7,11 @@
         style="width:240px"
       ></el-input>
       <el-button type="primary" @click="searchLogList">搜索</el-button>
-      <el-button type="primary">展示数据</el-button>
       <el-button
-        type="warning"
+        type="primary"
         icon="el-icon-download"
         @click="handleExport"
-      >导出Excel</el-button>
+      >导出</el-button>
       <el-table
         :data="list"
         v-loading="listLoading"
