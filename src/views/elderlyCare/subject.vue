@@ -737,30 +737,31 @@ export default {
         this.$message.error('加载服务模式失败')
       }
     },
-    // 拼接图片完整 URL（自动处理 /api 前缀和多余的 /uploads）
+    // 拼接图片完整 URL（与民宿等模块保持一致）
     getImageUrl(imagePath) {
       if (!imagePath) return ''
       let p = (imagePath || '').trim()
+
       // 已经是完整 URL
       if (p.startsWith('http://') || p.startsWith('https://')) {
         return p
       }
-      // 去掉开头的 /api
-      if (p.startsWith('/api/')) {
-        p = p.substring(4) // 去掉 "/api"
+
+      // 归一化路径：如果包含 /uploads/，从这里开始截断，去掉可能存在的 /api 前缀
+      const idx = p.indexOf('/uploads/')
+      if (idx !== -1) {
+        p = p.substring(idx) // 形如 "/uploads/xxx"
       }
-      // 如果中间包含 /api/uploads，从 /uploads 开始截取
-      const uploadsIdx = p.indexOf('/uploads/')
-      if (uploadsIdx !== -1) {
-        p = p.substring(uploadsIdx) // 变成 "/uploads/xxx"
-      }
-      const baseUrlWithoutApi = this.baseUrl.replace(/\/api$/, '')
-      // 形如 "/uploads/xxx"
+
+      const base = this.baseUrl || (process.env.VUE_APP_BASE_API || 'https://dzk.czt666.cn/api')
+
+      // 如果是以 /uploads/ 开头，直接拼在 base 后面（会变成 .../api/uploads/xxx）
       if (p.startsWith('/uploads/')) {
-        return `${baseUrlWithoutApi}${p}`
+        return base + p
       }
-      // 仅文件名场景（兼容旧数据）
-      return `${baseUrlWithoutApi}/uploads/${p}`
+
+      // 否则视为纯文件名，补上 /uploads 前缀
+      return `${base}/uploads/${p}`
     },
     // 加载数据
     async loadData() {
