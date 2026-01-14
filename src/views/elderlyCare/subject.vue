@@ -965,7 +965,7 @@ export default {
           delete payload.userId
         }
 
-        // 上传环境照片（按其他模块逻辑：数据库尽量只存文件名）
+        // 上传环境照片（保存后端返回的相对路径 /uploads/xxx）
         const newPhotos = []
         for (const file of this.photoList) {
           if (file.raw) {
@@ -973,15 +973,8 @@ export default {
             try {
               const uploadRes = await uploadFile(file.raw)
               if (uploadRes.code === 200) {
-                // 优先使用后端返回的文件名，其次使用相对路径
-                const data = uploadRes.data || {}
-                const filename = data.filename || data.fileName
-                const url = data.url
-                if (filename) {
-                  newPhotos.push(filename)
-                } else if (url) {
-                  newPhotos.push(url)
-                }
+                // 保存相对路径，后端返回 url 为 /uploads/xxx
+                newPhotos.push(uploadRes.data.url)
               }
             } catch (error) {
               this.$message.error(`上传图片 ${file.name} 失败`)
