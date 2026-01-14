@@ -726,22 +726,30 @@ export default {
         this.$message.error('加载服务模式失败')
       }
     },
-    // 拼接图片完整 URL
+    // 拼接图片完整 URL（自动处理 /api 前缀和多余的 /uploads）
     getImageUrl(imagePath) {
       if (!imagePath) return ''
+      let p = (imagePath || '').trim()
       // 已经是完整 URL
-      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-        return imagePath
+      if (p.startsWith('http://') || p.startsWith('https://')) {
+        return p
       }
-      // 后端返回的 /uploads/ 相对路径（已经去掉了/api前缀），直接拼接基础URL
-      if (imagePath.startsWith('/uploads/')) {
-        // 去掉baseUrl中的/api后缀，然后拼接
-        const baseUrlWithoutApi = this.baseUrl.replace(/\/api$/, '')
-        return `${baseUrlWithoutApi}${imagePath}`
+      // 去掉开头的 /api
+      if (p.startsWith('/api/')) {
+        p = p.substring(4) // 去掉 "/api"
       }
-      // 仅文件名的场景（兼容旧格式）
+      // 如果中间包含 /api/uploads，从 /uploads 开始截取
+      const uploadsIdx = p.indexOf('/uploads/')
+      if (uploadsIdx !== -1) {
+        p = p.substring(uploadsIdx) // 变成 "/uploads/xxx"
+      }
       const baseUrlWithoutApi = this.baseUrl.replace(/\/api$/, '')
-      return `${baseUrlWithoutApi}/uploads/${imagePath}`
+      // 形如 "/uploads/xxx"
+      if (p.startsWith('/uploads/')) {
+        return `${baseUrlWithoutApi}${p}`
+      }
+      // 仅文件名场景（兼容旧数据）
+      return `${baseUrlWithoutApi}/uploads/${p}`
     },
     // 加载数据
     async loadData() {
