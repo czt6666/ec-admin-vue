@@ -187,21 +187,21 @@ export const asyncRouterMap = [
         name: '养老模式管理',
         component: _import('elderlyCare/serviceMode'),
         meta: { title: '养老模式管理', icon: 'heart' },
-        menu: 'user'
+        menu: 'station'
       },
       {
         path: 'subjectType',
         name: '养老驿站类型管理',
         component: _import('elderlyCare/subjectType/index'),
         meta: { title: '养老驿站类型管理', icon: 'tag' },
-        menu: 'user'
+        menu: 'station'
       },
       {
         path: 'subject',
         name: '养老驿站管理',
         component: _import('elderlyCare/subject'),
         meta: { title: '养老驿站管理', icon: 'heart' },
-        menu: 'user'
+        menu: 'station'
       },
     ]
   },

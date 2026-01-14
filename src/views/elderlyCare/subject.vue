@@ -42,6 +42,7 @@
       >
         <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column prop="name" label="驿站名称" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="userName" label="关联用户" width="140" show-overflow-tooltip />
         <el-table-column prop="introduction" label="简介" min-width="200" show-overflow-tooltip />
         <el-table-column prop="unifiedSocialCreditCode" label="统一社会信用代码" width="180" />
         <el-table-column prop="legalRepresentative" label="法定代表人" width="120" />
@@ -68,9 +69,21 @@
             {{ formatDateTime(scope.row.createTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" align="center" fixed="right">
+        <el-table-column label="操作" width="260" align="center" fixed="right">
           <template slot-scope="scope">
             <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button
+              v-if="isAdmin && scope.row.businessStatus !== 1"
+              type="success"
+              size="small"
+              @click="handlePublish(scope.row)"
+            >上架</el-button>
+            <el-button
+              v-if="isAdmin && scope.row.businessStatus === 1"
+              type="warning"
+              size="small"
+              @click="handleUnpublish(scope.row)"
+            >下架</el-button>
             <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
@@ -233,10 +246,33 @@
 
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="关联用户" prop="userId">
+              <el-select
+                v-model="form.userId"
+                filterable
+                placeholder="选择关联用户（仅管理员可改）"
+                :loading="userLoading"
+                style="width: 100%"
+                :disabled="businessStatusDisabled"
+              >
+                <el-option
+                  v-for="item in userOptions"
+                  :key="item.id"
+                  :label="item.username"
+                  :value="item.id"
+                />
+              </el-select>
+              <div v-if="businessStatusDisabled" class="form-tip">商户新增/编辑时自动绑定当前登录用户</div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="紧急联系人" prop="emergencyContact">
               <el-input v-model="form.emergencyContact" placeholder="请输入紧急联系人" maxlength="100" />
             </el-form-item>
           </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="紧急联系电话" prop="emergencyPhone">
               <el-input v-model="form.emergencyPhone" placeholder="请输入紧急联系电话" maxlength="50" />
@@ -247,11 +283,17 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="营业状态" prop="businessStatus">
-              <el-select v-model="form.businessStatus" placeholder="请选择" style="width: 100%">
+              <el-select
+                v-model="form.businessStatus"
+                placeholder="请选择"
+                style="width: 100%"
+                :disabled="businessStatusDisabled"
+              >
                 <el-option label="营业中" :value="1" />
                 <el-option label="暂停营业" :value="2" />
                 <el-option label="已注销" :value="3" />
               </el-select>
+              <div v-if="businessStatusDisabled" class="form-tip">商户新增/编辑时营业状态由后台审核决定</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -470,9 +512,10 @@
 </template>
 
 <script>
-import { listStation, getStation, createStation, updateStation, deleteStation, uploadFile, importStation, exportStation } from '@/api/station'
+import { listStation, getStation, createStation, updateStation, deleteStation, uploadFile, importStation, exportStation, publishStation, unpublishStation } from '@/api/station'
 import { getList as getSubjectTypeList } from '@/api/elderlyCare/subjectType'
 import { getList as getServiceModeList } from '@/api/elderlyCare/serviceMode'
+import { getCurrentUser, listUserOptions } from '@/api/user'
 
 export default {
   name: 'StationManagement',
@@ -480,6 +523,7 @@ export default {
     return {
       loading: false,
       submitLoading: false,
+      isAdmin: null, // true:管理员，false:商户，null:未判定
       queryParams: {
         name: '',
         status: null,
@@ -497,6 +541,7 @@ export default {
       form: {
         id: null,
         name: '',
+        userId: null,
         registeredAddress: '',
         businessAddress: '',
         registeredLatitude: null,
@@ -518,7 +563,7 @@ export default {
         medicalLicenseNo: '',
         foodLicenseNo: '',
         fireAcceptanceNo: '',
-        businessStatus: 1,
+        businessStatus: 2, // 默认暂停/待审核；管理员可改为营业中
         totalBeds: 0,
         roomConfig: [],
         careLevel: [],
@@ -529,6 +574,9 @@ export default {
       rules: {
         name: [
           { required: true, message: '请输入驿站名称', trigger: 'blur' }
+        ],
+        userId: [
+          { required: false, message: '请选择关联用户', trigger: 'change' }
         ],
         registeredAddress: [
           { required: true, message: '请输入注册地址', trigger: 'blur' }
@@ -578,10 +626,16 @@ export default {
       fileList: [],
       careLevelOptions: ['自理', '半自理', '非自理'],
       subjectTypeOptions: [],
-      serviceModeOptions: []
+      serviceModeOptions: [],
+      userOptions: [],
+      userLoading: false
     }
   },
   computed: {
+    businessStatusDisabled() {
+      // 非管理员不允许手动改营业状态（后端也会强制校验）
+      return this.isAdmin === false
+    },
     registeredCoordinateText() {
       if (this.form.registeredLatitude && this.form.registeredLongitude) {
         return `${this.form.registeredLatitude}, ${this.form.registeredLongitude}`
@@ -597,13 +651,49 @@ export default {
   },
   mounted() {
     // 可按需从 /api/file/getConfig 获取 baseUrl，这里使用环境变量/默认值
-    this.loadData()
+    this.checkUserPermission().finally(() => {
+      this.loadData()
+    })
     this.loadSubjectTypes()
     this.loadServiceModes()
     // 加载高德地图API
     this.loadAMapScript()
   },
   methods: {
+    // 判断当前用户是否为管理员（userId=10011 或 roleIds 包含 1）
+    async checkUserPermission() {
+      try {
+        const res = await getCurrentUser()
+        const data = res && res.data ? res.data : res
+        const userId = (data && data.userId) || (data && data.id)
+        const roleIds = Array.isArray(data && data.roleIds) ? data.roleIds : []
+        this.isAdmin = userId === 10011 || roleIds.includes(1)
+        if (this.isAdmin) {
+          await this.loadUserOptions()
+        }
+      } catch (e) {
+        // 拉取失败则按商户处理，后端仍有二次校验
+        this.isAdmin = false
+      }
+    },
+    // 拉取后台用户列表（仅管理员可选商户用户）
+    async loadUserOptions() {
+      this.userLoading = true
+      try {
+        const res = await listUserOptions()
+        if (res && res.data) {
+          this.userOptions = res.data || []
+        } else if (Array.isArray(res)) {
+          this.userOptions = res
+        } else {
+          this.userOptions = []
+        }
+      } catch (e) {
+        this.userOptions = []
+      } finally {
+        this.userLoading = false
+      }
+    },
     // 加载主体类型选项（真实接口）
     async loadSubjectTypes() {
       try {
@@ -703,7 +793,12 @@ export default {
       this.dialogTitle = '新增驿站'
       this.isEdit = false
       this.resetForm()
+      // 商户无需也不能选用户；管理员可选择关联用户
+      if (!this.isAdmin) {
+        this.form.userId = null
+      }
       this.dialogVisible = true
+      this.$nextTick(() => this.$refs.form && this.$refs.form.clearValidate())
     },
     // 编辑
     async handleEdit(row) {
@@ -713,6 +808,10 @@ export default {
         const res = await getStation(row.id)
         if (res.code === 200) {
           this.form = { ...res.data }
+          // 关联用户回显（仅管理员可见，可在 options 中追加）
+          if (this.isAdmin && this.form.userId && !this.userOptions.find(o => o.id === this.form.userId)) {
+            this.userOptions.push({ id: this.form.userId, username: this.form.userName || `用户${this.form.userId}` })
+          }
           // 多选字段回显
           this.form.roomConfig = res.data.roomConfig ? res.data.roomConfig.split(',').filter(Boolean) : []
           this.form.careLevel = res.data.careLevel ? res.data.careLevel.split(',').filter(Boolean) : []
@@ -782,6 +881,46 @@ export default {
         }
       }).catch(() => {})
     },
+    // 上架驿站（仅管理员）
+    handlePublish(row) {
+      this.$confirm('确定要上架该驿站吗？上架后将在小程序端显示', '上架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(async() => {
+        try {
+          const res = await publishStation(row.id)
+          if (res && res.code === 200) {
+            this.$message.success('上架成功')
+            this.loadData()
+          } else {
+            this.$message.error((res && res.msg) || '上架失败')
+          }
+        } catch (e) {
+          this.$message.error((e && e.message) || '上架失败')
+        }
+      }).catch(() => {})
+    },
+    // 下架驿站（仅管理员）
+    handleUnpublish(row) {
+      this.$confirm('确定要下架该驿站吗？下架后将不在小程序端显示', '下架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(async() => {
+        try {
+          const res = await unpublishStation(row.id)
+          if (res && res.code === 200) {
+            this.$message.success('下架成功')
+            this.loadData()
+          } else {
+            this.$message.error((res && res.msg) || '下架失败')
+          }
+        } catch (e) {
+          this.$message.error((e && e.message) || '下架失败')
+        }
+      }).catch(() => {})
+    },
     // 提交表单
     async handleSubmit() {
       this.$refs.form.validate(async(valid) => {
@@ -806,6 +945,16 @@ export default {
         }
         if (Array.isArray(payload.serviceMode)) {
           payload.serviceMode = payload.serviceMode.join(',')
+        }
+
+        // 商户不允许手动改营业状态，也不提交 userId；后端有二次校验
+        if (this.isAdmin === false) {
+          if (this.isEdit) {
+            delete payload.businessStatus
+          } else {
+            payload.businessStatus = 2
+          }
+          delete payload.userId
         }
 
         // 上传环境照片
@@ -854,6 +1003,7 @@ export default {
       this.form = {
         id: null,
         name: '',
+        userId: null,
         registeredAddress: '',
         businessAddress: '',
         registeredLatitude: null,
@@ -875,7 +1025,7 @@ export default {
         medicalLicenseNo: '',
         foodLicenseNo: '',
         fireAcceptanceNo: '',
-        businessStatus: 1,
+        businessStatus: 2,
         totalBeds: 0,
         roomConfig: [],
         careLevel: [],
