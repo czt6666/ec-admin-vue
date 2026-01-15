@@ -302,7 +302,7 @@
 </template>
 
 <script>
-import { listTourRoute, getTourRoute, createTourRoute, updateTourRoute, deleteTourRoute } from '@/api/tourRoute'
+import { listTourRoute, getTourRoute, createTourRoute, updateTourRoute, deleteTourRoute, publishTourRoute, unpublishTourRoute } from '@/api/tourRoute'
 import { listTourCompany } from '@/api/tourCompany'
 import { listRouteType } from '@/api/routeType'
 import { listRouteTheme } from '@/api/routeTheme'
@@ -537,7 +537,7 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        updateTourRoute({ ...row, bizStatus: 1 }).then(response => {
+        publishTourRoute(row.id).then(() => {
           this.$message.success('上架成功')
           this.loadData()
         }).catch(error => {
@@ -552,7 +552,7 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        updateTourRoute({ ...row, bizStatus: 3 }).then(response => {
+        unpublishTourRoute(row.id).then(() => {
           this.$message.success('下架成功')
           this.loadData()
         }).catch(error => {

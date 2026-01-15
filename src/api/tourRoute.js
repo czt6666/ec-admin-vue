@@ -53,3 +53,23 @@ export function deleteTourRoute(id) {
   })
 }
 
+/**
+ * 上架旅游线路（仅管理员）
+ */
+export function publishTourRoute(id) {
+  return request({
+    url: `/admin/ecadmin/tour/route/${id}/publish`,
+    method: 'post'
+  })
+}
+
+/**
+ * 下架旅游线路（仅管理员）
+ */
+export function unpublishTourRoute(id) {
+  return request({
+    url: `/admin/ecadmin/tour/route/${id}/unpublish`,
+    method: 'post'
+  })
+}
+
