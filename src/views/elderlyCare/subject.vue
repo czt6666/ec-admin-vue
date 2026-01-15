@@ -14,8 +14,7 @@
         <el-form-item label="营业状态">
           <el-select v-model="queryParams.status" placeholder="请选择" clearable style="width: 150px">
             <el-option label="营业中" :value="1" />
-            <el-option label="暂停营业" :value="2" />
-            <el-option label="已注销" :value="3" />
+            <el-option label="待审核" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -70,8 +69,7 @@
         <el-table-column label="营业状态" width="100" align="center">
           <template slot-scope="scope">
             <el-tag v-if="scope.row.businessStatus === 1" type="success">营业中</el-tag>
-            <el-tag v-else-if="scope.row.businessStatus === 2" type="warning">暂停营业</el-tag>
-            <el-tag v-else-if="scope.row.businessStatus === 3" type="info">已注销</el-tag>
+            <el-tag v-else-if="scope.row.businessStatus === 2 || scope.row.businessStatus === 3" type="info">待审核</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="totalBeds" label="总床数" width="100" align="center" />
@@ -301,8 +299,7 @@
                 :disabled="businessStatusDisabled"
               >
                 <el-option label="营业中" :value="1" />
-                <el-option label="暂停营业" :value="2" />
-                <el-option label="已注销" :value="3" />
+                <el-option label="待审核" :value="2" />
               </el-select>
               <div v-if="businessStatusDisabled" class="form-tip">商户新增/编辑时营业状态由后台审核决定</div>
             </el-form-item>

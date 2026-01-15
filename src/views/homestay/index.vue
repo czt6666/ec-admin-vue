@@ -42,10 +42,8 @@
             clearable
             style="width: 150px"
           >
-            <el-option label="待审核" :value="0" />
-            <el-option label="营业" :value="1" />
-            <el-option label="暂停营业" :value="2" />
-            <el-option label="已下架" :value="3" />
+            <el-option label="营业中" :value="1" />
+            <el-option label="待审核" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="星级">
@@ -147,7 +145,7 @@
               <i class="el-icon-view"></i> 查看订单
             </el-button>
             <el-button
-              v-if="isAdmin && scope.row.status === 0"
+              v-if="isAdmin && (scope.row.status !== 1 && scope.row.status !== '1')"
               size="mini"
               type="success"
               @click="handlePublish(scope.row)"
@@ -155,7 +153,7 @@
               <i class="el-icon-check"></i> 上架
             </el-button>
             <el-button
-              v-if="isAdmin && scope.row.status === 1"
+              v-if="isAdmin && (scope.row.status === 1 || scope.row.status === '1')"
               size="mini"
               type="warning"
               @click="handleUnpublish(scope.row)"
@@ -305,10 +303,8 @@
                 style="width: 100%"
                 :disabled="!isAdmin"
               >
-                <el-option label="待审核" :value="0" />
-                <el-option label="营业" :value="1" />
-                <el-option label="暂停营业" :value="2" />
-                <el-option label="已下架" :value="3" />
+                <el-option label="营业中" :value="1" />
+                <el-option label="待审核" :value="2" />
               </el-select>
               <div v-if="!isAdmin" class="status-tip">
                 <i class="el-icon-info"></i>
@@ -634,7 +630,8 @@ export default {
         villageId: null,
         homestayName: '',
         address: '',
-        status: 0, // 默认状态为待审核（0），管理员可以手动改为营业（1）
+        // 默认状态为待审核（2），管理员可以手动改为营业中（1）
+        status: 2,
         starLevel: 0,
         roomCount: 0,
         bedCount: 0,
@@ -1084,7 +1081,8 @@ export default {
         villageId: null,
         homestayName: '',
         address: '',
-        status: 0, // 默认状态为待审核（0），管理员可以手动改为营业（1）
+        // 默认状态为待审核（2），管理员可以手动改为营业中（1）
+        status: 2,
         starLevel: 0,
         roomCount: 0,
         bedCount: 0,
@@ -1116,24 +1114,21 @@ export default {
 
     // 获取状态类型
     getStatusType(status) {
-      const statusMap = {
-        0: 'info',      // 待审核
-        1: 'success',   // 营业
-        2: 'warning',   // 暂停营业
-        3: 'danger'     // 已下架
+      // 统一前端展示为两种状态：营业中 / 待审核
+      if (status === 1) {
+        return 'success' // 营业中
       }
-      return statusMap[status] || 'info'
+      // 其他状态（0 待审核、2 暂停、3 已下架等）统一视为“待审核”
+      return 'info'
     },
 
     // 获取状态文本
     getStatusText(status) {
-      const statusMap = {
-        0: '待审核',
-        1: '营业',
-        2: '暂停营业',
-        3: '已下架'
+      if (status === 1) {
+        return '营业中'
       }
-      return statusMap[status] || '未知'
+      // 其他状态（0 待审核、2 暂停、3 已下架等）统一显示为“待审核”
+      return '待审核'
     },
 
     // 获取资质类型名称

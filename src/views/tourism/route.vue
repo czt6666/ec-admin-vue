@@ -14,8 +14,7 @@
           </el-select>
           <el-select v-model="query.bizStatus" placeholder="经营状态" clearable style="width: 150px; margin-right: 10px">
             <el-option label="发布" :value="1" />
-            <el-option label="进行中" :value="2" />
-            <el-option label="待审核" :value="3" />
+            <el-option label="待审核" :value="2" />
           </el-select>
           <el-button type="primary" icon="el-icon-search" @click="handleSearch">搜索</el-button>
           <el-button icon="el-icon-refresh" @click="handleReset">重置</el-button>
@@ -38,9 +37,8 @@
         <el-table-column prop="priceRange" label="价格区间" min-width="140" />
         <el-table-column prop="bizStatus" label="经营状态" width="110">
           <template slot-scope="scope">
-            <el-tag v-if="scope.row.bizStatus === 1" type="success">发布</el-tag>
-            <el-tag v-else-if="scope.row.bizStatus === 2" type="warning">进行中</el-tag>
-            <el-tag v-else-if="scope.row.bizStatus === 3" type="info">待审核</el-tag>
+            <el-tag v-if="scope.row.bizStatus === 1 || scope.row.bizStatus === '1'" type="success">发布</el-tag>
+            <el-tag v-else-if="scope.row.bizStatus === 2 || scope.row.bizStatus === '2' || scope.row.bizStatus === 3 || scope.row.bizStatus === '3'" type="info">待审核</el-tag>
             <span v-else>—</span>
           </template>
         </el-table-column>
@@ -49,7 +47,7 @@
           <template slot-scope="scope">
             <el-button type="primary" size="mini" @click="openDialog(scope.row)">编辑</el-button>
             <el-button
-              v-if="isAdmin && scope.row.bizStatus === 3"
+              v-if="isAdmin && (scope.row.bizStatus === 2 || scope.row.bizStatus === '2' || scope.row.bizStatus === 3 || scope.row.bizStatus === '3')"
               size="mini"
               type="success"
               @click="handlePublish(scope.row)"
@@ -57,7 +55,7 @@
               <i class="el-icon-check"></i> 上架
             </el-button>
             <el-button
-              v-if="isAdmin && scope.row.bizStatus === 1"
+              v-if="isAdmin && (scope.row.bizStatus === 1 || scope.row.bizStatus === '1')"
               size="mini"
               type="warning"
               @click="handleUnpublish(scope.row)"
@@ -149,8 +147,7 @@
             <el-form-item label="经营状态" prop="bizStatus">
               <el-select v-model="form.bizStatus" placeholder="请选择" style="width: 100%" :disabled="!isAdmin">
                 <el-option label="发布" :value="1" />
-                <el-option label="进行中" :value="2" />
-                <el-option label="待审核" :value="3" />
+                <el-option label="待审核" :value="2" />
               </el-select>
               <div v-if="!isAdmin" class="status-tip" style="margin-top: 5px; color: #909399; font-size: 12px;">
                 <i class="el-icon-info"></i>
@@ -394,15 +391,26 @@ export default {
       if (res && res.code === 200) {
         const data = res.data || {}
         const list = data.records || data.list || []
-        // 处理公司名称显示
+        // 处理公司名称显示，确保保留所有字段（包括 bizStatus）
         this.tableData = list.map(item => {
           const company = this.companyOptions.find(c => c.id === item.companyId)
           return {
             ...item,
-            companyName: company ? company.name : null
+            companyName: company ? company.name : null,
+            // 确保 bizStatus 被保留（如果后端返回了的话）
+            bizStatus: item.bizStatus !== undefined ? item.bizStatus : null
           }
         })
         this.pagination.total = data.total || 0
+        // 调试：打印第一条数据的 bizStatus
+        if (this.tableData.length > 0) {
+          console.log('旅游线路数据示例:', {
+            id: this.tableData[0].id,
+            name: this.tableData[0].name,
+            bizStatus: this.tableData[0].bizStatus,
+            isAdmin: this.isAdmin
+          })
+        }
       } else {
         // 如果数据加载失败，清空表格
         this.tableData = []
@@ -503,7 +511,7 @@ export default {
         days: null,
         difficulty: '',
         itinerary: '',
-        bizStatus: 3, // 默认待审核
+        bizStatus: 2, // 默认待审核
         targetCrowd: '',
         priceRange: '',
         safetyMeasures: '',
@@ -537,11 +545,12 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        publishTourRoute(row.id).then(() => {
+        publishTourRoute(row.id).then(response => {
           this.$message.success('上架成功')
           this.loadData()
         }).catch(error => {
-          this.$message.error(error.message || '上架失败')
+          const errorMsg = (error && error.msg) || (error && error.message) || '上架失败'
+          this.$message.error(errorMsg)
         })
       }).catch(() => {})
     },
@@ -552,11 +561,12 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        unpublishTourRoute(row.id).then(() => {
+        unpublishTourRoute(row.id).then(response => {
           this.$message.success('下架成功')
           this.loadData()
         }).catch(error => {
-          this.$message.error(error.message || '下架失败')
+          const errorMsg = (error && error.msg) || (error && error.message) || '下架失败'
+          this.$message.error(errorMsg)
         })
       }).catch(() => {})
     },
@@ -570,9 +580,9 @@ export default {
           payload.themeTags = this.themeTagsArray.join(',')
         }
 
-        // 普通商户新增线路时，强制设置为待审核状态（3）
+        // 普通商户新增线路时，强制设置为待审核状态（2）
         if (!this.form.id && !this.isAdmin) {
-          payload.bizStatus = 3
+          payload.bizStatus = 2
         }
 
         this.submitLoading = true

@@ -211,7 +211,7 @@ import {
   deleteActivity,
   getActivity
 } from '@/api/study/tourActivity'
-import { fetchList as fetchPlanList } from '@/api/study/tourPlan'
+import { fetchAllEnabled as fetchPlanEnabled } from '@/api/study/tourPlan'
 import Pagination from '@/components/Pagination'
 
 export default {
@@ -345,8 +345,9 @@ export default {
       })
     },
     getPlanList() {
-      fetchPlanList({ pageNum: 1, pageSize: 1000 }).then(response => {
-        this.planOptions = response.data.records
+      // 关联方案下拉：仅展示“已上架/启用(status=1)”的方案，避免选择到禁用或其他商户方案
+      fetchPlanEnabled().then(response => {
+        this.planOptions = response.data || []
       })
     },
     handleFilter() {
@@ -458,11 +459,11 @@ export default {
     validateActivityDateRange(rule, value, callback) {
       if (this.temp.activityStartDate && this.temp.activityEndDate) {
         if (new Date(this.temp.activityStartDate) > new Date(this.temp.activityEndDate)) {
-           callback(new Error('活动开始日期不能晚于活动结束日期'))
-         } else if (new Date(this.temp.activityEndDate) < new Date(this.temp.applyStartDate)) {
-           callback(new Error('活动结束日期不能早于报名开始日期'))
-          } else {
-            callback()
+          callback(new Error('活动开始日期不能晚于活动结束日期'))
+        } else if (new Date(this.temp.activityEndDate) < new Date(this.temp.applyStartDate)) {
+          callback(new Error('活动结束日期不能早于报名开始日期'))
+        } else {
+          callback()
         }
       } else {
         callback()

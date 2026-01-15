@@ -92,7 +92,7 @@
         <el-table-column label="创建时间" align="center">
           <template slot-scope="scope">{{ scope.row.createTime | formatDateTime }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center">
+        <el-table-column label="操作" width="260" align="center">
           <template slot-scope="scope">
             <el-button
               size="mini"
@@ -100,6 +100,22 @@
               @click="handleUpdate(scope.$index, scope.row)"
             >
               编辑
+            </el-button>
+            <el-button
+              v-if="isAdmin && scope.row.status === 0"
+              size="mini"
+              type="success"
+              @click="handlePublish(scope.row)"
+            >
+              上架
+            </el-button>
+            <el-button
+              v-if="isAdmin && scope.row.status === 1"
+              size="mini"
+              type="warning"
+              @click="handleUnpublish(scope.row)"
+            >
+              下架
             </el-button>
             <el-button
               size="mini"
@@ -209,7 +225,8 @@
           />
         </el-form-item>
 
-        <el-form-item label="方案状态" prop="status">
+        <!-- 方案状态仅管理员可见，普通用户隐藏 -->
+        <el-form-item v-if="isAdmin" label="方案状态" prop="status">
           <el-radio-group v-model="tourPlan.status">
             <el-radio :label="1">启用</el-radio>
             <el-radio :label="0">禁用</el-radio>
@@ -230,7 +247,9 @@ import {
   fetchList,
   createTourPlan,
   updateTourPlan,
-  deleteTourPlan
+  deleteTourPlan,
+  publishTourPlan,
+  unpublishTourPlan
 } from '@/api/study/tourPlan'
 import { list as fetchBases } from '@/api/study/tourBase'
 
@@ -280,6 +299,7 @@ export default {
           value: 0
         }
       ],
+      isAdmin: false,
       rules: {
         planName: [
           { required: true, message: '请输入方案名称', trigger: 'blur' },
@@ -297,7 +317,8 @@ export default {
       }
     }
   },
-  created() {
+  async created() {
+    await this.checkUserPermission()
     this.getList()
     this.loadBases()
   },
@@ -325,6 +346,19 @@ export default {
     }
   },
   methods: {
+    async checkUserPermission() {
+      try {
+        const userModule = await import('@/api/user')
+        const getCurrentUser = userModule.getCurrentUser
+        const userInfo = await getCurrentUser()
+        const data = userInfo && userInfo.data ? userInfo.data : userInfo
+        const userId = (data && data.userId) || (data && data.id)
+        const roleIds = data && data.roleIds ? data.roleIds : []
+        this.isAdmin = userId === 10011 || (roleIds && roleIds.includes(1))
+      } catch (e) {
+        this.isAdmin = false
+      }
+    },
     handleResetSearch() {
       this.listQuery = Object.assign({}, defaultListQuery)
       this.handleSearchList()
@@ -346,6 +380,10 @@ export default {
       this.dialogVisible = true
       this.isEdit = false
       this.tourPlan = Object.assign({}, defaultTourPlan)
+      // 普通用户新增方案时，默认状态为禁用/下架，且前端不展示状态字段
+      if (!this.isAdmin) {
+        this.tourPlan.status = 0
+      }
     },
     handleDelete(index, row) {
       this.$confirm('是否要删除该研学方案？', '提示', {
@@ -366,6 +404,34 @@ export default {
       this.dialogVisible = true
       this.isEdit = true
       this.tourPlan = Object.assign({}, row)
+    },
+    handlePublish(row) {
+      this.$confirm('确定要上架该研学方案吗？上架后将在小程序端显示', '上架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        publishTourPlan(row.id).then(() => {
+          this.$message.success('上架成功')
+          this.getList()
+        }).catch(error => {
+          this.$message.error((error && error.msg) || (error && error.message) || '上架失败')
+        })
+      }).catch(() => {})
+    },
+    handleUnpublish(row) {
+      this.$confirm('确定要下架该研学方案吗？下架后将不在小程序端显示', '下架确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        unpublishTourPlan(row.id).then(() => {
+          this.$message.success('下架成功')
+          this.getList()
+        }).catch(error => {
+          this.$message.error((error && error.msg) || (error && error.message) || '下架失败')
+        })
+      }).catch(() => {})
     },
     handleDialogConfirm() {
       this.$refs['tourPlanForm'].validate((valid) => {

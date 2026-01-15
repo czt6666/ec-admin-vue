@@ -44,8 +44,7 @@
         <el-table-column prop="businessStatus" label="营业状态" width="100">
           <template slot-scope="scope">
             <el-tag v-if="scope.row.businessStatus === 1" type="success">营业中</el-tag>
-            <el-tag v-else-if="scope.row.businessStatus === 2" type="info">待审核</el-tag>
-            <el-tag v-else-if="scope.row.businessStatus === 3" type="danger">已注销</el-tag>
+            <el-tag v-else-if="scope.row.businessStatus === 2 || scope.row.businessStatus === 3" type="info">待审核</el-tag>
             <span v-else>—</span>
           </template>
         </el-table-column>
@@ -175,8 +174,7 @@
                 :disabled="!isAdmin"
               >
                 <el-option label="营业中" :value="1" />
-                <el-option label="暂停（待审核）" :value="2" />
-                <el-option label="已注销" :value="3" />
+                <el-option label="待审核" :value="2" />
               </el-select>
               <div v-if="!isAdmin" class="status-tip">
                 <i class="el-icon-info"></i>

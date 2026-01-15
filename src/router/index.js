@@ -95,7 +95,7 @@ export const asyncRouterMap = [
         name: '民宿经营',
         component: _import('homestay/index'),
         meta: { title: '民宿经营', icon: 'list' },
-        menu: 'user'
+        menu: 'villageHomestay'
       },
 
     ]
@@ -127,14 +127,14 @@ export const asyncRouterMap = [
         name: '线路类型管理',
         component: _import('tourism/type'),
         meta: { title: '线路类型管理', icon: 'tag' },
-        menu: 'tourCompany'
+        menu: 'user'
       },
       {
         path: 'route-theme',
         name: '线路主题管理',
         component: _import('tourism/theme'),
         meta: { title: '线路主题管理', icon: 'tag' },
-        menu: 'tourCompany'
+        menu: 'user'
       }
     ]
   },
@@ -150,7 +150,7 @@ export const asyncRouterMap = [
         name: '研学基地管理',
         component: _import('study/tourBase'),
         meta: { title: '研学基地管理', icon: 'education' },
-        menu: 'user'
+        menu: 'studyBase'
       },
       {
         path: 'tourType',
@@ -164,14 +164,14 @@ export const asyncRouterMap = [
         name: '研学方案管理',
         component: _import('study/tourPlan'),
         meta: { title: '研学方案管理', icon: 'document' },
-        menu: 'user'
+        menu: 'studyPlan'
       },
       {
         path: 'tourActivity',
         name: '研学活动管理',
         component: _import('study/tourActivity'),
         meta: { title: '研学活动管理', icon: 'activity' },
-        menu: 'user'
+        menu: 'studyActivity'
       },
     ]
   },
@@ -187,14 +187,14 @@ export const asyncRouterMap = [
         name: '养老模式管理',
         component: _import('elderlyCare/serviceMode'),
         meta: { title: '养老模式管理', icon: 'heart' },
-        menu: 'station'
+        menu: 'user'
       },
       {
         path: 'subjectType',
         name: '养老驿站类型管理',
         component: _import('elderlyCare/subjectType/index'),
         meta: { title: '养老驿站类型管理', icon: 'tag' },
-        menu: 'station'
+        menu: 'user'
       },
       {
         path: 'subject',

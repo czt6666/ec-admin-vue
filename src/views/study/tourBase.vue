@@ -33,11 +33,12 @@
       <el-table ref="tourBaseTable" :data="list" style="width: 100%;" v-loading="listLoading" border stripe>
         <el-table-column prop="id" label="编号" width="80" align="center" />
         <el-table-column prop="baseName" label="基地名称" min-width="150" align="center" />
+        <el-table-column prop="userName" label="关联用户" width="140" align="center" show-overflow-tooltip />
         <el-table-column prop="operationUnit" label="运行单位" min-width="150" align="center" />
         <el-table-column prop="address" label="基地地址" min-width="200" align="center" />
         <el-table-column prop="businessStatus" label="营业状态" width="100" align="center">
           <template slot-scope="scope">
-            <el-tag :type="scope.row.businessStatus === 1 ? 'success' : scope.row.businessStatus === 2 ? 'warning' : 'danger'">
+            <el-tag :type="scope.row.businessStatus === 1 ? 'success' : 'info'">
               {{ getBusinessStatusText(scope.row.businessStatus) }}
             </el-tag>
           </template>
@@ -47,9 +48,21 @@
         <el-table-column prop="createTime" label="创建时间" width="180" align="center">
           <template slot-scope="scope">{{ scope.row.createTime | formatDateTime }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="操作" width="260" align="center" fixed="right">
           <template slot-scope="scope">
             <el-button size="mini" type="primary" @click="handleUpdate(scope.$index, scope.row)">编辑</el-button>
+            <el-button
+              v-if="isAdmin && scope.row.businessStatus !== 1"
+              size="mini"
+              type="success"
+              @click="handlePublish(scope.row)"
+            >上架</el-button>
+            <el-button
+              v-if="isAdmin && scope.row.businessStatus === 1"
+              size="mini"
+              type="warning"
+              @click="handleUnpublish(scope.row)"
+            >下架</el-button>
             <el-button size="mini" type="danger" @click="handleDelete(scope.$index, scope.row)">删除</el-button>
           </template>
         </el-table-column>
@@ -116,12 +129,28 @@
           />
           <div class="word-count">{{ (tourBase.featureDesc || '').length }}/300</div>
         </el-form-item>
+        <el-form-item label="关联用户" prop="userId" v-if="isAdmin">
+          <el-select
+            v-model="tourBase.userId"
+            filterable
+            placeholder="选择关联用户（仅管理员可改）"
+            :loading="userLoading"
+            style="width: 350px"
+          >
+            <el-option
+              v-for="item in userOptions"
+              :key="item.id"
+              :label="item.username"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="营业状态" prop="businessStatus">
-          <el-radio-group v-model="tourBase.businessStatus">
+          <el-radio-group v-model="tourBase.businessStatus" :disabled="businessStatusDisabled">
             <el-radio :label="1">营业中</el-radio>
-            <el-radio :label="2">暂停营业</el-radio>
-            <el-radio :label="3">已注销</el-radio>
+            <el-radio :label="2">待审核</el-radio>
           </el-radio-group>
+          <div v-if="businessStatusDisabled" class="form-tip">商户新增/编辑时营业状态由系统自动设置</div>
         </el-form-item>
         <el-form-item label="联系人" prop="contactPerson">
           <el-input v-model="tourBase.contactPerson" style="width: 350px" />
@@ -205,7 +234,8 @@
 
 <script>
 import { formatDate } from '@/utils/date'
-import { fetchList, createTourBase, updateTourBase, deleteTourBase, fetchTourTypes, getAssociatedTypes, saveBaseTypes } from '@/api/study/tourBase'
+import { fetchList, createTourBase, updateTourBase, deleteTourBase, fetchTourTypes, getAssociatedTypes, saveBaseTypes, publishStudyBase, unpublishStudyBase } from '@/api/study/tourBase'
+import { getCurrentUser, listUserOptions } from '@/api/user'
 
 const defaultListQuery = { pageNum: 1, pageSize: 10, baseName: null, operationUnit: null, businessStatus: null }
 const defaultTourBase = {
@@ -240,8 +270,7 @@ export default {
       businessStatusOptions: [
         { label: '全部', value: null },
         { label: '营业中', value: 1 },
-        { label: '暂停营业', value: 2 },
-        { label: '已注销', value: 3 }
+        { label: '待审核', value: 2 }
       ],
       rules: {
         baseName: [
@@ -276,11 +305,22 @@ export default {
       searchLoading: false,
       addressSuggestions: [],
       showSuggestions: false,
-      autoComplete: null
+      autoComplete: null,
+      isAdmin: null, // true:管理员，false:商户，null:未判定
+      userOptions: [],
+      userLoading: false
+    }
+  },
+  computed: {
+    businessStatusDisabled() {
+      // 非管理员不允许手动改营业状态（后端也会强制校验）
+      return this.isAdmin === false
     }
   },
   created() {
-    this.getList()
+    this.checkUserPermission().finally(() => {
+      this.getList()
+    })
     this.loadTourTypes()
   },
   filters: {
@@ -291,6 +331,40 @@ export default {
     }
   },
   methods: {
+    // 判断当前用户是否为管理员（userId=10011 或 roleIds 包含 1）
+    async checkUserPermission() {
+      try {
+        const res = await getCurrentUser()
+        const data = res && res.data ? res.data : res
+        const userId = (data && data.userId) || (data && data.id)
+        const roleIds = Array.isArray(data && data.roleIds) ? data.roleIds : []
+        this.isAdmin = userId === 10011 || roleIds.includes(1)
+        if (this.isAdmin) {
+          await this.loadUserOptions()
+        }
+      } catch (e) {
+        // 拉取失败则按商户处理，后端仍有二次校验
+        this.isAdmin = false
+      }
+    },
+    // 拉取后台用户列表（仅管理员可选商户用户）
+    async loadUserOptions() {
+      this.userLoading = true
+      try {
+        const res = await listUserOptions()
+        if (res && res.data) {
+          this.userOptions = res.data || []
+        } else if (Array.isArray(res)) {
+          this.userOptions = res
+        } else {
+          this.userOptions = []
+        }
+      } catch (e) {
+        this.userOptions = []
+      } finally {
+        this.userLoading = false
+      }
+    },
     handleResetSearch() {
       this.listQuery = { ...defaultListQuery }
       this.handleSearchList()
@@ -312,12 +386,34 @@ export default {
       this.dialogVisible = true
       this.isEdit = false
       this.tourBase = { ...defaultTourBase }
+      // 商户新增时，businessStatus默认为2（暂停/待审核）
+      if (!this.isAdmin) {
+        this.tourBase.businessStatus = 2
+      }
     },
     handleDelete(index, row) {
       this.$confirm('是否要删除该研学基地？', '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
         .then(() => deleteTourBase(row.id))
         .then(() => { this.$message.success('删除成功！'); this.getList() })
         .catch(() => {})
+    },
+    handlePublish(row) {
+      this.$confirm('确定要上架该研学基地吗？', '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+        .then(() => publishStudyBase(row.id))
+        .then(() => { this.$message.success('上架成功！'); this.getList() })
+        .catch(err => {
+          const errorMsg = (err.response && err.response.data && err.response.data.message) || err.message || '上架失败'
+          this.$message.error(errorMsg)
+        })
+    },
+    handleUnpublish(row) {
+      this.$confirm('确定要下架该研学基地吗？', '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+        .then(() => unpublishStudyBase(row.id))
+        .then(() => { this.$message.success('下架成功！'); this.getList() })
+        .catch(err => {
+          const errorMsg = (err.response && err.response.data && err.response.data.message) || err.message || '下架失败'
+          this.$message.error(errorMsg)
+        })
     },
     handleUpdate(index, row) {
       this.dialogVisible = true
@@ -326,6 +422,10 @@ export default {
         const baseInfo = { ...row }
         baseInfo.selectedTypeIds = (res.data || []).map(item => item.id)
         this.tourBase = baseInfo
+        // 如果是管理员且userId不在选项中，添加到选项列表
+        if (this.isAdmin && this.tourBase.userId && !this.userOptions.find(o => o.id === this.tourBase.userId)) {
+          this.userOptions.push({ id: this.tourBase.userId, username: this.tourBase.userName || `用户${this.tourBase.userId}` })
+        }
       })
     },
     handleDialogConfirm() {
@@ -338,6 +438,19 @@ export default {
         const selectedTypeIds = payload.selectedTypeIds || []
         delete payload.selectedTypeIds
 
+        // 商户模式：不能修改businessStatus和userId
+        if (!this.isAdmin) {
+          if (this.isEdit) {
+            // 编辑时，删除businessStatus和userId，由后端保持原值
+            delete payload.businessStatus
+            delete payload.userId
+          } else {
+            // 新增时，businessStatus设为2（待审核），userId由后端自动设置
+            payload.businessStatus = 2
+            delete payload.userId
+          }
+        }
+
         const saveTypes = (baseId) => {
           if (selectedTypeIds.length > 0 && baseId) {
             return saveBaseTypes(baseId, selectedTypeIds)
@@ -349,6 +462,10 @@ export default {
           updateTourBase(payload)
             .then(() => saveTypes(payload.id))
             .then(() => { this.$message.success('修改成功'); this.dialogVisible = false; this.getList() })
+            .catch(err => {
+              const errorMsg = (err.response && err.response.data && err.response.data.message) || err.message || '修改失败'
+              this.$message.error(errorMsg)
+            })
         } else {
           createTourBase(payload)
             .then(res => {
@@ -356,6 +473,10 @@ export default {
               return saveTypes(baseId)
             })
             .then(() => { this.$message.success('添加成功'); this.dialogVisible = false; this.getList() })
+            .catch(err => {
+              const errorMsg = (err.response && err.response.data && err.response.data.message) || err.message || '添加失败'
+              this.$message.error(errorMsg)
+            })
         }
       })
     },
@@ -390,12 +511,12 @@ export default {
       fetchTourTypes().then(res => { this.tourTypeOptions = res.data || [] })
     },
     getBusinessStatusText(status) {
-      switch (status) {
-        case 1: return '营业中'
-        case 2: return '暂停营业'
-        case 3: return '已注销'
-        default: return '未知状态'
+      // 统一前端展示为两种状态：营业中 / 待审核
+      if (status === 1) {
+        return '营业中'
       }
+      // 其他状态（2 暂停、3 已注销等历史值）统一视为“待审核”
+      return '待审核'
     },
     /* 地图相关 */
     openMapDialog() {
@@ -809,6 +930,12 @@ export default {
   font-size: 12px;
   margin-top: 4px;
   line-height: 1;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 5px;
 }
 </style>
 

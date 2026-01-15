@@ -70,3 +70,19 @@ export function saveBaseTypes(baseId, typeIds) {
     data: typeIds
   })
 }
+
+// 上架研学基地（仅管理员）
+export function publishStudyBase(id) {
+  return request({
+    url: `/study/tour/base/${id}/publish`,
+    method: 'post'
+  })
+}
+
+// 下架研学基地（仅管理员）
+export function unpublishStudyBase(id) {
+  return request({
+    url: `/study/tour/base/${id}/unpublish`,
+    method: 'post'
+  })
+}

@@ -9,6 +9,22 @@ export function fetchList(params) {
   })
 }
 
+// 上架研学方案（仅管理员）
+export function publishTourPlan(id) {
+  return request({
+    url: `/study/tour/plan/${id}/publish`,
+    method: 'post'
+  })
+}
+
+// 下架研学方案（仅管理员）
+export function unpublishTourPlan(id) {
+  return request({
+    url: `/study/tour/plan/${id}/unpublish`,
+    method: 'post'
+  })
+}
+
 // 创建研学方案
 export function createTourPlan(data) {
   return request({
