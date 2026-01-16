@@ -4,6 +4,9 @@ import Router from 'vue-router'
 /* layout */
 import Layout from '../views/layout/Layout'
 
+// 导入首页图标
+import viewpageIcon from '../assets/icons/png/viewpageicon.png'
+
 const _import = require('./_import_' + process.env.NODE_ENV)
 Vue.use(Router)
 export const constantRouterMap = [
@@ -40,7 +43,7 @@ export const asyncRouterMap = [
         component: () => import("@/views/homepage/homepage.vue"),
         meta: {
           title: "首页",
-          icon: '/static/icons/png/viewpageicon.png'
+          icon: viewpageIcon
         },
         // menu: "config"
       }
@@ -62,9 +65,9 @@ export const asyncRouterMap = [
       },
        {
         path: 'subject2',
-        name: '常态新闻',
+        name: '红色庄科',
         component: _import('village/subject'),
-        meta: { title: '常态新闻', icon: 'document' },
+        meta: { title: '红色庄科', icon: 'document' },
         menu: 'user'
       },
       {

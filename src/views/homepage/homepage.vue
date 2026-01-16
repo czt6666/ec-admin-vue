@@ -1,13 +1,15 @@
 <template>
   <div class="app-container dashboard">
-    <!-- 背景图片容器 -->
-    <div class="dashboard-background"></div>
-    
     <!-- 内容容器 -->
     <div class="dashboard-content">
       <div class="dashboard-header">
-        <h1>数据聚合系统仪表板</h1>
-        <p>实时监控和管理系统中的所有数据源</p>
+        <h1>大庄科乡</h1>
+        <div class="introduction">
+          <p>大庄科乡，隶属于北京市延庆区，介于东经116°07′14″~116°18′03″，北纬40°21′39″~40°28′55″之间。地处延庆区城区东南部深山区，东南与怀柔区九渡河镇为邻，南与昌平区十三陵镇、延寿镇接壤，西、北与井庄镇、永宁镇毗邻。乡域面积126.34平方千米。</p>
+          <p>1956年8月，大庄科地区曾设铁炉、大庄科、东三岔、汉家川4乡。1958年3月，合并为大庄科乡。1958年9月，划归东风（永宁）人民公社，为大庄科大队。1961年7月，成立大庄科人民公社。1983年3月，公社改乡。</p>
+          <p>截至2018年末，大庄科乡有户籍人口5904人。截至2020年6月，大庄科乡下辖1个社区和29个行政村，镇政府驻大庄科村。</p>
+        </div>
+        
       </div>
 
       <!-- 关键指标概览 -->
@@ -274,11 +276,25 @@ export default {
   position: relative;
   min-height: 100%;
 }
-
 .dashboard {
-  position: relative;
-  min-height: 100%;
-}
+    position: relative;
+    min-height: 100%;
+  }
+  
+  .introduction {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    line-height: 1.6;
+    font-size: 14px;
+    color: #333;
+  }
+  
+  .introduction p {
+    margin: 10px 0;
+    text-indent: 2em;
+  }
 
 .dashboard-background {
   position: absolute;

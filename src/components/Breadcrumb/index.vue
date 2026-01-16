@@ -2,8 +2,14 @@
   <el-breadcrumb class="app-breadcrumb" separator="/">
     <transition-group name="breadcrumb">
       <el-breadcrumb-item v-for="(item,index)  in levelList" :key="item.path" v-if="item.meta.title">
-        <span v-if="item.redirect==='noredirect'||index==levelList.length-1" class="no-redirect">{{item.meta.title}}</span>
-        <router-link v-else :to="item.redirect||item.path">{{item.meta.title}}</router-link>
+        <span v-if="item.redirect==='noredirect'||index==levelList.length-1" class="no-redirect">
+          <img v-if="item.meta.isIcon" class="breadcrumb-icon" src="/static/icons/png/Redicon.png" alt="home" />
+          <span v-else>{{item.meta.title}}</span>
+        </span>
+        <router-link v-else :to="item.redirect||item.path">
+          <img v-if="item.meta.isIcon" class="breadcrumb-icon" src="/static/icons/png/Redicon.png" alt="home" />
+          <span v-else>{{item.meta.title}}</span>
+        </router-link>
       </el-breadcrumb-item>
     </transition-group>
   </el-breadcrumb>
@@ -29,7 +35,8 @@ export default {
       let matched = this.$route.matched.filter(item => item.name)
       const first = matched[0]
       if (first && first.name !== 'dashboard') {
-        matched = [{ path: '/dashboard', meta: { title: 'Dashboard' }}].concat(matched)
+        //ycgd
+        matched = [{ path: '/dashboard', meta: { title: 'Dashboard', isIcon: true }}].concat(matched)
       }
       this.levelList = matched
     }
@@ -46,6 +53,13 @@ export default {
     .no-redirect {
       color: #97a8be;
       cursor: text;
+    }
+    .breadcrumb-icon {
+      width: 95px;
+      height: 52px;
+      vertical-align: middle;
+      margin-right: 8px;
+      display: inline-block;
     }
   }
 </style>

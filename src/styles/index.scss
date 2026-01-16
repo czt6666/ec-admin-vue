@@ -59,4 +59,33 @@ a:hover {
 
 .app-container {
   padding: 20px;
+  background-color: rgba(255, 255, 255, 0.7);
+  min-height: 100%;
+  border-radius: 4px;
+}
+
+// Element UI 表格样式调整
+el-table {
+  background-color: transparent;
+  .el-table__header-wrapper, .el-table__body-wrapper {
+    background-color: transparent;
+  }
+  .el-table__header-wrapper th {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+  }
+  .el-table__body-wrapper td {
+    background-color: rgba(255, 255, 255, 0.8) !important;
+  }
+  .el-table__body tr {
+    background-color: transparent;
+  }
+  .el-pagination {
+    background-color: transparent;
+    .btn-prev, .btn-next, .el-pager li {
+      background-color: rgba(255, 255, 255, 0.9) !important;
+    }
+    .el-input__inner {
+      background-color: rgba(255, 255, 255, 0.9) !important;
+    }
+  }
 }

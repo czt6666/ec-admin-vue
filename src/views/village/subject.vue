@@ -7,7 +7,7 @@
           </el-button>
         </el-form-item>
         <el-form-item>
-          <span class="title-text">新闻信息管理</span>
+          <span class="title-text">红色庄科</span>
         </el-form-item>
         <el-form-item>
           <el-input v-model="listQuery.keyword" placeholder="请输入新闻标题或关键词" style="width: 200px;"></el-input>

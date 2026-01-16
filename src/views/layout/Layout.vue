@@ -1,5 +1,8 @@
 <template>
   <div class="app-wrapper" :class="{ hideSidebar: !sidebar.opened }">
+    <!-- 背景图片容器 -->
+    <div class="background-container"></div>
+    
     <div v-if="needLogin && !loginSuccess" style="width: 100%; height: 100vh; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center">
       <el-card style="width: 380px;">
         <div slot="header" style="text-align: center">
@@ -87,4 +90,20 @@ export default {
   height: 100%;
   width: 100%;
 }
+
+.background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/static/icons/png/backgroundImg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.25;
+    z-index: -1;
+    filter: blur(1px);
+    background-attachment: fixed;
+  }
 </style>
