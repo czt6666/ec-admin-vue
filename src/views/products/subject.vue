@@ -275,6 +275,22 @@
           </el-collapse-item>
         </el-collapse>
 
+        <el-form-item label="商家海报图" prop="merchantPosterImg">
+          <el-upload
+            action="#"
+            list-type="picture"
+            :file-list="tempProduct.merchantPosterFileList"
+            :on-change="handleMerchantPosterFileChange"
+            :before-upload="beforeMerchantPosterUpload"
+            :before-remove="beforeMerchantPosterRemove"
+            :auto-upload="false"
+            :limit="1"
+          >
+            <el-button size="small" type="primary">选择海报图</el-button>
+            <div slot="tip" class="el-upload__tip">支持单图上传（上传图片大小应小于10m）</div>
+          </el-upload>
+        </el-form-item>
+
         <el-form-item label="商品详情图" prop="detailImages">
           <el-upload
             action="#"
@@ -431,6 +447,7 @@ export default {
           id: '',
           previewImages: [],
           detailImages: [],
+          merchantPosterImg: '',
           title: '',
           shopName: '',
           description: '',
@@ -438,6 +455,7 @@ export default {
           status: '1',
           fileList: [],
           detailFileList: [],
+          merchantPosterFileList: [],
           specifications: [
             {
               id: '',
@@ -531,6 +549,7 @@ export default {
         id: '',
         previewImages: [],
         detailImages: [],
+        merchantPosterImg: '',
         title: '',
         shopName: '',
         description: '',
@@ -538,6 +557,7 @@ export default {
         status: '1',
         fileList: [],
         detailFileList: [],
+        merchantPosterFileList: [],
         specifications: [
           {
             id: '',
@@ -625,6 +645,112 @@ export default {
       this.tempProduct.detailImages = [...this.tempProduct.detailImages, ...uploadedImages]
     },
 
+    // 处理商家海报图文件变化（仅验证，不上传）
+    handleMerchantPosterFileChange(file, fileList) {
+      // 检查是否有无效文件并显示错误提示
+      const invalidFiles = fileList.filter(item => {
+        // 只检查新添加的原始文件
+        if (!item.raw) return false
+
+        const isImage = item.raw.type && item.raw.type.startsWith('image/')
+        const isLt10M = item.raw.size && item.raw.size / 1024 / 1024 < 10
+
+        // 如果文件不是图片或大于10MB，显示错误提示
+        if (!isImage) {
+          this.$message.error(`海报图 ${item.name} 只能是图片文件!`)
+          return true
+        }
+        if (!isLt10M) {
+          this.$message.error(`海报图 ${item.name} 大小不能超过10MB!`)
+          return true
+        }
+
+        return false
+      })
+
+      // 过滤掉验证失败的文件
+      const validFileList = fileList.filter(item => {
+        // 检查文件是否有效
+        const isImage = item.raw ? (item.raw.type && item.raw.type.startsWith('image/')) : true
+        const isLt10M = item.raw ? (item.raw.size && item.raw.size / 1024 / 1024 < 10) : true
+        return isImage && isLt10M
+      })
+
+      this.tempProduct.merchantPosterFileList = validFileList
+
+      // 对于已经上传成功的文件（编辑模式下的已有图片）和新选择的文件，保存其URL
+      // 海报图只允许一张
+      const successFile = validFileList.find(item => item.status === 'success' && item.url)
+      if (successFile) {
+        // 从URL中提取文件名（如果是完整URL）
+        let imageUrl = successFile.url;
+        if (imageUrl.includes('/')) {
+          imageUrl = imageUrl.split('/').pop();
+        }
+        this.tempProduct.merchantPosterImg = imageUrl;
+      } else {
+        this.tempProduct.merchantPosterImg = '';
+      }
+    },
+
+    // 商家海报图上传前校验
+    beforeMerchantPosterUpload(file) {
+      const isImage = file.type.startsWith('image/')
+      const isLt10M = file.size / 1024 / 1024 < 10
+
+      if (!isImage) {
+        this.$message.error('海报图只能上传图片文件!')
+        return Promise.reject(new Error('海报图只能上传图片文件!'))
+      }
+      if (!isLt10M) {
+        this.$message.error('海报图大小不能超过10MB!')
+        return Promise.reject(new Error('海报图大小不能超过10MB!'))
+      }
+      return true
+    },
+
+    // 商家海报图移除前处理
+    beforeMerchantPosterRemove(file, fileList) {
+      // 当before-upload返回false时，会自动触发此方法
+      // 我们需要确保文件从fileList中移除
+      const isImage = file.type && file.type.startsWith('image/')
+      const isLt10M = file.size && file.size / 1024 / 1024 < 10
+
+      // 如果文件不满足条件，允许移除
+      if (!isImage || !isLt10M) {
+        return true
+      }
+
+      // 其他情况也允许移除
+      return true
+    },
+
+    // 上传商家海报图
+    async uploadMerchantPosterImage() {
+      const uploadPromises = this.tempProduct.merchantPosterFileList
+        .filter(item => item.raw && item.status !== 'success')
+        .map(async (item) => {
+          try {
+            const imageUrl = await this.uploadImage(item.raw)
+            // 返回文件名而非对象
+            if (imageUrl.includes('/')) {
+              return imageUrl.split('/').pop();
+            }
+            return imageUrl;
+          } catch (error) {
+            console.error(`上传海报图 ${item.name} 失败:`, error)
+            throw error
+          }
+        })
+
+      const uploadedImages = await Promise.all(uploadPromises)
+
+      // 海报图只允许一张
+      if (uploadedImages.length > 0) {
+        this.tempProduct.merchantPosterImg = uploadedImages[0];
+      }
+    },
+
     // 显示编辑对话框
     showUpdate(row, index) {
       this.dialogTitle = '编辑商品'
@@ -641,6 +767,7 @@ export default {
       this.tempProduct = {
         ...row,
         shopName: row.shopName || '',
+        merchantPosterImg: row.merchantPosterImg || '',
         // 将图片URL数组转换为文件列表格式
         fileList: row.previewImages && row.previewImages.length > 0
           ? row.previewImages.map((url, index) => ({
@@ -658,6 +785,12 @@ export default {
               status: 'success'
             }))
           : [],
+        // 处理海报图
+        merchantPosterFileList: row.merchantPosterImg ? [{
+          name: '海报图',
+          url: processImageUrl(row.merchantPosterImg),
+          status: 'success'
+        }] : [],
         // 新增字段赋值
         miniProgramAppid: row.miniProgramAppid || '',
         miniProgramPath: row.miniProgramPath || '',
@@ -840,7 +973,8 @@ export default {
             // 在提交表单前统一上传所有图片
             await Promise.all([
               this.uploadPreviewImages(),
-              this.uploadDetailImages()
+              this.uploadDetailImages(),
+              this.uploadMerchantPosterImage()
             ])
 
             // 计算上传方式状态
@@ -872,7 +1006,9 @@ export default {
               miniProgramPath: this.tempProduct.miniProgramPath,
               microShopAppid: this.tempProduct.microShopAppid,
               microShopProductId: this.tempProduct.microShopProductId,
-              uploadMethodStatus: uploadMethodStatus
+              uploadMethodStatus: uploadMethodStatus,
+              // 商家海报图
+              merchantPosterImg: this.tempProduct.merchantPosterImg
             }
 
             if (this.dialogTitle === '添加商品') {
