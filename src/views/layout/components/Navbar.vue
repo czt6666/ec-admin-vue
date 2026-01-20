@@ -2,6 +2,9 @@
   <el-menu class="navbar" mode="horizontal">
     <hamburger class="hamburger-container" :toggleClick="toggleSideBar" :isActive="sidebar.opened"></hamburger>
     <breadcrumb></breadcrumb>
+    <div class="gracevillage-icon">
+      <img src="/static/icons/png/gracevilage.png" alt="Grace Village" class="gracevillage-img" />
+    </div>
     <el-dropdown class="avatar-container" trigger="click">
       <div class="avatar-wrapper">
         <img class="user-avatar" :src="img_avatar">
@@ -72,6 +75,20 @@ export default {
     right: 90px;
     top: 16px;
     color: red;
+  }
+  .gracevillage-icon {
+    position: absolute;
+    right: 120px;  // 留出足够空间给图标，避免与用户头像重叠
+    top: 5px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    .gracevillage-img {
+      height: 100%;
+      max-height: 40px;
+      max-width: 120px;
+      object-fit: contain;
+    }
   }
   .avatar-container {
     height: 50px;

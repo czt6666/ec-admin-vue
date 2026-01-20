@@ -5,14 +5,18 @@
       <div class="dashboard-header">
         <h1>大庄科乡</h1>
         <div class="introduction">
-          <p>大庄科乡，隶属于北京市延庆区，介于东经116°07′14″~116°18′03″，北纬40°21′39″~40°28′55″之间。地处延庆区城区东南部深山区，东南与怀柔区九渡河镇为邻，南与昌平区十三陵镇、延寿镇接壤，西、北与井庄镇、永宁镇毗邻。乡域面积126.34平方千米。</p>
-          <p>1956年8月，大庄科地区曾设铁炉、大庄科、东三岔、汉家川4乡。1958年3月，合并为大庄科乡。1958年9月，划归东风（永宁）人民公社，为大庄科大队。1961年7月，成立大庄科人民公社。1983年3月，公社改乡。</p>
-          <p>截至2018年末，大庄科乡有户籍人口5904人。截至2020年6月，大庄科乡下辖1个社区和29个行政村，镇政府驻大庄科村。</p>
+          <p>大庄科乡简介：大庄科乡，坐落于延庆区东南部的燕山山脉腹地，东临怀柔，南接昌平，是一处被群山深情环抱的静谧之乡。全乡面积126.57平方公里，辖29个行政村，户籍人口五千余人。这里千米山峰耸立，溪流潺潺，98%的植被覆盖率造就了纯净的"天然氧吧"。这里是一部厚重的史书。作为平北抗日根据地的重要核心，"平北红色第一村"沙塘沟、昌延联合县政府旧址等革命遗迹，默默诉说着烽火岁月里的英雄传奇，革命老区的红色血脉在此赓续传承。这是一幅多彩的画卷。春日香椿嫩红，秋日板栗飘香，绵瓤核桃、铁皮山楂等特产品质卓越。莲花山的奇峻、古长城的苍茫、旺龙潭峡谷的清幽与辽代冶铁遗址的古朴交织并存，共同描绘出自然与人文交融的醉人美景。诚挚邀请您走进大庄科，呼吸最新鲜的空气，触摸最真实的红色历史，品尝最地道的山乡风味，体验一处离尘嚣不远、距自然很近的诗意栖居地。</p>
+          <p>小程序简介：大庄科乡智慧服务平台是在中央专项彩票公益金支持下，为推进革命老区乡村振兴而建设的数字平台。2025年，大庄科乡获批中央专项彩票公益金项目，立足"长城文化、红色文化、特色林果"资源，以"长城薪火亮新村"为主题，按照"一带一环五团多点"的空间布局，围绕红色文化引领、生态优先、产业融合三大核心，着力将项目区建设成为红色文化传承高地、生态农业创新基地、全域旅游示范窗口和绿色低碳实践样板，逐步形成"红绿交织、三产联动"的振兴模式，绘就"集体有产业、百姓有收入、红色有传承、绿色有发展"的和美乡村新画卷。</p>
+          <p>本平台依托专项公益金建立，集乡情展示、信息查询、服务预约、文旅导览为一体，为您提供了解大庄科、预订民宿餐饮、游览导航等服务，助力红色传承与生态发展。欢迎使用！</p>
         </div>
         
+        <!-- 首页展示图片 -->
+        <div class="homepage-image-container">
+          <img src="/static/icons/png/viewpageBiding.png" alt="大庄科乡展示图" class="homepage-image" />
+        </div>
       </div>
 
-      <!-- 关键指标概览 -->
+      <!-- 关键指标概览
       <el-row :gutter="20" class="stats-cards">
         <el-col :span="6">
           <el-card class="stat-card">
@@ -75,8 +79,8 @@
         </el-col>
       </el-row>
 
-      <!-- 数据源记录数柱状图 -->
-      <el-row :gutter="20" class="main-content">
+       数据源记录数柱状图 -->
+      <!-- <el-row :gutter="20" class="main-content">
         <el-col :span="24">
           <el-card class="chart-card">
             <div slot="header" class="clearfix">
@@ -85,10 +89,10 @@
             <div id="records-chart" class="chart-container"></div>
           </el-card>
         </el-col>
-      </el-row>
+      </el-row>-->
     </div>
-  </div>
-</template>
+  </div> 
+</template> 
 
 <script>
 import { mapGetters } from 'vuex'
@@ -294,6 +298,27 @@ export default {
   .introduction p {
     margin: 10px 0;
     text-indent: 2em;
+  }
+  
+  .homepage-image-container {
+    margin: 30px 0;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .homepage-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .homepage-image:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   }
 
 .dashboard-background {

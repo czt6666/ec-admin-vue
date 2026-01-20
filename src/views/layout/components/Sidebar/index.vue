@@ -10,8 +10,9 @@
       </el-menu>
     </scroll-bar>
     <!-- 左侧边栏底部图标 -->
+    <!-- 图片路径: /static/icons/png/redlefticon.png -->
     <div class="sidebar-footer">
-      <img class="footer-icon" src="/static/icons/png/redlefticon.png" alt="footer-icon" />
+      <img class="footer-icon" src="/static/icons/png/redlefticonwhite.png" alt="footer-icon" />
     </div>
   </div>
 </template>
