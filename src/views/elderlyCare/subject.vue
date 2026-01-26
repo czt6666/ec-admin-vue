@@ -415,7 +415,7 @@
             list-type="picture-card"
           >
             <i class="el-icon-plus" />
-            <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 2MB，最多20张</div>
+            <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，单张不超过 400KB，总共不超过 2MB，最多20张</div>
           </el-upload>
         </el-form-item>
       </el-form>
@@ -1071,20 +1071,39 @@ export default {
     // 照片上传前检查
     beforePhotoUpload(file) {
       const isImage = file.type.startsWith('image/')
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
 
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB!')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB!')
         return false
       }
       return true
     },
     // 照片变化
     handlePhotoChange(file, fileList) {
+      // 计算所有图片的总大小（单位：字节）
+      let totalSize = 0
+      for (const item of fileList) {
+        if (item.raw) {
+          totalSize += item.raw.size
+        } else if (item.size) {
+          totalSize += item.size
+        }
+      }
+
+      // 检查总大小是否超过2MB
+      const totalSizeMB = totalSize / 1024 / 1024
+      if (totalSizeMB > 2) {
+        this.$message.error(`所有图片总大小不能超过2MB，当前总大小：${totalSizeMB.toFixed(2)}MB`)
+        // 移除最后一张图片
+        this.photoList = fileList.slice(0, -1)
+        return
+      }
+
       this.photoList = fileList
     },
     // 照片移除

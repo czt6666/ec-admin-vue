@@ -172,7 +172,7 @@
             :class="{ 'logo-upload-hidden': logoList.length >= 1 }"
           >
             <i class="el-icon-plus" />
-            <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 2MB</div>
+            <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 400KB</div>
           </el-upload>
         </el-form-item>
 
@@ -217,7 +217,7 @@
             list-type="picture-card"
           >
             <i class="el-icon-plus" />
-            <div slot="tip" class="el-upload__tip">最多上传 15 张，每张不超过 2MB</div>
+            <div slot="tip" class="el-upload__tip">最多上传 15 张，每张不超过 400KB</div>
           </el-upload>
         </el-form-item>
         <el-form-item label="食品许可证">
@@ -233,7 +233,7 @@
             list-type="picture-card"
           >
             <i class="el-icon-plus" />
-            <div slot="tip" class="el-upload__tip">最多上传 15 张，每张不超过 2MB</div>
+            <div slot="tip" class="el-upload__tip">最多上传 15 张，每张不超过 400KB</div>
           </el-upload>
         </el-form-item>
       </el-form>
@@ -400,6 +400,7 @@ export default {
     async uploadImage (file) {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('maxSizeKB', '400') // 餐饮店铺图片限制400KB
       const response = await request({
         url: '/api/file/upload',
         method: 'post',
@@ -578,13 +579,13 @@ export default {
     },
     beforeLogoUpload (file) {
       const isImage = file.type && file.type.indexOf('image/') === 0
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB!')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB!')
         return false
       }
       return false
@@ -598,13 +599,13 @@ export default {
     },
     beforeLicenseUpload (file) {
       const isImage = file.type && file.type.indexOf('image/') === 0
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB!')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB!')
         return false
       }
       return false

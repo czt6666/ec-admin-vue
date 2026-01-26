@@ -386,7 +386,7 @@
           >
             <i class="el-icon-plus"></i>
             <div slot="tip" class="el-upload__tip">
-              只能上传jpg/png文件，且不超过2MB
+              只能上传jpg/png文件，且不超过400KB
             </div>
           </el-upload>
         </el-form-item>
@@ -488,13 +488,15 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="民宿简介">
+        <el-form-item label="民宿简介" prop="description">
           <el-input
             v-model="homestayForm.description"
             type="textarea"
             :rows="3"
+            maxlength="500"
             placeholder="请输入民宿简介、特色亮点"
           />
+          <div class="word-count">{{ (homestayForm.description || '').length }}/500</div>
         </el-form-item>
       </el-form>
 
@@ -658,6 +660,9 @@ export default {
         contactPhone: [
           { required: true, message: '请输入负责人电话', trigger: 'blur' },
           { pattern: /^1[3-9]\d{9}$/, message: '请输入以1开头的11位手机号码', trigger: 'blur' }
+        ],
+        description: [
+          { max: 500, message: '民宿简介不能超过500字', trigger: 'blur' }
         ]
       }
     }
@@ -713,6 +718,7 @@ export default {
     async uploadImage(file) {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('maxSizeKB', '400') // 民宿图片限制400KB
 
       try {
         const response = await request({
@@ -1636,14 +1642,14 @@ export default {
 
     beforeCoverImageUpload(file) {
       const isImage = file.type.startsWith('image/')
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
 
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过2MB!')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB!')
         return false
       }
       return false
@@ -1656,14 +1662,14 @@ export default {
 
     beforeQualificationImageUpload(file) {
       const isImage = file.type.startsWith('image/')
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
 
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过2MB!')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB!')
         return false
       }
       return false
@@ -2128,6 +2134,14 @@ export default {
 .status-tip i {
   margin-right: 4px;
   color: #409eff;
+}
+
+.word-count {
+  text-align: right;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1;
 }
 </style>
 

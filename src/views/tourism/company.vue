@@ -11,8 +11,7 @@
           />
           <el-select v-model="query.status" placeholder="营业状态" clearable style="width: 150px; margin-right: 10px">
             <el-option label="营业中" :value="1" />
-            <el-option label="暂停" :value="2" />
-            <el-option label="已注销" :value="3" />
+            <el-option label="待审核" :value="2" />
           </el-select>
           <el-button type="primary" icon="el-icon-search" @click="handleSearch">搜索</el-button>
           <el-button icon="el-icon-refresh" @click="handleReset">重置</el-button>
@@ -261,7 +260,7 @@
               >
                 <i class="el-icon-plus" />
               </el-upload>
-              <div class="el-upload__tip">仅限图片，最大2MB，上传后自动填充并回显</div>
+              <div class="el-upload__tip">仅限图片，最大400KB，上传后自动填充并回显</div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -673,12 +672,12 @@ export default {
     },
     beforeLogoUpload(file) {
       const isImage = file.type.startsWith('image/')
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
       if (!isImage) {
         this.$message.error('只能上传图片文件')
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB')
       }
       // 阻止自动上传，走手动流程
       return false
@@ -690,6 +689,7 @@ export default {
     async uploadImage(file) {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('maxSizeKB', '400') // 旅游公司图片限制400KB
       const res = await request({
         url: '/api/file/upload',
         method: 'post',

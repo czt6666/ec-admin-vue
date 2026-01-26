@@ -104,6 +104,8 @@ export function uploadFile(file) {
 
   formData.append('file', file)
 
+  formData.append('maxSizeKB', '400') // 养老驿站图片限制400KB
+
   return request({
 
     url: '/api/file/upload',

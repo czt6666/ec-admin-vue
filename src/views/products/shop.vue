@@ -196,7 +196,7 @@
             :class="{ 'avatar-upload-hidden': avatarList.length >= 1 }"
           >
             <i class="el-icon-plus" />
-            <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 2MB</div>
+            <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 400KB</div>
           </el-upload>
         </el-form-item>
 
@@ -283,7 +283,7 @@
 
             <div class="upload-section">
               <div class="upload-title">{{ getQualificationTypeName(selectedQualificationType) }}</div>
-              <div class="upload-instruction">含关键信息的图片请置于第一张，系统支持最多 15 张。</div>
+              <div class="upload-instruction">含关键信息的图片请置于第一张，系统支持最多 15 张。单张图片不超过 400KB。</div>
               <div class="upload-area">
                 <el-upload
                   ref="qualificationUpload"
@@ -509,6 +509,7 @@ export default {
     async uploadImage (file) {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('maxSizeKB', '400') // 农产品店铺图片限制400KB
 
       const response = await request({
         url: '/api/file/upload',
@@ -737,14 +738,14 @@ export default {
 
     beforeAvatarUpload (file) {
       const isImage = file.type && file.type.indexOf('image/') === 0
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
 
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB!')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB!')
         return false
       }
       return false
@@ -756,14 +757,14 @@ export default {
 
     beforeQualificationImageUpload (file) {
       const isImage = file.type && file.type.indexOf('image/') === 0
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isLt400K = file.size / 1024 < 400
 
       if (!isImage) {
         this.$message.error('只能上传图片文件!')
         return false
       }
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB!')
+      if (!isLt400K) {
+        this.$message.error('图片大小不能超过400KB!')
         return false
       }
       return false
