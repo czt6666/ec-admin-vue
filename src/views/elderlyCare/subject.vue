@@ -688,7 +688,7 @@ export default {
     async loadUserOptions() {
       this.userLoading = true
       try {
-        const res = await listUserOptions()
+        const res = await listUserOptions('station:add')
         if (res && res.data) {
           this.userOptions = res.data || []
         } else if (Array.isArray(res)) {

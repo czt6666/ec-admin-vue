@@ -49,8 +49,9 @@ export function getCurrentUser() {
 }
 
 // 获取所有用户下拉选项
-export const listUserOptions = () =>
+export const listUserOptions = (permissionCode) =>
   request({
     url: '/admin/ecadmin/user/options',
-    method: 'get'
+    method: 'get',
+    params: permissionCode ? { permissionCode } : {}
   })

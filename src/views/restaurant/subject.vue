@@ -109,6 +109,7 @@
             placeholder="选择用户"
             :loading="userLoading"
             style="width: 100%"
+            :disabled="!isAdmin"
           >
             <el-option
               v-for="item in userOptions"
@@ -117,6 +118,10 @@
               :value="item.id"
             />
           </el-select>
+          <div v-if="!isAdmin" class="status-tip">
+            <i class="el-icon-info"></i>
+            普通商户不能修改关联用户
+          </div>
         </el-form-item>
         <el-form-item label="所属乡村" prop="villageId">
           <el-select
@@ -318,7 +323,7 @@ import {
   getRestaurant
 } from '@/api/restaurant'
 import { getVillageList } from '@/api/village'
-import { listUserOptions } from '@/api/user'
+import { listUserOptions, getCurrentUser } from '@/api/user'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
 
@@ -333,6 +338,8 @@ export default {
       villageLoading: false,
       userOptions: [],
       userLoading: false,
+      isAdmin: false,
+      currentUserId: null,
       dialogVisible: false,
       dialogTitle: '新增门店',
       submitLoading: false,
@@ -377,10 +384,28 @@ export default {
     this.getBaseUrl()
     this.refreshUploadHeaders()
     this.loadVillageOptions()
-    this.loadUserOptions()
+    this.checkUserPermission()
     this.loadData()
   },
   methods: {
+    // 判断当前用户是否为管理员（userId=10011 或 roleIds 包含 1）
+    async checkUserPermission () {
+      try {
+        const res = await getCurrentUser()
+        const data = res && res.data ? res.data : res
+        const userId = (data && data.userId) || (data && data.id)
+        const roleIds = Array.isArray(data && data.roleIds) ? data.roleIds : []
+        this.currentUserId = userId ? Number(userId) : null
+        this.isAdmin = this.currentUserId === 10011 || roleIds.includes(1)
+        // 仅管理员需要拉“可选关联用户”下拉
+        if (this.isAdmin) {
+          await this.loadUserOptions()
+        }
+      } catch (e) {
+        this.isAdmin = false
+        this.currentUserId = null
+      }
+    },
     getBaseUrl () {
       this.baseUrl = process.env.VUE_APP_BASE_API || 'https://dzk.czt666.cn/api'
     },
@@ -450,7 +475,7 @@ export default {
     async loadUserOptions () {
       this.userLoading = true
       try {
-        const res = await listUserOptions()
+        const res = await listUserOptions('restaurant:add')
         if (res && res.data) {
           this.userOptions = res.data || []
         } else if (Array.isArray(res)) {
@@ -489,15 +514,19 @@ export default {
       this.refreshUploadHeaders()
       if (row) {
         this.dialogTitle = '编辑门店'
-        Promise.all([
-          this.loadVillageOptions(),
-          this.loadUserOptions()
-        ]).then(() => {
+        const tasks = [this.loadVillageOptions()]
+        if (this.isAdmin) tasks.push(this.loadUserOptions())
+        Promise.all(tasks).then(() => {
           this.loadDetail(row.id)
         })
       } else {
         this.dialogTitle = '新增门店'
         this.form = this.initForm()
+        // 普通商户：自动绑定当前登录用户，且不可修改
+        if (!this.isAdmin && this.currentUserId) {
+          this.form.userId = this.currentUserId
+          this.userOptions = [{ id: this.currentUserId, username: '当前用户' }]
+        }
         this.logoList = []
         this.businessList = []
         this.foodList = []
@@ -522,6 +551,11 @@ export default {
           phone: data.phone || '',
           notice: data.notice || '',
           licenseUrls: data.licenseUrls || ''
+        }
+        // 普通商户不加载全量下拉，为了回显下拉的 label，塞入当前记录的用户
+        if (!this.isAdmin && this.form.userId) {
+          const label = data.userName || data.username || data.nickname || '当前用户'
+          this.userOptions = [{ id: this.form.userId, username: label }]
         }
         if (this.form.logoUrl) {
           this.logoList = [{
