@@ -97,11 +97,11 @@
         min-width="150"
       ></el-table-column>
 
-      <el-table-column
+      <!-- <el-table-column
         prop="description"
         label="商品简介"
         min-width="200"
-      ></el-table-column>
+      ></el-table-column> -->
 
       <el-table-column
         prop="productUrl"
@@ -252,9 +252,17 @@
           <el-input v-model="tempProduct.productUrl" placeholder="请输入商品链接"></el-input>
         </el-form-item>
 
-        <!-- 上传链接配置 -->
-        <el-collapse v-model="activeCollapse">
-          <!-- 新增小程序相关字段 -->
+        <!-- 上传方式选择 -->
+        <el-form-item label="上传方式">
+          <el-radio-group v-model="tempProduct.uploadMethodStatus" @change="handleUploadMethodChange">
+            <el-radio :label="0">无</el-radio>
+            <el-radio :label="1">微店</el-radio>
+            <el-radio :label="2">小程序</el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+        <!-- 小程序配置 -->
+        <el-collapse v-model="activeCollapse" v-if="tempProduct.uploadMethodStatus === 2">
           <el-collapse-item title="小程序配置" name="miniProgram">
             <el-form-item label="小程序APPID" prop="miniProgramAppid">
               <el-input v-model="tempProduct.miniProgramAppid" placeholder="请输入小程序APPID"></el-input>
@@ -263,8 +271,10 @@
               <el-input v-model="tempProduct.miniProgramPath" placeholder="请输入小程序页面路径"></el-input>
             </el-form-item>
           </el-collapse-item>
+        </el-collapse>
 
-          <!-- 新增微店相关字段 -->
+        <!-- 微店配置 -->
+        <el-collapse v-model="activeCollapse" v-if="tempProduct.uploadMethodStatus === 1">
           <el-collapse-item title="微店配置" name="microShop">
             <el-form-item label="微店APPID" prop="microShopAppid">
               <el-input v-model="tempProduct.microShopAppid" placeholder="请输入微店APPID"></el-input>
@@ -468,7 +478,8 @@ export default {
           miniProgramAppid: '',
           miniProgramPath: '',
           microShopAppid: '',
-          microShopProductId: ''
+          microShopProductId: '',
+          uploadMethodStatus: 0
         },
       // 表单验证规则
       rules: {
@@ -795,7 +806,9 @@ export default {
         miniProgramAppid: row.miniProgramAppid || '',
         miniProgramPath: row.miniProgramPath || '',
         microShopAppid: row.microShopAppid || '',
-        microShopProductId: row.microShopProductId || ''
+        microShopProductId: row.microShopProductId || '',
+        // 初始化上传方式状态
+        uploadMethodStatus: row.uploadMethodStatus || 0
       }
       // 确保多图数组存在
       this.tempProduct.previewImages = row.previewImages || []
@@ -977,21 +990,6 @@ export default {
               this.uploadMerchantPosterImage()
             ])
 
-            // 计算上传方式状态
-            let uploadMethodStatus = 0;
-            const hasMicroShop = this.tempProduct.microShopAppid && this.tempProduct.microShopProductId;
-            const hasMiniProgram = this.tempProduct.miniProgramAppid && this.tempProduct.miniProgramPath;
-            
-            if (hasMicroShop && hasMiniProgram) {
-              uploadMethodStatus = 3; // 微店与小程序都有
-            } else if (hasMicroShop) {
-              uploadMethodStatus = 1; // 仅微店
-            } else if (hasMiniProgram) {
-              uploadMethodStatus = 2; // 仅小程序
-            } else {
-              uploadMethodStatus = 0; // 无
-            }
-            
             const formData = {
               title: this.tempProduct.title,
               description: this.tempProduct.description,
@@ -1006,7 +1004,7 @@ export default {
               miniProgramPath: this.tempProduct.miniProgramPath,
               microShopAppid: this.tempProduct.microShopAppid,
               microShopProductId: this.tempProduct.microShopProductId,
-              uploadMethodStatus: uploadMethodStatus,
+              uploadMethodStatus: this.tempProduct.uploadMethodStatus,
               // 商家海报图
               merchantPosterImg: this.tempProduct.merchantPosterImg
             }
@@ -1064,6 +1062,19 @@ export default {
       } catch (error) {
         this.$message.error('更新失败')
         throw error // 向上抛出错误以便submitForm捕获
+      }
+    },
+
+    // 处理上传方式改变
+    handleUploadMethodChange(value) {
+      // 根据选择的上传方式清空不相关的字段
+      if (value !== 1) { // 不是微店
+        this.tempProduct.microShopAppid = '';
+        this.tempProduct.microShopProductId = '';
+      }
+      if (value !== 2) { // 不是小程序
+        this.tempProduct.miniProgramAppid = '';
+        this.tempProduct.miniProgramPath = '';
       }
     },
 
