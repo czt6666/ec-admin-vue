@@ -94,9 +94,9 @@
       <el-table-column label="封面" width="100">
         <template slot-scope="scope">
           <el-image
-            v-if="scope.row.coverImage"
-            :src="getImageUrl(scope.row.coverImage)"
-            :preview-src-list="[getImageUrl(scope.row.coverImage)]"
+            v-if="getFirstCoverImage(scope.row.coverImage)"
+            :src="getFirstCoverImage(scope.row.coverImage)"
+            :preview-src-list="getCoverImageList(scope.row.coverImage)"
             fit="cover"
             style="width: 60px; height: 40px; border-radius: 4px;"
             @error="handleImageError"
@@ -371,7 +371,7 @@
           </div>
         </el-form-item>
 
-        <!-- 封面图上传 -->
+        <!-- 封面图上传（支持多张） -->
         <el-form-item label="封面图" prop="coverImage">
           <el-upload
             ref="coverUpload"
@@ -380,15 +380,29 @@
             :before-upload="beforeCoverImageUpload"
             :file-list="coverImageList"
             accept="image/*"
-            :limit="1"
+            :limit="10"
             action=""
             list-type="picture-card"
           >
             <i class="el-icon-plus"></i>
             <div slot="tip" class="el-upload__tip">
-              只能上传jpg/png文件，且不超过400KB
+              可上传多张封面图，每张不超过400KB，最多10张
             </div>
           </el-upload>
+        </el-form-item>
+
+        <!-- 小程序配置 -->
+        <el-form-item label="小程序配置">
+          <el-collapse v-model="activeCollapse">
+            <el-collapse-item title="" name="miniProgram">
+              <el-form-item label="小程序APPID" prop="miniProgramAppid">
+                <el-input v-model="homestayForm.miniProgramAppid" placeholder="请输入小程序APPID" style="width: 100%"></el-input>
+              </el-form-item>
+              <el-form-item label="小程序页面路径" prop="miniProgramPath">
+                <el-input v-model="homestayForm.miniProgramPath" placeholder="请输入小程序页面路径，如：pages/detail/index?id=123" style="width: 100%"></el-input>
+              </el-form-item>
+            </el-collapse-item>
+          </el-collapse>
         </el-form-item>
 
         <!-- 资质凭证上传 -->
@@ -614,6 +628,7 @@ export default {
       baseUrl: '',
       isAdmin: false, // 是否为管理员（通过后端接口判断）
       isEdit: false,  // 是否为编辑模式
+      activeCollapse: [], // 折叠面板默认展开项
       queryParams: {
         page: 1,
         pageSize: 10,
@@ -710,6 +725,38 @@ export default {
     },
 
     // 图片加载错误处理
+    // 获取第一张封面图（用于列表显示）
+    getFirstCoverImage(coverImage) {
+      if (!coverImage) return null
+      try {
+        const images = JSON.parse(coverImage)
+        if (Array.isArray(images) && images.length > 0) {
+          return this.getImageUrl(images[0])
+        }
+        // 兼容旧格式（单张图片字符串）
+        return this.getImageUrl(coverImage)
+      } catch (e) {
+        // 如果解析失败，当作旧格式处理
+        return this.getImageUrl(coverImage)
+      }
+    },
+
+    // 获取所有封面图（用于预览）
+    getCoverImageList(coverImage) {
+      if (!coverImage) return []
+      try {
+        const images = JSON.parse(coverImage)
+        if (Array.isArray(images) && images.length > 0) {
+          return images.map(img => this.getImageUrl(img))
+        }
+        // 兼容旧格式（单张图片字符串）
+        return [this.getImageUrl(coverImage)]
+      } catch (e) {
+        // 如果解析失败，当作旧格式处理
+        return [this.getImageUrl(coverImage)]
+      }
+    },
+
     handleImageError(event) {
       console.log('图片加载失败:', event.target.src)
     },
@@ -885,15 +932,36 @@ export default {
       this.isEdit = true
       this.homestayForm = { ...row }
 
-      // 处理封面图
+      // 处理封面图（支持多张，JSON数组格式）
       if (row.coverImage) {
-        this.coverImageList = [{
-          name: 'cover.jpg',
-          url: this.getImageUrl(row.coverImage)
-        }]
+        try {
+          const coverImages = JSON.parse(row.coverImage)
+          if (Array.isArray(coverImages) && coverImages.length > 0) {
+            this.coverImageList = coverImages.map((img, index) => ({
+              name: `cover_${index + 1}.jpg`,
+              url: this.getImageUrl(img)
+            }))
+          } else {
+            // 兼容旧格式（单张图片字符串）
+            this.coverImageList = [{
+              name: 'cover.jpg',
+              url: this.getImageUrl(row.coverImage)
+            }]
+          }
+        } catch (e) {
+          // 如果解析失败，当作旧格式处理
+          this.coverImageList = [{
+            name: 'cover.jpg',
+            url: this.getImageUrl(row.coverImage)
+          }]
+        }
       } else {
         this.coverImageList = []
       }
+
+      // 处理小程序配置
+      this.homestayForm.miniProgramAppid = row.miniProgramAppid || ''
+      this.homestayForm.miniProgramPath = row.miniProgramPath || ''
 
       // 处理资质凭证图片 - 分类加载
       this.loadQualificationImagesByType(row.qualificationImages)
@@ -1003,18 +1071,22 @@ export default {
       this.$refs.homestayForm.validate(async (valid) => {
         if (valid) {
           try {
-            // 处理封面图上传 - 修改：添加 /uploads/ 前缀
+            // 处理封面图上传（支持多张）- 修改：添加 /uploads/ 前缀
             if (this.coverImageList.length > 0) {
-              const coverImage = this.coverImageList[0]
-              if (coverImage.raw) {
-                console.log('上传封面图:', coverImage.name)
-                const fileName = await this.uploadImage(coverImage.raw)
-                this.homestayForm.coverImage = '/uploads/' + fileName
-              } else if (coverImage.url) {
-                // 如果已有URL，提取 /uploads/ 路径部分
-                const match = /\/uploads\/[^/]+$/.exec(coverImage.url)
-                this.homestayForm.coverImage = match ? match[0] : coverImage.url
+              const coverImages = []
+              for (const coverImage of this.coverImageList) {
+                if (coverImage.raw) {
+                  console.log('上传封面图:', coverImage.name)
+                  const fileName = await this.uploadImage(coverImage.raw)
+                  coverImages.push('/uploads/' + fileName)
+                } else if (coverImage.url) {
+                  // 如果已有URL，提取 /uploads/ 路径部分
+                  const match = /\/uploads\/[^/]+$/.exec(coverImage.url)
+                  coverImages.push(match ? match[0] : coverImage.url)
+                }
               }
+              // 存储为JSON数组
+              this.homestayForm.coverImage = JSON.stringify(coverImages)
             } else {
               this.homestayForm.coverImage = ''
             }
@@ -1100,9 +1172,12 @@ export default {
         longitude: null,
         coverImage: '',
         qualificationImages: '',
-        linkAddress: ''
+        linkAddress: '',
+        miniProgramAppid: '',
+        miniProgramPath: ''
       }
       this.coverImageList = []
+      this.activeCollapse = []
       this.qualificationImagesByType = {
         property: [],
         lease: [],
