@@ -133,13 +133,29 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="店铺缩写" prop="shopAbbreviation">
-              <el-input v-model="shopForm.shopAbbreviation" placeholder="请输入店铺缩写" :disabled="isEdit" />
-              <div class="gray-tip">店铺缩写将用作商家账号用户名，添加后不支持修改</div>
-            </el-form-item>
-          </el-col>
         </el-row>
+
+        <el-form-item label="关联用户" prop="userId">
+          <el-select
+            v-model="shopForm.userId"
+            filterable
+            placeholder="选择用户"
+            :loading="userLoading"
+            style="width: 100%"
+            :disabled="!isAdmin"
+          >
+            <el-option
+              v-for="item in userOptions"
+              :key="item.id"
+              :label="item.username"
+              :value="item.id"
+            />
+          </el-select>
+          <div v-if="!isAdmin" class="status-tip">
+            <i class="el-icon-info"></i>
+            普通商户不能修改关联用户
+          </div>
+        </el-form-item>
 
         <el-row :gutter="20">
           <el-col :span="12">
@@ -383,7 +399,7 @@
 <script>
 import { getShopList, getShopById, createShop, updateShop, deleteShop } from '@/api/shop'
 import { getVillageList } from '@/api/village'
-import { getCurrentUser } from '@/api/user'
+import { getCurrentUser, listUserOptions } from '@/api/user'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
 
@@ -394,12 +410,14 @@ export default {
     return {
       loading: false,
       villageLoading: false,
+      userLoading: false,
       submitLoading: false,
       dialogVisible: false,
       dialogTitle: '',
       isEdit: false,
       shopList: [],
       villageList: [],
+      userOptions: [],
       total: 0,
       baseUrl: '',
       uploadHeaders: { token: getToken() || '' },
@@ -433,8 +451,8 @@ export default {
       },
       shopForm: {
         id: null,
+        userId: null,
         shopName: '',
-        shopAbbreviation: '',
         productType: '',
         businessStatus: 1,
         village: '',
@@ -447,7 +465,14 @@ export default {
       },
       shopRules: {
         shopName: [{ required: true, message: '请输入店铺名称', trigger: 'blur' }],
-        shopAbbreviation: [{ required: true, message: '请输入店铺缩写', trigger: 'blur' }],
+        userId: [
+          {
+            required: true,
+            message: '请选择关联用户',
+            trigger: 'change',
+            type: 'number'
+          }
+        ],
         productType: [{ required: true, message: '请输入产品类型', trigger: 'blur' }],
         businessStatus: [{ required: true, message: '请选择经营状态', trigger: 'change' }],
         village: [{ required: true, message: '请选择所属村', trigger: 'change' }]
@@ -548,6 +573,54 @@ export default {
       }
     },
 
+    // 检查用户权限（判断是否为管理员）
+    async checkUserPermission () {
+      try {
+        const userInfo = await getCurrentUser()
+        const data = userInfo && userInfo.data ? userInfo.data : userInfo
+        const userId = (data && data.userId) || (data && data.id)
+        // 判断是否为管理员：userId === 10011 或 roleIds 包含 1
+        const roleIds = data && data.roleIds ? data.roleIds : []
+        this.isAdmin = userId === 10011 || (roleIds && roleIds.includes(1))
+        console.log('用户权限检查:', { userId, isAdmin: this.isAdmin })
+        // 如果是管理员，加载用户选项
+        if (this.isAdmin) {
+          await this.loadUserOptions()
+        }
+      } catch (error) {
+        console.error('获取用户权限失败:', error)
+        this.isAdmin = false
+      }
+    },
+
+    // 加载用户选项列表
+    async loadUserOptions () {
+      this.userLoading = true
+      try {
+        const res = await listUserOptions('shop:add')
+        console.log('获取用户选项响应:', res)
+        if (res && res.data) {
+          this.userOptions = res.data || []
+          console.log('用户选项数量:', this.userOptions.length)
+        } else if (Array.isArray(res)) {
+          this.userOptions = res
+          console.log('用户选项数量（数组格式）:', this.userOptions.length)
+        } else {
+          this.userOptions = []
+          console.warn('用户选项响应格式异常:', res)
+        }
+        if (this.userOptions.length === 0) {
+          console.warn('用户选项为空，请检查：1.农产品商户角色是否分配了shop:add权限 2.用户是否拥有农产品商户角色')
+        }
+      } catch (e) {
+        console.error('获取用户列表失败:', e)
+        this.$message.error('获取用户列表失败，请检查网络连接')
+        this.userOptions = []
+      } finally {
+        this.userLoading = false
+      }
+    },
+
     async getList () {
       this.loading = true
 
@@ -614,6 +687,10 @@ export default {
       this.isEdit = false
       this.refreshUploadHeaders()
       this.resetForm()
+      // 如果是管理员，加载用户选项
+      if (this.isAdmin) {
+        this.loadUserOptions()
+      }
       this.dialogVisible = true
     },
 
@@ -628,6 +705,11 @@ export default {
       this.refreshUploadHeaders()
 
       try {
+        // 如果是管理员，先加载用户选项（确保下拉框能正确显示用户名）
+        if (this.isAdmin) {
+          await this.loadUserOptions()
+        }
+
         const res = await getShopById(row.id)
 
         const data = res && (res.code === 200 || res.code === '200') ? res.data : row
@@ -639,8 +721,8 @@ export default {
 
         this.shopForm = {
           id: data.id,
+          userId: data.userId ? Number(data.userId) : null,
           shopName: data.shopName || '',
-          shopAbbreviation: data.shopAbbreviation || '',
           productType: data.productType || '',
           businessStatus: data.businessStatus !== undefined ? data.businessStatus : 1,
           village: data.village || '',
@@ -691,7 +773,10 @@ export default {
           }
         }
 
-        this.dialogVisible = true
+        // 确保用户选项已加载后再打开对话框
+        this.$nextTick(() => {
+          this.dialogVisible = true
+        })
       } catch (e) {
         this.$message.error('获取店铺详情失败')
       }
@@ -1170,6 +1255,20 @@ export default {
 
     // 提交表单 - 修改：保存时添加 /uploads/ 前缀
     async submitForm () {
+      // 如果是普通商户且新增，先设置 userId（避免验证失败）
+      if (!this.isAdmin && !this.isEdit && !this.shopForm.userId) {
+        try {
+          const userInfo = await getCurrentUser()
+          const data = userInfo && userInfo.data ? userInfo.data : userInfo
+          const userId = (data && data.userId) || (data && data.id)
+          if (userId) {
+            this.shopForm.userId = userId
+          }
+        } catch (e) {
+          console.error('获取当前用户失败:', e)
+        }
+      }
+
       this.$refs.shopFormRef.validate(async (valid) => {
         if (!valid) return
 
@@ -1248,8 +1347,8 @@ export default {
 
       this.shopForm = {
         id: null,
+        userId: null,
         shopName: '',
-        shopAbbreviation: '',
         productType: '',
         businessStatus: 1,
         village: '',
@@ -1289,6 +1388,20 @@ export default {
   margin-top: 4px;
   font-size: 12px;
   color: #999;
+}
+
+/* 状态提示 */
+.status-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  display: flex;
+  align-items: center;
+}
+
+.status-tip i {
+  margin-right: 4px;
+  color: #909399;
 }
 
 /* 有头像时隐藏"+"按钮 */
