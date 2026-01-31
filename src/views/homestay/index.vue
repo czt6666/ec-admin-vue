@@ -377,6 +377,7 @@
             ref="coverUpload"
             :auto-upload="false"
             :on-change="handleCoverImageChange"
+            :on-remove="handleCoverImageRemove"
             :before-upload="beforeCoverImageUpload"
             :file-list="coverImageList"
             accept="image/*"
@@ -394,7 +395,7 @@
         <!-- 小程序配置 -->
         <el-form-item label="小程序配置">
           <el-collapse v-model="activeCollapse">
-            <el-collapse-item title="" name="miniProgram">
+            <el-collapse-item title="小程序配置" name="miniProgram">
               <el-form-item label="小程序APPID" prop="miniProgramAppid">
                 <el-input v-model="homestayForm.miniProgramAppid" placeholder="请输入小程序APPID" style="width: 100%"></el-input>
               </el-form-item>
@@ -725,36 +726,66 @@ export default {
     },
 
     // 图片加载错误处理
-    // 获取第一张封面图（用于列表显示）
+    // 获取第一张封面图（用于列表显示，与驿站模块保持一致）
     getFirstCoverImage(coverImage) {
       if (!coverImage) return null
-      try {
-        const images = JSON.parse(coverImage)
-        if (Array.isArray(images) && images.length > 0) {
-          return this.getImageUrl(images[0])
+
+      // 如果是数组格式（后端返回的新格式）
+      if (Array.isArray(coverImage) && coverImage.length > 0) {
+        return this.getImageUrl(coverImage[0])
+      }
+
+      // 如果是字符串格式（兼容旧数据）
+      if (typeof coverImage === 'string') {
+        try {
+          // 先尝试解析为JSON数组
+          const parsed = JSON.parse(coverImage)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return this.getImageUrl(parsed[0])
+          }
+        } catch (e) {
+          // JSON解析失败，当作逗号分隔字符串处理
+          const images = coverImage.split(',').filter(Boolean)
+          if (images.length > 0) {
+            return this.getImageUrl(images[0].trim())
+          }
         }
-        // 兼容旧格式（单张图片字符串）
-        return this.getImageUrl(coverImage)
-      } catch (e) {
-        // 如果解析失败，当作旧格式处理
+        // 单张图片字符串
         return this.getImageUrl(coverImage)
       }
+
+      return null
     },
 
-    // 获取所有封面图（用于预览）
+    // 获取所有封面图（用于预览，与驿站模块保持一致）
     getCoverImageList(coverImage) {
       if (!coverImage) return []
-      try {
-        const images = JSON.parse(coverImage)
-        if (Array.isArray(images) && images.length > 0) {
-          return images.map(img => this.getImageUrl(img))
+
+      // 如果是数组格式（后端返回的新格式）
+      if (Array.isArray(coverImage) && coverImage.length > 0) {
+        return coverImage.map(img => this.getImageUrl(img))
+      }
+
+      // 如果是字符串格式（兼容旧数据）
+      if (typeof coverImage === 'string') {
+        try {
+          // 先尝试解析为JSON数组
+          const parsed = JSON.parse(coverImage)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map(img => this.getImageUrl(img))
+          }
+        } catch (e) {
+          // JSON解析失败，当作逗号分隔字符串处理
+          const images = coverImage.split(',').filter(Boolean)
+          if (images.length > 0) {
+            return images.map(img => this.getImageUrl(img.trim()))
+          }
         }
-        // 兼容旧格式（单张图片字符串）
-        return [this.getImageUrl(coverImage)]
-      } catch (e) {
-        // 如果解析失败，当作旧格式处理
+        // 单张图片字符串
         return [this.getImageUrl(coverImage)]
       }
+
+      return []
     },
 
     handleImageError(event) {
@@ -932,28 +963,53 @@ export default {
       this.isEdit = true
       this.homestayForm = { ...row }
 
-      // 处理封面图（支持多张，JSON数组格式）
+      // 处理封面图（与驿站模块保持一致：后端返回数组格式）
       if (row.coverImage) {
-        try {
-          const coverImages = JSON.parse(row.coverImage)
-          if (Array.isArray(coverImages) && coverImages.length > 0) {
-            this.coverImageList = coverImages.map((img, index) => ({
+        if (Array.isArray(row.coverImage) && row.coverImage.length > 0) {
+          // 后端返回的是数组格式
+          this.coverImageList = row.coverImage.map((img, index) => {
+            const clean = (img || '').trim()
+            return {
               name: `cover_${index + 1}.jpg`,
-              url: this.getImageUrl(img)
-            }))
-          } else {
-            // 兼容旧格式（单张图片字符串）
-            this.coverImageList = [{
-              name: 'cover.jpg',
-              url: this.getImageUrl(row.coverImage)
-            }]
+              url: this.getImageUrl(clean)
+            }
+          })
+        } else if (typeof row.coverImage === 'string') {
+          // 兼容旧格式：可能是逗号分隔字符串或JSON字符串
+          try {
+            // 先尝试解析为JSON数组
+            const parsed = JSON.parse(row.coverImage)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              this.coverImageList = parsed.map((img, index) => ({
+                name: `cover_${index + 1}.jpg`,
+                url: this.getImageUrl(img)
+              }))
+            } else {
+              // 如果不是数组，当作逗号分隔字符串处理
+              const images = row.coverImage.split(',').filter(Boolean)
+              this.coverImageList = images.map((img, index) => ({
+                name: `cover_${index + 1}.jpg`,
+                url: this.getImageUrl(img.trim())
+              }))
+            }
+          } catch (e) {
+            // JSON解析失败，当作逗号分隔字符串处理
+            const images = row.coverImage.split(',').filter(Boolean)
+            if (images.length > 0) {
+              this.coverImageList = images.map((img, index) => ({
+                name: `cover_${index + 1}.jpg`,
+                url: this.getImageUrl(img.trim())
+              }))
+            } else {
+              // 单张图片字符串
+              this.coverImageList = [{
+                name: 'cover.jpg',
+                url: this.getImageUrl(row.coverImage)
+              }]
+            }
           }
-        } catch (e) {
-          // 如果解析失败，当作旧格式处理
-          this.coverImageList = [{
-            name: 'cover.jpg',
-            url: this.getImageUrl(row.coverImage)
-          }]
+        } else {
+          this.coverImageList = []
         }
       } else {
         this.coverImageList = []
@@ -1071,22 +1127,36 @@ export default {
       this.$refs.homestayForm.validate(async (valid) => {
         if (valid) {
           try {
-            // 处理封面图上传（支持多张）- 修改：添加 /uploads/ 前缀
+            // 处理封面图上传（与驿站模块保持一致：用逗号分隔字符串存储）
             if (this.coverImageList.length > 0) {
               const coverImages = []
               for (const coverImage of this.coverImageList) {
                 if (coverImage.raw) {
+                  // 新上传的文件
                   console.log('上传封面图:', coverImage.name)
                   const fileName = await this.uploadImage(coverImage.raw)
                   coverImages.push('/uploads/' + fileName)
                 } else if (coverImage.url) {
-                  // 如果已有URL，提取 /uploads/ 路径部分
-                  const match = /\/uploads\/[^/]+$/.exec(coverImage.url)
-                  coverImages.push(match ? match[0] : coverImage.url)
+                  // 已存在的文件：提取相对路径（去掉完整URL，只保留 /uploads/xxx）
+                  const url = coverImage.url
+                  if (url.startsWith('http://') || url.startsWith('https://')) {
+                    // 从完整URL中提取相对路径
+                    const match = /\/uploads\/[^/]+/.exec(url)
+                    if (match) {
+                      coverImages.push(match[0])
+                    } else {
+                      // 如果找不到 /uploads/，尝试提取路径部分
+                      const urlObj = new URL(url)
+                      coverImages.push(urlObj.pathname)
+                    }
+                  } else {
+                    // 已经是相对路径
+                    coverImages.push(url)
+                  }
                 }
               }
-              // 存储为JSON数组
-              this.homestayForm.coverImage = JSON.stringify(coverImages)
+              // 存储为逗号分隔字符串（与驿站模块保持一致）
+              this.homestayForm.coverImage = coverImages.join(',')
             } else {
               this.homestayForm.coverImage = ''
             }
@@ -1712,6 +1782,11 @@ export default {
 
     // 图片上传相关方法
     handleCoverImageChange(file, fileList) {
+      this.coverImageList = fileList
+    },
+
+    // 封面图移除（与驿站模块保持一致）
+    handleCoverImageRemove(file, fileList) {
       this.coverImageList = fileList
     },
 
