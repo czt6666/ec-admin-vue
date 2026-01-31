@@ -9,6 +9,7 @@
           <el-radio-group v-model="filters.status">
             <el-radio-button :label="1">营业</el-radio-button>
             <el-radio-button :label="0">停业</el-radio-button>
+            <el-radio-button :label="2">待审核</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="所属乡村">
@@ -54,8 +55,8 @@
         <el-table-column prop="name" label="门店名称" min-width="200" show-overflow-tooltip />
         <el-table-column label="经营状态" width="120">
           <template slot-scope="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
-              {{ row.status === 1 ? '营业' : '停业' }}
+            <el-tag :type="getStatusType(row.status)">
+              {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -140,10 +141,15 @@
           </el-select>
         </el-form-item>
         <el-form-item label="经营状态" prop="status">
-          <el-radio-group v-model="form.status">
+          <el-radio-group v-model="form.status" :disabled="!isAdmin">
             <el-radio :label="1">营业</el-radio>
             <el-radio :label="0">停业</el-radio>
+            <el-radio :label="2">待审核</el-radio>
           </el-radio-group>
+          <div v-if="!isAdmin" class="status-tip">
+            <i class="el-icon-info"></i>
+            普通商户不能修改经营状态，需要管理员审核
+          </div>
         </el-form-item>
         <el-form-item label="营业时间" required>
           <el-time-picker
@@ -422,6 +428,24 @@ export default {
       }
       return this.baseUrl + '/uploads/' + imagePath
     },
+    // 获取状态文本
+    getStatusText (status) {
+      const map = {
+        0: '停业',
+        1: '营业',
+        2: '待审核'
+      }
+      return map[status] || '未知'
+    },
+    // 获取状态标签类型
+    getStatusType (status) {
+      const map = {
+        0: 'info',
+        1: 'success',
+        2: 'warning'
+      }
+      return map[status] || 'info'
+    },
     async uploadImage (file) {
       const formData = new FormData()
       formData.append('file', file)
@@ -522,9 +546,10 @@ export default {
       } else {
         this.dialogTitle = '新增门店'
         this.form = this.initForm()
-        // 普通商户：自动绑定当前登录用户，且不可修改
+        // 普通商户：自动绑定当前登录用户，且不可修改；状态设置为待审核（2）
         if (!this.isAdmin && this.currentUserId) {
           this.form.userId = this.currentUserId
+          this.form.status = 2 // 待审核
           this.userOptions = [{ id: this.currentUserId, username: '当前用户' }]
         }
         this.logoList = []

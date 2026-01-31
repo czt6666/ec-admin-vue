@@ -28,6 +28,7 @@
           >
             <el-option label="营业" :value="1" />
             <el-option label="停业" :value="0" />
+            <el-option label="待审核" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="所属村">
@@ -58,9 +59,7 @@
           <el-button type="success" @click="handleAdd">
             <i class="el-icon-plus"></i> 新增
           </el-button>
-          <el-tooltip content="非管理员暂不允许新增店铺" placement="top" effect="dark">
-            <i class="el-icon-info" style="margin-left: 8px; color: #909399; cursor: help; font-size: 16px;"></i>
-          </el-tooltip>
+
         </el-form-item>
       </el-form>
     </div>
@@ -85,8 +84,8 @@
       <el-table-column prop="productType" label="产品类型" width="140" />
       <el-table-column label="经营状态" width="120">
         <template slot-scope="scope">
-          <el-tag :type="scope.row.businessStatus === 1 ? 'success' : 'danger'">
-            {{ scope.row.businessStatus === 1 ? '营业' : '停业' }}
+          <el-tag :type="getBusinessStatusType(scope.row.businessStatus)">
+            {{ getBusinessStatusText(scope.row.businessStatus) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -165,10 +164,20 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="经营状态" prop="businessStatus">
-              <el-select v-model="shopForm.businessStatus" placeholder="请选择状态" style="width: 100%">
+              <el-select
+                v-model="shopForm.businessStatus"
+                placeholder="请选择状态"
+                style="width: 100%"
+                :disabled="!isAdmin"
+              >
                 <el-option label="营业" :value="1" />
                 <el-option label="停业" :value="0" />
+                <el-option label="待审核" :value="2" />
               </el-select>
+              <div v-if="!isAdmin" class="status-tip">
+                <i class="el-icon-info"></i>
+                普通商户不能修改经营状态，需要管理员审核
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -531,6 +540,26 @@ export default {
       return this.baseUrl + '/uploads/' + imagePath
     },
 
+    // 获取经营状态文本
+    getBusinessStatusText (status) {
+      const map = {
+        0: '停业',
+        1: '营业',
+        2: '待审核'
+      }
+      return map[status] || '未知'
+    },
+
+    // 获取经营状态标签类型
+    getBusinessStatusType (status) {
+      const map = {
+        0: 'danger',
+        1: 'success',
+        2: 'warning'
+      }
+      return map[status] || 'info'
+    },
+
     async uploadImage (file) {
       const formData = new FormData()
       formData.append('file', file)
@@ -682,14 +711,26 @@ export default {
       this.getList()
     },
 
-    handleAdd () {
+    async handleAdd () {
       this.dialogTitle = '新增店铺'
       this.isEdit = false
       this.refreshUploadHeaders()
       this.resetForm()
       // 如果是管理员，加载用户选项
       if (this.isAdmin) {
-        this.loadUserOptions()
+        await this.loadUserOptions()
+      } else {
+        // 非管理员新增时，自动设置当前用户ID
+        try {
+          const userInfo = await getCurrentUser()
+          const data = userInfo && userInfo.data ? userInfo.data : userInfo
+          const userId = (data && data.userId) || (data && data.id)
+          if (userId) {
+            this.shopForm.userId = Number(userId)
+          }
+        } catch (error) {
+          console.error('获取当前用户信息失败:', error)
+        }
       }
       this.dialogVisible = true
     },
@@ -1345,12 +1386,15 @@ export default {
         this.$refs.shopFormRef.resetFields()
       }
 
+      // 非管理员新增时，默认设置为待审核状态（2）
+      const defaultStatus = (!this.isAdmin && !this.isEdit) ? 2 : 1
+
       this.shopForm = {
         id: null,
         userId: null,
         shopName: '',
         productType: '',
-        businessStatus: 1,
+        businessStatus: defaultStatus,
         village: '',
         shopIntro: '',
         shopAvatar: '',
