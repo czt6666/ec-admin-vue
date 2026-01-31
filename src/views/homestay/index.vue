@@ -395,7 +395,7 @@
         <!-- 小程序配置 -->
         <el-form-item label="小程序配置">
           <el-collapse v-model="activeCollapse">
-            <el-collapse-item title="小程序配置" name="miniProgram">
+            <el-collapse-item title="" name="miniProgram">
               <el-form-item label="小程序APPID" prop="miniProgramAppid">
                 <el-input v-model="homestayForm.miniProgramAppid" placeholder="请输入小程序APPID" style="width: 100%"></el-input>
               </el-form-item>
