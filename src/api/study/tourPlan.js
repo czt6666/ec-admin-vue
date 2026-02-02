@@ -58,3 +58,22 @@ export function fetchAllEnabled() {
     method: 'get'
   })
 }
+
+// 获取方案的图片列表
+export function getImages(planId) {
+  return request({
+    url: '/study/tour/plan/images/' + planId,
+    method: 'get'
+  })
+}
+
+// 保存研学方案图片
+export function saveImages(planId, images) {
+  return request({
+    url: '/study/tour/plan/' + planId + '/images',
+    method: 'post',
+    data: {
+      images
+    }
+  })
+}

@@ -232,6 +232,41 @@
             <el-radio :label="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
+        
+        <!-- 封面图上传 -->
+        <el-form-item label="封面图片" prop="coverFileList">
+          <el-upload
+            action="/api/upload"
+            list-type="picture-card"
+            :file-list="coverFileList"
+            :on-change="handleCoverFileChange"
+            :before-upload="beforeCoverUpload"
+            :before-remove="beforeCoverImageRemove"
+            :auto-upload="false"
+            :limit="1"
+            :on-exceed="handleCoverExceed"
+          >
+            <i class="el-icon-plus avatar-uploader-icon"></i>
+            <div slot="tip" class="el-upload__tip">支持JPG、PNG格式，单张图片大小应小于5MB，只能上传1张</div>
+          </el-upload>
+        </el-form-item>
+        
+        <!-- 详情图上传 -->
+        <el-form-item label="详情图片" prop="detailImages">
+          <el-upload
+            action="/api/upload"
+            list-type="picture"
+            :file-list="detailFileList"
+            :on-change="handleDetailFileChange"
+            :before-upload="beforeDetailImageUpload"
+            :before-remove="beforeDetailImageRemove"
+            :auto-upload="false"
+            multiple
+          >
+            <el-button size="small" type="primary">选择详情图</el-button>
+            <div slot="tip" class="el-upload__tip">支持多图上传（上传图片大小应小于5MB）</div>
+          </el-upload>
+        </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">取 消</el-button>
@@ -300,6 +335,13 @@ export default {
         }
       ],
       isAdmin: false,
+      // 图片上传相关
+      fileList: [],
+      images: [],
+      coverFileList: [],
+      coverImage: null,
+      detailFileList: [],
+      detailImages: [],
       rules: {
         planName: [
           { required: true, message: '请输入方案名称', trigger: 'blur' },
@@ -384,6 +426,9 @@ export default {
       if (!this.isAdmin) {
         this.tourPlan.status = 0
       }
+      // 重置图片相关变量
+      this.coverFileList = []
+      this.detailFileList = []
     },
     handleDelete(index, row) {
       this.$confirm('是否要删除该研学方案？', '提示', {
@@ -404,6 +449,143 @@ export default {
       this.dialogVisible = true
       this.isEdit = true
       this.tourPlan = Object.assign({}, row)
+      
+      // 加载图片数据
+      this.loadImages(row.id)
+    },
+    
+    // 加载图片数据
+    async loadImages(planId) {
+      try {
+        const { getImages } = await import('@/api/study/tourPlan')
+        const response = await getImages(planId)
+        
+        if (response && response.code === 200) {
+          const images = response.data || []
+          const baseUrl = 'http://localhost:8020' // 服务器基础地址
+          
+          // 分离封面图和详情图
+          const coverImages = images.filter(img => img.isCover === 1 || img.isCover === true)
+          const detailImages = images.filter(img => img.isCover === 0 || img.isCover === false)
+          
+          // 设置封面图文件列表
+          this.coverFileList = coverImages.map(img => ({
+            name: img.imageName || '封面图',
+            url: img.imageUrl.startsWith('http') ? img.imageUrl : baseUrl + img.imageUrl,
+            id: img.id
+          }))
+          
+          // 设置详情图文件列表
+          this.detailFileList = detailImages.map(img => ({
+            name: img.imageName || '详情图',
+            url: img.imageUrl.startsWith('http') ? img.imageUrl : baseUrl + img.imageUrl,
+            id: img.id
+          }))
+        }
+      } catch (error) {
+        console.error('加载图片数据失败:', error)
+        this.$message.error('加载图片数据失败')
+      }
+    },
+    
+    // 封面图上传前验证
+    beforeCoverUpload(file) {
+      const isJPG = file.type === 'image/jpeg' || file.type === 'image/png'
+      const isLt5M = file.size / 1024 / 1024 < 5
+
+      if (!isJPG) {
+        this.$message.error('封面图只能是 JPG 或 PNG 格式!')
+      }
+      if (!isLt5M) {
+        this.$message.error('封面图大小不能超过 5MB!')
+      }
+      return isJPG && isLt5M
+    },
+    
+    // 处理封面图文件变化
+    handleCoverFileChange(file, fileList) {
+      // 只保留一个文件（限制为1个）
+      if (fileList.length > 1) {
+        fileList = [fileList[fileList.length - 1]]
+      }
+      
+      // 验证图片格式和大小
+      const validFiles = fileList.filter(item => {
+        if (!item.raw) return true; // 已上传的文件无需验证
+        
+        const isImage = item.raw.type && item.raw.type.startsWith('image/')
+        const isLt5M = item.raw.size && item.raw.size / 1024 / 1024 < 5
+        
+        if (!isImage) {
+          this.$message.error(`${item.name} 只能是图片文件!`)
+          return false
+        }
+        if (!isLt5M) {
+          this.$message.error(`${item.name} 大小不能超过 5MB!`)
+          return false
+        }
+        return true
+      })
+      
+      // 更新封面图文件列表
+      this.coverFileList = validFiles
+    },
+    
+    // 封面图删除前验证
+    beforeCoverImageRemove(file, fileList) {
+      return this.$confirm(`确定要移除封面图 ${file.name}？`)
+    },
+    
+    // 封面图上传超出限制
+    handleCoverExceed(files, fileList) {
+      this.$message.warning('封面图只能上传1张')
+      // 保留最后一个上传的文件
+      this.coverFileList = [fileList[fileList.length - 1]]
+    },
+    
+    // 处理详情图文件变化
+    handleDetailFileChange(file, fileList) {
+      // 验证图片格式和大小
+      const validFiles = fileList.filter(item => {
+        if (!item.raw) return true; // 已上传的文件无需验证
+        
+        const isImage = item.raw.type && item.raw.type.startsWith('image/')
+        const isLt5M = item.raw.size && item.raw.size / 1024 / 1024 < 5
+        
+        if (!isImage) {
+          this.$message.error(`${item.name} 只能是图片文件!`)
+          return false
+        }
+        if (!isLt5M) {
+          this.$message.error(`${item.name} 大小不能超过 5MB!`)
+          return false
+        }
+        return true
+      })
+      
+      // 更新详情图文件列表
+      this.detailFileList = validFiles
+    },
+    
+    // 详情图上传前验证
+    beforeDetailImageUpload(file) {
+      const isImage = file.type && file.type.startsWith('image/')
+      const isLt5M = file.size && file.size / 1024 / 1024 < 5
+      
+      if (!isImage) {
+        this.$message.error('只能上传图片文件!')
+        return false
+      }
+      if (!isLt5M) {
+        this.$message.error('图片大小不能超过 5MB!')
+        return false
+      }
+      return isImage && isLt5M
+    },
+    
+    // 详情图删除前验证
+    beforeDetailImageRemove(file, fileList) {
+      return this.$confirm(`确定要移除图片 ${file.name}？`)
     },
     handlePublish(row) {
       this.$confirm('确定要上架该研学方案吗？上架后将在小程序端显示', '上架确认', {
@@ -433,13 +615,16 @@ export default {
         })
       }).catch(() => {})
     },
-    handleDialogConfirm() {
+    async handleDialogConfirm() {
       this.$refs['tourPlanForm'].validate((valid) => {
         if (valid) {
           const tourPlan = Object.assign({}, this.tourPlan)
 
           if (this.isEdit) {
-            updateTourPlan(tourPlan).then(response => {
+            updateTourPlan(tourPlan).then(async response => {
+              // 处理图片数据
+              await this.handleImages(tourPlan.id)
+              
               this.$message({
                 message: '修改成功！',
                 type: 'success'
@@ -448,7 +633,12 @@ export default {
               this.getList()
             })
           } else {
-            createTourPlan(tourPlan).then(response => {
+            createTourPlan(tourPlan).then(async response => {
+              // 处理图片数据
+              if (response && response.data && response.data.id) {
+                await this.handleImages(response.data.id)
+              }
+              
               this.$message({
                 message: '添加成功！',
                 type: 'success'
@@ -465,6 +655,136 @@ export default {
           return false
         }
       })
+    },
+    
+    // 处理图片数据
+    async handleImages(planId) {
+      const request = await import('@/utils/request')
+      
+      // 所有新图片的集合
+      const allImagesData = [];
+
+      // 处理封面图
+      if (this.coverFileList && this.coverFileList.length > 0) {
+        // 上传所有封面图（包括新的和已有的）
+        for (let i = 0; i < this.coverFileList.length; i++) {
+          const file = this.coverFileList[i];
+          
+          // 如果是新文件（有raw属性），需要上传
+          if (file.raw) {
+            try {
+              const formData = new FormData();
+              formData.append('file', file.raw);
+              
+              const response = await request.default({
+                url: '/api/file/upload',
+                method: 'post',
+                data: formData,
+                headers: { 'Content-Type': 'multipart/form-data' }
+              });
+              
+              if (response && response.code === 200) {
+                allImagesData.push({
+                  relatedId: planId,
+                  relatedType: 'plan',
+                  imageUrl: response.data.url,
+                  imageName: file.name,
+                  sortOrder: i,
+                  isCover: 1
+                });
+              }
+            } catch (error) {
+              this.$message.error('封面图上传失败');
+              console.error('封面图上传失败:', error);
+              return;
+            }
+          } else if (file.url) {
+            // 如果是已有的文件（没有raw属性但有url），确保使用相对路径
+            let imageUrl = file.url;
+            // 如果是完整路径，提取相对路径部分
+            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+              const urlParts = imageUrl.split('/');
+              imageUrl = '/' + urlParts.slice(3).join('/');
+            }
+            allImagesData.push({
+              relatedId: planId,
+              relatedType: 'plan',
+              imageUrl: imageUrl,
+              imageName: file.name || '封面图',
+              sortOrder: i,
+              isCover: 1
+            });
+          }
+        }
+      }
+      
+      // 处理详情图
+      if (this.detailFileList && this.detailFileList.length > 0) {
+        // 上传所有详情图（包括新的和已有的）
+        for (let i = 0; i < this.detailFileList.length; i++) {
+          const file = this.detailFileList[i];
+          
+          // 如果是新文件（有raw属性），需要上传
+          if (file.raw) {
+            try {
+              const formData = new FormData();
+              formData.append('file', file.raw);
+              
+              const response = await request.default({
+                 url: '/api/file/upload',
+                 method: 'post',
+                 data: formData,
+                 headers: { 'Content-Type': 'multipart/form-data' }
+               });
+              
+              if (response && response.code === 200) {
+                allImagesData.push({
+                  relatedId: planId,
+                  relatedType: 'plan',
+                  imageUrl: response.data.url,
+                  imageName: file.name,
+                  sortOrder: this.coverFileList.length + i,
+                  isCover: 0
+                });
+              }
+            } catch (error) {
+              this.$message.error('详情图上传失败');
+              console.error('详情图上传失败:', error);
+              return;
+            }
+          } else if (file.url) {
+            // 如果是已有的文件（没有raw属性但有url），确保使用相对路径
+            let imageUrl = file.url;
+            // 如果是完整路径，提取相对路径部分
+            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+              const urlParts = imageUrl.split('/');
+              imageUrl = '/' + urlParts.slice(3).join('/');
+            }
+            allImagesData.push({
+              relatedId: planId,
+              relatedType: 'plan',
+              imageUrl: imageUrl,
+              imageName: file.name || '详情图',
+              sortOrder: this.coverFileList.length + i,
+              isCover: 0
+            });
+          }
+        }
+      }
+      
+      // 保存所有图片到数据库
+      if (allImagesData.length > 0) {
+        try {
+          const { saveImages } = await import('@/api/study/tourPlan')
+          console.log('保存所有图片到数据库:', allImagesData);
+          const saveResponse = await saveImages(planId, allImagesData);
+          console.log('保存图片响应:', saveResponse);
+          this.$message.success('图片保存成功');
+        } catch (error) {
+          this.$message.error('保存图片到数据库失败');
+          console.error('保存图片到数据库失败:', error);
+        }
+      }
     },
     getList() {
       this.listLoading = true

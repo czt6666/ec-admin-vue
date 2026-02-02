@@ -258,6 +258,15 @@ export const asyncRouterMap = [
         component: _import('restaurant/dishCategory'),
         meta: { title: '菜品分类管理', icon: 'tag' },
         menu: 'dishCategory'
+      },
+      {
+        path: 'order',
+        name: '订单管理',
+        component: _import('restaurant/order'),
+        meta: { title: '订单管理', icon: 'table' },
+        // 注意：设置menu值后，只有拥有相应权限的用户才能看到此菜单
+        // 需要在后端role_menu表中为用户角色分配'order'权限才能显示
+        menu: 'dishOrder'
       }
     ]
   },
