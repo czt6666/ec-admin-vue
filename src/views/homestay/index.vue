@@ -417,7 +417,7 @@
 
             <!-- 资质类型选择 -->
             <div class="qualification-types">
-              <div class="type-title">资质类型1</div>
+              <div class="type-title">资质类型</div>
               <el-radio-group v-model="selectedQualificationType" class="type-buttons">
                 <el-radio-button label="property">房产证</el-radio-button>
                 <el-radio-button label="lease">租赁合同</el-radio-button>
