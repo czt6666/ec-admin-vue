@@ -240,6 +240,7 @@
             list-type="picture-card"
             :file-list="coverFileList"
             :on-change="handleCoverFileChange"
+            :on-remove="handleCoverFileRemove"
             :before-upload="beforeCoverUpload"
             :before-remove="beforeCoverImageRemove"
             :auto-upload="false"
@@ -258,6 +259,7 @@
             list-type="picture"
             :file-list="detailFileList"
             :on-change="handleDetailFileChange"
+            :on-remove="handleDetailFileRemove"
             :before-upload="beforeDetailImageUpload"
             :before-remove="beforeDetailImageRemove"
             :auto-upload="false"
@@ -462,7 +464,6 @@ export default {
         
         if (response && response.code === 200) {
           const images = response.data || []
-          const baseUrl = 'http://localhost:8020' // 服务器基础地址
           
           // 分离封面图和详情图
           const coverImages = images.filter(img => img.isCover === 1 || img.isCover === true)
@@ -471,14 +472,14 @@ export default {
           // 设置封面图文件列表
           this.coverFileList = coverImages.map(img => ({
             name: img.imageName || '封面图',
-            url: img.imageUrl.startsWith('http') ? img.imageUrl : baseUrl + img.imageUrl,
+            url: this.formatImageUrl(img.imageUrl),
             id: img.id
           }))
           
           // 设置详情图文件列表
           this.detailFileList = detailImages.map(img => ({
             name: img.imageName || '详情图',
-            url: img.imageUrl.startsWith('http') ? img.imageUrl : baseUrl + img.imageUrl,
+            url: this.formatImageUrl(img.imageUrl),
             id: img.id
           }))
         }
@@ -543,6 +544,12 @@ export default {
       this.coverFileList = [fileList[fileList.length - 1]]
     },
     
+    // 处理封面图文件删除
+    handleCoverFileRemove(file, fileList) {
+      console.log('封面图被删除:', file, '剩余文件列表:', fileList)
+      this.coverFileList = fileList
+    },
+    
     // 处理详情图文件变化
     handleDetailFileChange(file, fileList) {
       // 验证图片格式和大小
@@ -565,6 +572,7 @@ export default {
       
       // 更新详情图文件列表
       this.detailFileList = validFiles
+      
     },
     
     // 详情图上传前验证
@@ -587,6 +595,13 @@ export default {
     beforeDetailImageRemove(file, fileList) {
       return this.$confirm(`确定要移除图片 ${file.name}？`)
     },
+    
+    // 处理详情图文件删除
+    handleDetailFileRemove(file, fileList) {
+      console.log('详情图被删除:', file, '剩余文件列表:', fileList)
+      this.detailFileList = fileList
+    },
+    
     handlePublish(row) {
       this.$confirm('确定要上架该研学方案吗？上架后将在小程序端显示', '上架确认', {
         confirmButtonText: '确定',
@@ -661,12 +676,11 @@ export default {
     async handleImages(planId) {
       const request = await import('@/utils/request')
       
-      // 所有新图片的集合
+      // 所有需要保存的图片数据（只处理当前列表中存在的图片）
       const allImagesData = [];
 
       // 处理封面图
       if (this.coverFileList && this.coverFileList.length > 0) {
-        // 上传所有封面图（包括新的和已有的）
         for (let i = 0; i < this.coverFileList.length; i++) {
           const file = this.coverFileList[i];
           
@@ -699,20 +713,16 @@ export default {
               return;
             }
           } else if (file.url) {
-            // 如果是已有的文件（没有raw属性但有url），确保使用相对路径
-            let imageUrl = file.url;
-            // 如果是完整路径，提取相对路径部分
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              const urlParts = imageUrl.split('/');
-              imageUrl = '/' + urlParts.slice(3).join('/');
-            }
+            // 对于现有的图片文件（有url但没有raw），直接添加到待保存列表
+            const imageUrl = this.formatImageUrl(file.url);
             allImagesData.push({
               relatedId: planId,
               relatedType: 'plan',
               imageUrl: imageUrl,
               imageName: file.name || '封面图',
               sortOrder: i,
-              isCover: 1
+              isCover: 1,
+              id: file.id // 保留原有图片的ID，以便后端知道这是现有图片
             });
           }
         }
@@ -720,7 +730,6 @@ export default {
       
       // 处理详情图
       if (this.detailFileList && this.detailFileList.length > 0) {
-        // 上传所有详情图（包括新的和已有的）
         for (let i = 0; i < this.detailFileList.length; i++) {
           const file = this.detailFileList[i];
           
@@ -753,39 +762,60 @@ export default {
               return;
             }
           } else if (file.url) {
-            // 如果是已有的文件（没有raw属性但有url），确保使用相对路径
-            let imageUrl = file.url;
-            // 如果是完整路径，提取相对路径部分
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              const urlParts = imageUrl.split('/');
-              imageUrl = '/' + urlParts.slice(3).join('/');
-            }
+            // 对于现有的图片文件（有url但没有raw），直接添加到待保存列表
+            const imageUrl = this.formatImageUrl(file.url);
             allImagesData.push({
               relatedId: planId,
               relatedType: 'plan',
               imageUrl: imageUrl,
               imageName: file.name || '详情图',
               sortOrder: this.coverFileList.length + i,
-              isCover: 0
+              isCover: 0,
+              id: file.id // 保留原有图片的ID，以便后端知道这是现有图片
             });
           }
         }
       }
       
-      // 保存所有图片到数据库
+      // 保存图片到数据库
       if (allImagesData.length > 0) {
         try {
           const { saveImages } = await import('@/api/study/tourPlan')
           console.log('保存所有图片到数据库:', allImagesData);
           const saveResponse = await saveImages(planId, allImagesData);
           console.log('保存图片响应:', saveResponse);
-          this.$message.success('图片保存成功');
+          if (saveResponse && saveResponse.code === 200) {
+            this.$message.success('图片保存成功');
+          }
         } catch (error) {
           this.$message.error('保存图片到数据库失败');
           console.error('保存图片到数据库失败:', error);
         }
       }
     },
+    
+    // 格式化图片URL，确保在不同环境下都能正确访问
+    formatImageUrl(imageUrl) {
+      if (!imageUrl) return '';
+      
+      // 如果已经是完整的URL（以http或https开头），直接返回
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      
+      // 如果是绝对路径（以/开头），但不是以/api/开头，则添加/api/前缀
+      if (imageUrl.startsWith('/')) {
+        if (imageUrl.startsWith('/api/')) {
+          return imageUrl; // 已经有api前缀，直接返回
+        }
+        // 假设原始图片路径是 /uploads/* 格式，需要改为 /api/uploads/*
+        return '/api' + imageUrl;
+      }
+      
+      // 如果是相对路径，添加 /api/ 前缀（例如 uploads/* -> /api/uploads/*）
+      return '/api/' + imageUrl;
+    },
+    
     getList() {
       this.listLoading = true
       fetchList(this.listQuery).then(response => {
