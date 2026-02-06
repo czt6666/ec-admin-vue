@@ -237,6 +237,28 @@
         <el-form-item label="商品名称" prop="title">
           <el-input v-model="tempProduct.title" placeholder="请输入商品名称"></el-input>
         </el-form-item>
+
+        <el-form-item label="关联店铺" prop="shopId">
+          <el-select
+            v-model="tempProduct.shopId"
+            placeholder="请选择关联店铺"
+            clearable
+            filterable
+            style="width: 100%"
+            :loading="shopLoading"
+            no-data-text="暂无店铺数据"
+          >
+            <el-option
+              v-for="shop in shopOptions"
+              :key="shop.id"
+              :label="shop.shopName"
+              :value="shop.id"
+            >
+              <span>{{ shop.shopName }}</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="商品简介" prop="description">
           <el-input
             v-model="tempProduct.description"
@@ -405,9 +427,9 @@
               </template>
             </el-table-column>
           </el-table>
-            <div style="color: #909399; font-size: 12px; margin-top: 5px;">
-              * 说明：销售规格、价格、库存均为必填项，价格、库存必须为非负数
-            </div>
+          <div style="color: #909399; font-size: 12px; margin-top: 5px;">
+            * 说明：销售规格、价格、库存均为必填项，价格、库存必须为非负数
+          </div>
         </el-form-item>
       </el-form>
 
@@ -420,6 +442,8 @@
 </template>
 
 <script>
+import { listShopOptions } from '@/api/shop'
+
 export default {
   name: 'ProductManagement',
   data() {
@@ -454,33 +478,37 @@ export default {
         3: '微店与小程序都有'
       },
       tempProduct: {
-          id: '',
-          previewImages: [],
-          detailImages: [],
-          merchantPosterImg: '',
-          title: '',
-          shopName: '',
-          description: '',
-          productUrl: '',
-          status: '1',
-          fileList: [],
-          detailFileList: [],
-          merchantPosterFileList: [],
-          specifications: [
-            {
-              id: '',
-              specName: '',
-              price: '',
-              stock: ''
-            }
-          ],
-          // 新增字段
-          miniProgramAppid: '',
-          miniProgramPath: '',
-          microShopAppid: '',
-          microShopProductId: '',
-          uploadMethodStatus: 0
-        },
+        id: '',
+        previewImages: [],
+        detailImages: [],
+        merchantPosterImg: '',
+        title: '',
+        shopName: '',
+        shopId: null,
+        description: '',
+        productUrl: '',
+        status: '1',
+        fileList: [],
+        detailFileList: [],
+        merchantPosterFileList: [],
+        specifications: [
+          {
+            id: '',
+            specName: '',
+            price: '',
+            stock: ''
+          }
+        ],
+        // 新增字段
+        miniProgramAppid: '',
+        miniProgramPath: '',
+        microShopAppid: '',
+        microShopProductId: '',
+        uploadMethodStatus: 0
+      },
+      // 店铺选项列表
+      shopOptions: [],
+      shopLoading: false,
       // 表单验证规则
       rules: {
         title: [
@@ -553,8 +581,48 @@ export default {
       })
     },
 
+    // 加载店铺选项列表
+    async loadShopOptions() {
+      this.shopLoading = true
+      try {
+        const userId = this.$store.getters.userId
+        console.log('开始加载店铺选项，userId:', userId)
+
+        if (!userId) {
+          console.warn('用户ID不存在，无法加载店铺选项')
+          this.shopOptions = []
+          this.shopLoading = false
+          return
+        }
+
+        const roleIds = this.$store.getters.roleIds || []
+        const roleIdsStr = roleIds.join(',')
+        console.log('请求参数 - userId:', userId, 'roleIds:', roleIdsStr)
+
+        const res = await listShopOptions(userId, roleIdsStr)
+
+        // 处理返回数据：参考 restaurant 模块的实现方式
+        if (res && res.data) {
+          this.shopOptions = res.data || []
+        } else if (Array.isArray(res)) {
+          this.shopOptions = res
+        } else {
+          this.shopOptions = []
+        }
+
+        console.log('店铺选项加载完成，数量:', this.shopOptions.length)
+      } catch (error) {
+        console.error('加载店铺选项失败，错误详情:', error)
+        console.error('错误堆栈:', error.stack)
+        this.$message.error('获取店铺列表失败: ' + (error.message || '未知错误'))
+        this.shopOptions = []
+      } finally {
+        this.shopLoading = false
+      }
+    },
+
     // 显示添加对话框
-    showCreate() {
+    async showCreate() {
       this.dialogTitle = '添加商品'
       this.tempProduct = {
         id: '',
@@ -563,6 +631,7 @@ export default {
         merchantPosterImg: '',
         title: '',
         shopName: '',
+        shopId: null,
         description: '',
         productUrl: '',
         status: '1',
@@ -581,8 +650,11 @@ export default {
         miniProgramAppid: '',
         miniProgramPath: '',
         microShopAppid: '',
-        microShopProductId: ''
+        microShopProductId: '',
+        uploadMethodStatus: 0
       }
+      // 加载店铺选项
+      await this.loadShopOptions()
       this.dialogVisible = true
     },
 
@@ -763,7 +835,7 @@ export default {
     },
 
     // 显示编辑对话框
-    showUpdate(row, index) {
+    async showUpdate(row, index) {
       this.dialogTitle = '编辑商品'
       // 处理图片URL，确保它们是完整的URL格式
       const processImageUrl = (imageUrl) => {
@@ -778,23 +850,24 @@ export default {
       this.tempProduct = {
         ...row,
         shopName: row.shopName || '',
+        shopId: row.shopId || null,
         merchantPosterImg: row.merchantPosterImg || '',
         // 将图片URL数组转换为文件列表格式
         fileList: row.previewImages && row.previewImages.length > 0
           ? row.previewImages.map((url, index) => ({
-              name: `预览图${index + 1}`,
-              url: processImageUrl(url),
-              // 标记为已上传成功
-              status: 'success'
-            }))
+            name: `预览图${index + 1}`,
+            url: processImageUrl(url),
+            // 标记为已上传成功
+            status: 'success'
+          }))
           : [],
         detailFileList: row.detailImages && row.detailImages.length > 0
           ? row.detailImages.map((url, index) => ({
-              name: `详情图${index + 1}`,
-              url: processImageUrl(url),
-              // 标记为已上传成功
-              status: 'success'
-            }))
+            name: `详情图${index + 1}`,
+            url: processImageUrl(url),
+            // 标记为已上传成功
+            status: 'success'
+          }))
           : [],
         // 处理海报图
         merchantPosterFileList: row.merchantPosterImg ? [{
@@ -817,13 +890,15 @@ export default {
       this.tempProduct.specifications = row.specifications && row.specifications.length > 0
         ? row.specifications
         : [
-            {
-              id: '',
-              specName: '',
-              price: '',
-              stock: ''
-            }
-          ]
+          {
+            id: '',
+            specName: '',
+            price: '',
+            stock: ''
+          }
+        ]
+      // 加载店铺选项
+      await this.loadShopOptions()
       this.dialogVisible = true
     },
 
@@ -1006,7 +1081,9 @@ export default {
               microShopProductId: this.tempProduct.microShopProductId,
               uploadMethodStatus: this.tempProduct.uploadMethodStatus,
               // 商家海报图
-              merchantPosterImg: this.tempProduct.merchantPosterImg
+              merchantPosterImg: this.tempProduct.merchantPosterImg,
+              // 关联店铺
+              shopId: this.tempProduct.shopId
             }
 
             if (this.dialogTitle === '添加商品') {

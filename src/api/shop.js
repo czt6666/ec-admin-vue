@@ -1,4 +1,4 @@
-import request from '@/utils/shop_api'
+import request from '@/utils/request'
 
 /**
  * 获取店铺列表
@@ -52,3 +52,18 @@ export function deleteShop(id) {
     method: 'delete'
   })
 }
+
+/**
+ * 获取店铺下拉选项列表
+ * @param {Number} userId - 用户ID
+ * @param {String} roleIds - 角色ID列表（逗号分隔）
+ */
+export const listShopOptions = (userId, roleIds) =>
+  request({
+    url: '/admin/ecadmin/shop/options',
+    method: 'get',
+    params: {
+      userId,
+      roleIds
+    }
+  })
