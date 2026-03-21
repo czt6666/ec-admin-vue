@@ -508,10 +508,10 @@
             v-model="homestayForm.description"
             type="textarea"
             :rows="3"
-            maxlength="500"
+            maxlength="200"
             placeholder="请输入民宿简介、特色亮点"
           />
-          <div class="word-count">{{ (homestayForm.description || '').length }}/500</div>
+          <div class="word-count">{{ (homestayForm.description || '').length }}/200</div>
         </el-form-item>
       </el-form>
 
