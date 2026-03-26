@@ -91,20 +91,6 @@
       style="width: 100%"
     >
       <el-table-column v-if="false" prop="id" label="ID" width="80" />
-      <el-table-column label="封面" width="100">
-        <template slot-scope="scope">
-          <el-image
-            v-if="getFirstCoverImage(scope.row.coverImage)"
-            :src="getFirstCoverImage(scope.row.coverImage)"
-            :preview-src-list="getCoverImageList(scope.row.coverImage)"
-            fit="cover"
-            style="width: 60px; height: 40px; border-radius: 4px;"
-            @error="handleImageError"
-          />
-          <span v-else style="color: #999; font-size: 12px;">暂无图片</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="homestayName" label="民宿名称" width="150" />
       <el-table-column label="排序" align="center" width="100">
         <template slot-scope="scope">
           <div class="sort-buttons">
@@ -127,6 +113,20 @@
           </div>
         </template>
       </el-table-column>
+      <el-table-column label="封面" width="100">
+        <template slot-scope="scope">
+          <el-image
+            v-if="getFirstCoverImage(scope.row.coverImage)"
+            :src="getFirstCoverImage(scope.row.coverImage)"
+            :preview-src-list="getCoverImageList(scope.row.coverImage)"
+            fit="cover"
+            style="width: 60px; height: 40px; border-radius: 4px;"
+            @error="handleImageError"
+          />
+          <span v-else style="color: #999; font-size: 12px;">暂无图片</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="homestayName" label="民宿名称" width="150" />
       <el-table-column prop="userName" label="商户" width="120" />
       <el-table-column prop="address" label="地址" show-overflow-tooltip />
       <el-table-column label="营业状态" width="100">
@@ -1125,8 +1125,13 @@ export default {
         await this.refreshSortOrderCache(true)
       }
 
-      const idx = this.getSortIndexById(id)
-      if (idx < 0) return
+      let idx = this.getSortIndexById(id)
+      // 缓存可能因新增/删除而过期：如果本行不在缓存里，强制刷新一次再继续
+      if (idx < 0) {
+        await this.refreshSortOrderCache(true)
+        idx = this.getSortIndexById(id)
+        if (idx < 0) return
+      }
 
       const targetIdx = idx + delta
       if (targetIdx < 0 || targetIdx >= this.sortOrderList.length) return
@@ -1401,6 +1406,7 @@ export default {
           if (isSuccess) {
             this.$message.success('删除成功')
             this.getList() // 刷新列表
+            this.refreshSortOrderCache(true)
           } else {
             this.$message.error(response.msg || response.message || '删除失败')
           }
@@ -1410,6 +1416,7 @@ export default {
           if (error.response && error.response.status === 200) {
             this.$message.success('删除成功')
             this.getList()
+            this.refreshSortOrderCache(true)
           } else {
             this.$message.error(error.message || '删除失败')
           }
@@ -1501,6 +1508,8 @@ export default {
               this.dialogVisible = false
               this.resetForm() // 重置表单
               this.getList() // 刷新列表
+              // 新增/更新后必须刷新全局排序缓存，否则新数据的行内排序按钮会不可用
+              await this.refreshSortOrderCache(true)
             } else {
               this.$message.error(response.msg || response.message || '操作失败')
             }
@@ -1512,6 +1521,7 @@ export default {
               this.dialogVisible = false
               this.resetForm()
               this.getList()
+              await this.refreshSortOrderCache(true)
             } else {
               this.$message.error(error.message || '操作失败')
             }
@@ -2163,6 +2173,7 @@ export default {
         publishHomestay(row.id).then(response => {
           this.$message.success('上架成功')
           this.getList()
+          this.refreshSortOrderCache(true)
         }).catch(error => {
           this.$message.error(error.message || '上架失败')
         })
@@ -2179,6 +2190,7 @@ export default {
         unpublishHomestay(row.id).then(response => {
           this.$message.success('下架成功')
           this.getList()
+          this.refreshSortOrderCache(true)
         }).catch(error => {
           this.$message.error(error.message || '下架失败')
         })
