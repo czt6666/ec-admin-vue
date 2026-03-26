@@ -59,6 +59,22 @@ export const listRestaurantsByUser = userId =>
     method: 'get'
   })
 
+// 更新餐厅排序
+export const updateRestaurantSortOrder = data =>
+  request({
+    url: '/admin/ecadmin/restaurant/updateSortOrder',
+    method: 'post',
+    data
+  })
+
+// 交换餐厅排序
+export const swapRestaurantSortOrder = data =>
+  request({
+    url: '/admin/ecadmin/restaurant/swapSortOrder',
+    method: 'post',
+    data
+  })
+
 /**
  * 获取菜品分类列表
  */
