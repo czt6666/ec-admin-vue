@@ -105,6 +105,28 @@
         </template>
       </el-table-column>
       <el-table-column prop="homestayName" label="民宿名称" width="150" />
+      <el-table-column label="排序" align="center" width="100">
+        <template slot-scope="scope">
+          <div class="sort-buttons">
+            <el-button
+              type="primary"
+              size="mini"
+              icon="el-icon-arrow-up"
+              circle
+              :disabled="sortOrderSaving || (sortOrderLength > 0 && getSortIndexById(scope.row.id) === 0)"
+              @click="handleMoveSort(scope.row.id, -1, scope.row.villageId, scope.$index)"
+            />
+            <el-button
+              type="primary"
+              size="mini"
+              icon="el-icon-arrow-down"
+              circle
+              :disabled="sortOrderSaving || (sortOrderLength > 0 && getSortIndexById(scope.row.id) === sortOrderLength - 1)"
+              @click="handleMoveSort(scope.row.id, 1, scope.row.villageId, scope.$index)"
+            />
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="userName" label="商户" width="120" />
       <el-table-column prop="address" label="地址" show-overflow-tooltip />
       <el-table-column label="营业状态" width="100">
@@ -395,7 +417,7 @@
         <!-- 小程序配置 -->
         <el-form-item label="小程序配置">
           <el-collapse v-model="activeCollapse">
-            <el-collapse-item title="" name="miniProgram">
+            <el-collapse-item title="小程序配置" name="miniProgram">
               <el-form-item label="小程序APPID" prop="miniProgramAppid">
                 <el-input v-model="homestayForm.miniProgramAppid" placeholder="请输入小程序APPID" style="width: 100%"></el-input>
               </el-form-item>
@@ -417,7 +439,7 @@
 
             <!-- 资质类型选择 -->
             <div class="qualification-types">
-              <div class="type-title">资质类型</div>
+              <div class="type-title">资质类型1</div>
               <el-radio-group v-model="selectedQualificationType" class="type-buttons">
                 <el-radio-button label="property">房产证</el-radio-button>
                 <el-radio-button label="lease">租赁合同</el-radio-button>
@@ -508,10 +530,10 @@
             v-model="homestayForm.description"
             type="textarea"
             :rows="3"
-            maxlength="200"
+            maxlength="500"
             placeholder="请输入民宿简介、特色亮点"
           />
-          <div class="word-count">{{ (homestayForm.description || '').length }}/200</div>
+          <div class="word-count">{{ (homestayForm.description || '').length }}/500</div>
         </el-form-item>
       </el-form>
 
@@ -584,11 +606,22 @@
         <el-button type="primary" @click="confirmLocation">确定选择</el-button>
       </div>
     </el-dialog>
+
+    <!-- 展示顺序调整弹窗已移除：改为列表行内直接上下箭头调序 -->
   </div>
 </template>
 
 <script>
-import { getHomestayList, addHomestay, updateHomestay, deleteHomestay, publishHomestay, unpublishHomestay } from '@/api/homestay'
+import {
+  getHomestayList,
+  addHomestay,
+  updateHomestay,
+  deleteHomestay,
+  publishHomestay,
+  unpublishHomestay,
+  getHomestaySortOptions,
+  saveHomestaySort
+} from '@/api/homestay'
 import { getVillageList } from '@/api/village'
 import { listUserOptions, getCurrentUser } from '@/api/user'
 import request from '@/utils/request'
@@ -603,6 +636,17 @@ export default {
       villageLoading: false,
       userLoading: false,
       mapDialogVisible: false,
+      sortDialogVisible: false,
+      sortVillageId: null,
+      sortList: [],
+      sortLoading: false,
+      sortSaving: false,
+      // 列表行内直接调序：缓存全局排序列表，避免分页只调了一部分导致错乱
+      sortOrderList: [],
+      sortOrderMap: {},
+      sortOrderLength: 0,
+      sortOrderLoading: false,
+      sortOrderSaving: false,
       homestayList: [],
       villageList: [],
       userOptions: [],
@@ -893,6 +937,9 @@ export default {
           console.error('API返回错误：', response.msg)
           this.$message.error(response.msg || '获取数据失败')
         }
+
+        // 不在列表加载时拉取“全量排序缓存”，避免无权限用户浏览列表时报错；
+        // 缓存在点击“排序”按钮时再按需加载。
         this.loading = false
       }).catch(error => {
         console.error('=== API请求失败 ===')
@@ -1021,6 +1068,256 @@ export default {
 
       // 处理资质凭证图片 - 分类加载
       this.loadQualificationImagesByType(row.qualificationImages)
+    },
+
+    // ============ 列表行内直接调序（类似餐饮分类） ============
+    // 构建全局“排序缓存”，供列表行内上/下移按钮使用
+    async refreshSortOrderCache(force = false) {
+      if (!force && this.sortOrderList && this.sortOrderList.length > 0) {
+        return
+      }
+
+      if (this.sortOrderLoading) return
+      this.sortOrderLoading = true
+      try {
+        // 兜底：防止运行时导入的 getHomestaySortOptions 不是函数（打包/缓存不同步）
+        const res = typeof getHomestaySortOptions === 'function'
+          ? await getHomestaySortOptions()
+          : await request({
+            url: '/admin/ecadmin/village-homestay/sort-options',
+            method: 'get',
+          })
+        let list = []
+        if (res && (res.code === 200 || res.code === '200') && Array.isArray(res.data)) {
+          list = res.data
+        } else if (res && Array.isArray(res.data)) {
+          list = res.data
+        } else if (Array.isArray(res)) {
+          list = res
+        }
+
+        this.sortOrderList = list
+        this.sortOrderLength = list.length
+        const map = {}
+        list.forEach((item, idx) => {
+          if (item && item.id != null) map[item.id] = idx
+        })
+        this.sortOrderMap = map
+      } catch (e) {
+        console.error('刷新展示顺序缓存失败:', e)
+        this.$message.error('刷新展示顺序缓存失败')
+        this.sortOrderList = []
+        this.sortOrderMap = {}
+        this.sortOrderLength = 0
+      } finally {
+        this.sortOrderLoading = false
+      }
+    },
+
+    getSortIndexById(id) {
+      return this.sortOrderMap && this.sortOrderMap[id] != null ? this.sortOrderMap[id] : -1
+    },
+
+    async handleMoveSort(id, delta, villageIdFromRow, pageIndex = null) {
+      if (this.sortOrderSaving) return
+
+      if (!this.sortOrderList || this.sortOrderList.length === 0) {
+        await this.refreshSortOrderCache(true)
+      }
+
+      const idx = this.getSortIndexById(id)
+      if (idx < 0) return
+
+      const targetIdx = idx + delta
+      if (targetIdx < 0 || targetIdx >= this.sortOrderList.length) return
+
+      // 1) 先做 UI 乐观交换：让点击立即有反应（只影响当前页）
+      let swappedPage = false
+      if (pageIndex != null && pageIndex >= 0) {
+        const swapIndex = pageIndex + delta
+        if (swapIndex >= 0 && swapIndex < this.homestayList.length) {
+          const aPage = this.homestayList[pageIndex]
+          const bPage = this.homestayList[swapIndex]
+          this.$set(this.homestayList, swapIndex, aPage)
+          this.$set(this.homestayList, pageIndex, bPage)
+          swappedPage = true
+        }
+      }
+
+      // 2) 再做缓存层交换（用于保存到后端）
+      const a = this.sortOrderList[idx]
+      const b = this.sortOrderList[targetIdx]
+      this.$set(this.sortOrderList, idx, b)
+      this.$set(this.sortOrderList, targetIdx, a)
+
+      this.sortOrderSaving = true
+      try {
+
+        // 重新编号 1..N（后端也会二次按传入顺序重排，这里保持一致）
+        const sortRequests = this.sortOrderList.map((item, i) => ({
+          id: item.id,
+          sortNum: i + 1
+        }))
+
+        // 兜底：防止运行时导入的 saveHomestaySort 不是函数（打包/缓存不同步）
+        const res = typeof saveHomestaySort === 'function'
+          ? await saveHomestaySort(sortRequests)
+          : await request({
+            url: '/admin/ecadmin/village-homestay/sort',
+            method: 'post',
+            data: sortRequests
+          })
+        const success = !res || Array.isArray(res) ||
+          (res && (res.code === 200 || res.code === '200' || res.code === 1 || res.code === '1'))
+
+        if (!success) {
+          this.$message.error((res && (res.msg || res.message)) || '保存失败')
+          return
+        }
+
+        this.$message.success('排序更新成功')
+
+        // 保存成功后：仅当“跨页/不可见项移动”时刷新列表，避免用户觉得“移不动”
+        const map = {}
+        this.sortOrderList.forEach((item, i) => {
+          if (item && item.id != null) map[item.id] = i
+        })
+        this.sortOrderMap = map
+        if (!swappedPage && pageIndex != null) {
+          await this.getList()
+        }
+      } catch (e) {
+        console.error('保存展示顺序失败:', e)
+        this.$message.error('保存展示顺序失败')
+
+        // 保存失败回滚：缓存层 + 当前页 UI
+        this.$set(this.sortOrderList, idx, a)
+        this.$set(this.sortOrderList, targetIdx, b)
+        if (swappedPage && pageIndex != null) {
+          const swapIndex = pageIndex + delta
+          if (swapIndex >= 0 && swapIndex < this.homestayList.length) {
+            const aPage = this.homestayList[swapIndex]
+            const bPage = this.homestayList[pageIndex]
+            // 重新交换回去
+            this.$set(this.homestayList, pageIndex, aPage)
+            this.$set(this.homestayList, swapIndex, bPage)
+          }
+        }
+      } finally {
+        this.sortOrderSaving = false
+      }
+    },
+
+    // 打开展示顺序调整弹窗
+    async openSortDialog() {
+      if (!this.queryParams.villageId) {
+        this.$message.warning('请先选择所属乡村')
+        return
+      }
+
+      this.sortVillageId = this.queryParams.villageId
+      this.sortDialogVisible = true
+      await this.loadSortOptions()
+    },
+
+    // 拉取当前乡村下的民宿排序列表
+    async loadSortOptions() {
+      this.sortLoading = true
+      try {
+        const res = await getHomestaySortOptions(this.sortVillageId)
+
+        let list = []
+        if (res && (res.code === 200 || res.code === '200') && Array.isArray(res.data)) {
+          list = res.data
+        } else if (res && Array.isArray(res.data)) {
+          list = res.data
+        } else if (Array.isArray(res)) {
+          list = res
+        } else {
+          list = []
+        }
+
+        this.sortList = list
+      } catch (e) {
+        console.error('加载展示顺序列表失败:', e)
+        this.$message.error('加载展示顺序列表失败')
+        this.sortList = []
+      } finally {
+        this.sortLoading = false
+      }
+    },
+
+    // 关闭弹窗时重置数据
+    resetSortDialog() {
+      this.sortVillageId = null
+      this.sortList = []
+      this.sortLoading = false
+      this.sortSaving = false
+    },
+
+    async moveUp(index) {
+      if (index <= 0) return
+
+      const prev = this.homestayList[index - 1]
+      const curr = this.homestayList[index]
+      this.$set(this.homestayList, index - 1, curr)
+      this.$set(this.homestayList, index, prev)
+
+      await this.saveSort()
+    },
+
+    async moveDown(index) {
+      if (index >= this.homestayList.length - 1) return
+
+      const next = this.homestayList[index + 1]
+      const curr = this.homestayList[index]
+      this.$set(this.homestayList, index + 1, curr)
+      this.$set(this.homestayList, index, next)
+
+      await this.saveSort()
+    },
+
+    async saveSort() {
+      // 兜底：优先使用当前列表筛选的 villageId；若为空则从列表数据中取
+      let villageId = this.queryParams && this.queryParams.villageId
+      if (!villageId && this.homestayList && this.homestayList.length > 0) {
+        villageId = this.homestayList[0].villageId
+      }
+      if (villageId == null) {
+        this.$message.warning('缺少乡村ID，无法保存')
+        return
+      }
+
+      if (!this.homestayList || this.homestayList.length === 0) {
+        this.$message.warning('排序列表为空')
+        return
+      }
+
+      this.sortSaving = true
+      try {
+        const sortRequests = this.homestayList.map((item, idx) => ({
+          id: item.id,
+          sortNum: idx + 1
+        }))
+
+        const res = await saveHomestaySort(villageId, sortRequests)
+
+        const success = !res || Array.isArray(res) ||
+          (res && (res.code === 200 || res.code === '200' || res.code === 1 || res.code === '1'))
+
+        if (success) {
+          this.$message.success('排序更新成功')
+        } else {
+          this.$message.error((res && (res.msg || res.message)) || '保存失败')
+        }
+      } catch (e) {
+        console.error('保存展示顺序失败:', e)
+        this.$message.error('保存展示顺序失败')
+      } finally {
+        this.sortSaving = false
+        // 重新拉取，确保顺序与后端一致
+        await this.getList()
+      }
     },
 
     // 加载分类的资质图片
@@ -1183,6 +1480,9 @@ export default {
             this.homestayForm.qualificationImages = JSON.stringify(qualificationImagesData)
 
             console.log('提交的表单数据:', this.homestayForm)
+
+            // 不允许在编辑/新增时直接修改 displayNo：展示顺序由“调整展示顺序”弹窗统一维护
+            if (this.homestayForm.id) this.homestayForm.displayNo = null
 
             const api = this.homestayForm.id ? updateHomestay : addHomestay
             const response = await api(this.homestayForm)
@@ -1833,8 +2133,20 @@ export default {
         const userId = (data && data.userId) || (data && data.id)
         // 判断是否为管理员：userId === 10011 或 roleIds 包含 1
         const roleIds = data && data.roleIds ? data.roleIds : []
-        this.isAdmin = userId === 10011 || (roleIds && roleIds.includes(1))
+        let normalizedRoleIds = []
+        if (Array.isArray(roleIds)) {
+          normalizedRoleIds = roleIds.map(r => Number(r)).filter(v => !Number.isNaN(v))
+        } else if (typeof roleIds === 'string') {
+          // 兼容后端返回 "1,2,3" 这种字符串
+          normalizedRoleIds = roleIds.split(',').map(s => Number(s.trim())).filter(v => !Number.isNaN(v))
+        }
+
+        this.isAdmin = userId === 10011 || normalizedRoleIds.includes(1)
         console.log('用户权限检查:', { userId, isAdmin: this.isAdmin })
+        if (this.isAdmin && this.queryParams && this.queryParams.villageId) {
+          // 初始化排序缓存：确保列表行内上下箭头可以正常启用/禁用
+          this.refreshSortOrderCache(true)
+        }
       } catch (error) {
         console.error('获取用户权限失败:', error)
         this.isAdmin = false
@@ -1877,6 +2189,32 @@ export default {
 </script>
 
 <style scoped>
+/* 与“菜品分类”一致的排序按钮样式 */
+.sort-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.sort-buttons .el-button {
+  margin: 0;
+  padding: 5px 8px;
+  font-size: 12px;
+  background-color: #fff;
+  border-color: #fff;
+  color: #606266;
+}
+
+.sort-buttons .el-button:hover {
+  background-color: #f5f7fa;
+  border-color: #fff;
+  color: #606266;
+}
+
+.sort-buttons .el-button:first-child {
+  margin-right: 5px;
+}
+
 .filter-container {
   margin-bottom: 20px;
 }

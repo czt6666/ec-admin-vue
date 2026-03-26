@@ -67,3 +67,20 @@ export function unpublishHomestay(id) {
     method: 'post'
   })
 }
+
+// 获取展示顺序调整列表
+export function getHomestaySortOptions() {
+  return request({
+    url: '/admin/ecadmin/village-homestay/sort-options',
+    method: 'get',
+  })
+}
+
+// 保存展示顺序
+export function saveHomestaySort(sortRequests) {
+  return request({
+    url: '/admin/ecadmin/village-homestay/sort',
+    method: 'post',
+    data: sortRequests
+  })
+}
