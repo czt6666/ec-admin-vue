@@ -37,7 +37,12 @@
     </el-card>
 
     <el-card>
-      <el-table :data="tableData" border stripe>
+      <el-table
+        :data="tableData"
+        border
+        stripe
+        row-key="id"
+      >
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column label="门店图" width="120">
           <template slot-scope="scope">
@@ -71,6 +76,26 @@
         <el-table-column prop="villageName" label="所属乡村" width="180" />
         <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column prop="updateTime" label="更新时间" width="180" />
+        <el-table-column label="排序操作" width="120" fixed="right">
+          <template slot-scope="{ row, $index }">
+            <el-button
+              type="text"
+              size="small"
+              @click="moveUp($index)"
+              :disabled="$index === 0"
+            >
+              <i class="el-icon-arrow-up"></i>
+            </el-button>
+            <el-button
+              type="text"
+              size="small"
+              @click="moveDown($index)"
+              :disabled="$index === tableData.length - 1"
+            >
+              <i class="el-icon-arrow-down"></i>
+            </el-button>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template slot-scope="{ row }">
             <el-button type="primary" size="small" @click="openDialog(row)">编辑</el-button>
@@ -326,7 +351,9 @@ import {
   createRestaurant,
   updateRestaurant,
   deleteRestaurant,
-  getRestaurant
+  getRestaurant,
+  updateRestaurantSortOrder,
+  swapRestaurantSortOrder
 } from '@/api/restaurant'
 import { getVillageList } from '@/api/village'
 import { listUserOptions, getCurrentUser } from '@/api/user'
@@ -476,7 +503,8 @@ export default {
         coordinateLng: null,
         phone: '',
         notice: '',
-        licenseUrls: ''
+        licenseUrls: '',
+        sortOrder: null
       }
     },
     async loadVillageOptions () {
@@ -533,6 +561,31 @@ export default {
       this.filters = { name: '', status: null, villageId: null }
       this.handleSearch()
     },
+    moveUp (index) {
+      if (index <= 0 || index >= this.tableData.length) return
+      
+      const current = this.tableData[index]
+      const previous = this.tableData[index - 1]
+      
+      this.swapSortOrder(current.id, previous.id)
+    },
+    moveDown (index) {
+      if (index < 0 || index >= this.tableData.length - 1) return
+      
+      const current = this.tableData[index]
+      const next = this.tableData[index + 1]
+      
+      this.swapSortOrder(current.id, next.id)
+    },
+    async swapSortOrder (id1, id2) {
+      try {
+        await swapRestaurantSortOrder([id1, id2])
+        this.$message.success('排序调整成功')
+        this.loadData()
+      } catch (e) {
+        this.$message.error('排序调整失败：' + (e.message || '未知错误'))
+      }
+    },
     openDialog (row) {
       this.dialogVisible = true
       this.refreshUploadHeaders()
@@ -575,7 +628,8 @@ export default {
           coordinateLng: data.coordinateLng || null,
           phone: data.phone || '',
           notice: data.notice || '',
-          licenseUrls: data.licenseUrls || ''
+          licenseUrls: data.licenseUrls || '',
+          sortOrder: data.sortOrder !== undefined && data.sortOrder !== null ? Number(data.sortOrder) : null
         }
         // 普通商户不加载全量下拉，为了回显下拉的 label，塞入当前记录的用户
         if (!this.isAdmin && this.form.userId) {
